@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ヨガ体験レッスン予約＆カルテ</title>
-    <!-- LINE LIFF SDK -->
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         .step { display: none; }
@@ -16,17 +14,14 @@
 <body class="bg-stone-50 text-stone-800 font-sans antialiased">
 
     <div class="max-w-md mx-auto bg-white min-h-screen shadow-md flex flex-col">
-        <!-- ヘッダー -->
         <header class="bg-emerald-600 text-white text-center py-6 px-4 shadow-sm">
             <h1 class="text-xl font-bold tracking-wide">🧘‍♂️ Private Yoga Studio</h1>
             <p class="text-xs opacity-90 mt-1">体験予約 兼 事前カウンセリング</p>
         </header>
 
-        <!-- メインコンテンツ -->
         <main class="flex-1 p-6">
             <form id="liffForm" onsubmit="return false;">
                 
-                <!-- STEP 1: 日時・基本情報 -->
                 <div id="step1" class="step active space-y-5">
                     <div class="border-l-4 border-emerald-500 pl-2">
                         <h2 class="text-lg font-bold">Step 1. ご予約日時とお名前</h2>
@@ -36,8 +31,9 @@
                         <input type="datetime-local" id="visit_date" step="1800" required class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold mb-1">お名前</label>
-                        <input type="text" id="name" required placeholder="山田 太郎" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                        <label class="block text-sm font-semibold mb-1">お名前（フルネームを漢字で入力）</label>
+                        <input type="text" id="name" required placeholder="山田 太郎（姓名の間にスペース）" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                        <p class="text-xs text-red-500 mt-1 hidden" id="name_error">※正確なカルテ作成のため、フルネーム（姓名の間にスペース）でご入力ください。</p>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">お電話番号</label>
@@ -51,10 +47,9 @@
                             <option value="定期的に通っていた">過去に定期的に通っていた</option>
                         </select>
                     </div>
-                    <button type="button" onclick="nextStep(2)" class="w-full bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">次へ進む</button>
+                    <button type="button" onclick="validateAndNext(2)" class="w-full bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">次へ進む</button>
                 </div>
 
-                <!-- STEP 2: お身体のお悩み -->
                 <div id="step2" class="step space-y-5">
                     <div class="border-l-4 border-emerald-500 pl-2">
                         <h2 class="text-lg font-bold">Step 2. お身体のお悩み</h2>
@@ -84,7 +79,6 @@
                     </div>
                 </div>
 
-                <!-- STEP 3: ライフスタイル -->
                 <div id="step3" class="step space-y-5">
                     <div class="border-l-4 border-emerald-500 pl-2">
                         <h2 class="text-lg font-bold">Step 3. ライフスタイル</h2>
@@ -119,22 +113,40 @@
     </div>
 
     <script>
-        // あらかじめ指定された固定設定値
         const LIFF_ID = '2010377734-4tHMhUx6'; 
         const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev'; 
 
         let userId = "";
 
-        // 日時選択の過去日制限＆初期化
+        // 日時選択の各種制限処理
         function initDateTimePicker() {
             const now = new Date();
-            // 日本時間に自動調整
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             const nowString = now.toISOString().slice(0, 16);
             
             const dateInput = document.getElementById("visit_date");
-            dateInput.min = nowString; // 過去の日時を選択不可にする
-            dateInput.value = nowString; // 初期値に現在時刻をセット
+            dateInput.min = nowString; 
+            dateInput.value = nowString; 
+
+            // ユーザーが時間を選んだ瞬間に、強制的に30分刻みにまるめる
+            dateInput.addEventListener("change", (e) => {
+                if (!e.target.value) return;
+                const dt = new Date(e.target.value);
+                const minutes = dt.getMinutes();
+                
+                // 30分に近い方にまるめる (0分 または 30分)
+                if (minutes < 15) {
+                    dt.setMinutes(0);
+                } else if (minutes >= 15 && minutes < 45) {
+                    dt.setMinutes(30);
+                } else {
+                    dt.setMinutes(0);
+                    dt.setHours(dt.getHours() + 1);
+                }
+                
+                dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+                e.target.value = dt.toISOString().slice(0, 16);
+            });
         }
 
         // LIFFの初期化
@@ -159,7 +171,37 @@
             document.getElementById('step' + stepNum).classList.add('active');
         }
 
-        // フォーム送信処理
+        // Step 1 から進む際の本名フルネーム・営業時間チェック
+        function validateAndNext(nextStepNum) {
+            const nameInput = document.getElementById("name").value.trim();
+            const errorEl = document.getElementById("name_error");
+            
+            // 本名チェックの正規表現（全角・半角スペースのいずれかを姓名の間に挟むフルネーム）
+            const fullNameRegex = /^[A-Z-a-zぁ-んァ-ヶー一-龠]+[\s ]+[A-Z-a-zぁ-んァ-ヶー一-龠]+$/;
+            
+            if (!fullNameRegex.test(nameInput)) {
+                errorEl.classList.remove("hidden");
+                document.getElementById("name").focus();
+                return;
+            } else {
+                errorEl.classList.add("hidden");
+            }
+
+            // 念のため営業時間もここ段階で簡易チェック
+            const visitDateInput = document.getElementById("visit_date").value;
+            if (visitDateInput) {
+                const chosenDate = new Date(visitDateInput);
+                const hour = chosenDate.getHours();
+                if (hour < 10 || hour >= 19) {
+                    alert("体験レッスンの受付時間は10:00〜19:00となります。");
+                    return;
+                }
+            }
+
+            nextStep(nextStepNum);
+        }
+
+        // フォーム最終送信処理
         async function submitForm() {
             const btn = document.getElementById("submitBtn");
             const visitDateInput = document.getElementById("visit_date").value;
@@ -169,7 +211,6 @@
                 return;
             }
 
-            // 営業時間チェック (10:00 〜 19:00)
             const chosenDate = new Date(visitDateInput);
             const hour = chosenDate.getHours();
             if (hour < 10 || hour >= 19) {
@@ -180,15 +221,13 @@
             btn.disabled = true;
             btn.innerText = "送信中...";
 
-            // 複数選択チェックボックスの回収
             const goals = [];
             document.querySelectorAll('input[name="primary_goal"]:checked').forEach(cb => goals.push(cb.value));
 
-            // 送信データの整形
             const payload = {
                 line_user_id: userId || "demo_user_ok",
-                name: document.getElementById("name").value || "未入力",
-                phone: document.getElementById("phone").value || "未入力",
+                name: document.getElementById("name").value,
+                phone: document.getElementById("phone").value,
                 yoga_experience: document.getElementById("yoga_experience").value,
                 primary_goal: goals.length > 0 ? goals : ["特になし"],
                 preferred_timezone: document.getElementById("preferred_timezone").value,
@@ -208,13 +247,13 @@
                     liff.closeWindow(); 
                 } else {
                     const errText = await response.text();
-                    alert("システムエラーが発生しました。設定を確認してください。詳細: " + errText);
+                    alert("システムエラーが発生しました。詳細: " + errText);
                     btn.disabled = false;
                     btn.innerText = "予約を確定する";
                 }
             } catch (error) {
                 console.error(error);
-                alert("通信エラーが発生しました。ネットワーク接続を確認してください。");
+                alert("通信エラーが発生しました。");
                 btn.disabled = false;
                 btn.innerText = "予約を確定する";
             }
