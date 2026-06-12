@@ -27,14 +27,14 @@
                         <h2 class="text-lg font-bold">Step 1. ご予約日時とお名前</h2>
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-semibold mb-1">ご希望日</label>
-                            <input type="date" id="visit_day" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-sm">
+                            <input type="date" id="visit_day" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-base">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold mb-1">ご希望時間</label>
-                            <select id="visit_time" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-sm">
+                            <select id="visit_time" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-base">
                                 <option value="10:00">10:00</option>
                                 <option value="10:30">10:30</option>
                                 <option value="11:00">11:00</option>
@@ -150,18 +150,17 @@
         function initDatePicker() {
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const todayString = now.toISOString().slice(0, 10); // 今日の日付 (YYYY-MM-DD)
+            const todayString = now.toISOString().slice(0, 10); 
             
-            // 3ヶ月後の日付を計算
             const maxDate = new Date();
             maxDate.setMonth(maxDate.getMonth() + 3);
             maxDate.setMinutes(maxDate.getMinutes() - maxDate.getTimezoneOffset());
-            const maxDateString = maxDate.toISOString().slice(0, 10); // 3ヶ月後の日付 (YYYY-MM-DD)
+            const maxDateString = maxDate.toISOString().slice(0, 10); 
             
             const dayInput = document.getElementById("visit_day");
-            dayInput.min = todayString;     // 過去日を選択不可に
-            dayInput.max = maxDateString;   // 3ヶ月先より後ろを選択不可に
-            dayInput.value = todayString;   // 初期値は今日
+            dayInput.min = todayString;     
+            dayInput.max = maxDateString;   
+            dayInput.value = todayString;   
         }
 
         // LIFFの初期化
@@ -215,6 +214,7 @@
                 return;
             }
 
+            // 日付と時間を結合（例: "2026-06-12 15:30"）
             const combinedVisitDate = `${visitDay} ${visitTime}`;
 
             btn.disabled = true;
@@ -231,7 +231,7 @@
                 primary_goal: goals.length > 0 ? goals : ["特になし"],
                 preferred_timezone: document.getElementById("preferred_timezone").value,
                 target_pace: document.getElementById("target_pace").value,
-                visit_date: combinedVisitDate
+                visit_date: combinedVisitDate // ここに結合された文字列を格納
             };
 
             try {
