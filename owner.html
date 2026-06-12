@@ -145,9 +145,8 @@
     </main>
 
     <script>
-        // 【自動URL判定機能】
-        // あなたのCloudflare WorkersのURL（yoga-liff-webhook.dpromstk2000.workers.dev）を自動生成します
-        const WORKER_URL = 'https://yoga-liff-webhook.' + window.location.hostname.split('.')[0] + '.workers.dev';
+        // 【修正完了】あなたの正しいWorkersのURL（yoga-liff）に完全に固定しました
+        const WORKER_URL = 'https://yoga-liff.dpromstk2000.workers.dev';
 
         let allCustomers = [];
         let selectedCustomerId = null;
