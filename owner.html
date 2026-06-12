@@ -6,64 +6,74 @@
     <title>オーナー専用 ダッシュボード＆動的カルテ</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* スクロールバーを滑らかにするための微調整 */
+        .custom-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background-color: #e4e4e7;
+            border-radius: 2px;
+        }
+    </style>
 </head>
 <body class="bg-stone-100 text-stone-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <header class="bg-emerald-800 text-white shadow-md px-6 py-4 flex justify-between items-center">
+    <header class="bg-emerald-800 text-white shadow-md px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center sticky top-0 z-40">
         <div class="flex items-center space-x-3">
-            <div class="bg-white/10 p-2 rounded-lg">
-                <i data-lucide="layout-dashboard" class="w-6 h-6 text-emerald-300"></i>
+            <div class="bg-white/10 p-2 rounded-lg text-emerald-300">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 sm:w-6 sm:h-6"></i>
             </div>
             <div>
-                <h1 class="text-xl font-bold tracking-wide">Private Yoga Studio</h1>
-                <p class="text-xs text-emerald-200/80">オーナー専用管理ダッシュボード</p>
+                <h1 class="text-base sm:text-xl font-bold tracking-wide">Private Yoga Studio</h1>
+                <p class="text-[10px] sm:text-xs text-emerald-200/80">オーナー専用管理ダッシュボード</p>
             </div>
         </div>
-        <div class="flex items-center space-x-2 bg-emerald-700/50 px-4 py-2 rounded-full border border-emerald-600">
-            <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-            <span class="text-sm font-medium">Supabase 同期中</span>
+        <div class="flex items-center space-x-1.5 bg-emerald-700/50 px-3 py-1.5 rounded-full border border-emerald-600">
+            <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+            <span class="text-xs font-medium whitespace-nowrap">同期中</span>
         </div>
     </header>
 
-    <main class="flex-1 p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <main class="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 relative">
         
-        <div class="lg:col-span-2 space-y-6">
+        <div id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
             
-            <div class="grid grid-cols-3 gap-4">
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-200/60 flex items-center space-x-4">
-                    <div class="p-3 bg-emerald-50 rounded-lg text-emerald-700"><i data-lucide="users" class="w-6 h-6"></i></div>
+            <div class="grid grid-cols-3 gap-2 sm:gap-4">
+                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left">
+                    <div class="p-2 sm:p-3 bg-emerald-50 rounded-lg text-emerald-700 mb-1 sm:mb-0"><i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
                     <div>
-                        <p class="text-xs text-stone-500 font-medium">今月の総予約</p>
-                        <p class="text-xl font-bold text-stone-800 mt-0.5" id="kpi-total">- 件</p>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">今月総数</p>
+                        <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-total">- 件</p>
                     </div>
                 </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-200/60 flex items-center space-x-4">
-                    <div class="p-3 bg-amber-50 rounded-lg text-amber-700"><i data-lucide="calendar" class="w-6 h-6"></i></div>
+                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left">
+                    <div class="p-2 sm:p-3 bg-amber-50 rounded-lg text-amber-700 mb-1 sm:mb-0"><i data-lucide="calendar" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
                     <div>
-                        <p class="text-xs text-stone-500 font-medium">本日のレッスン</p>
-                        <p class="text-xl font-bold text-stone-800 mt-0.5" id="kpi-today">- 件</p>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">本日予約</p>
+                        <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-today">- 件</p>
                     </div>
                 </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-stone-200/60 flex items-center space-x-4">
-                    <div class="p-3 bg-rose-50 rounded-lg text-rose-700"><i data-lucide="clipboard-edit" class="w-6 h-6"></i></div>
+                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left">
+                    <div class="p-2 sm:p-3 bg-rose-50 rounded-lg text-rose-700 mb-1 sm:mb-0"><i data-lucide="clipboard-edit" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
                     <div>
-                        <p class="text-xs text-stone-500 font-medium">カルテ未記入</p>
-                        <p class="text-xl font-bold text-stone-800 mt-0.5" id="kpi-pending">- 件</p>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">未記入</p>
+                        <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-pending">- 件</p>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl shadow-sm border border-stone-200/60 overflow-hidden">
-                <div class="px-6 py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
-                    <h2 class="font-bold text-stone-800 flex items-center gap-2">
-                        <i data-lucide="list-todo" class="w-5 h-5 text-emerald-700"></i>ご希望日時・受付一覧
+            <div class="bg-white rounded-xl shadow-xs border border-stone-200/60 overflow-hidden">
+                <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
+                    <h2 class="font-bold text-sm sm:text-base text-stone-800 flex items-center gap-2">
+                        <i data-lucide="list-todo" class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700"></i>ご希望日時・受付一覧
                     </h2>
-                    <button onclick="fetchCustomers()" class="text-xs bg-white border border-stone-300 hover:bg-stone-50 text-stone-600 px-3 py-1.5 rounded-lg font-medium shadow-2xs flex items-center gap-1 transition cursor-pointer">
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 一覧を更新
+                    <button onclick="fetchCustomers()" class="text-[11px] sm:text-xs bg-white border border-stone-300 hover:bg-stone-50 text-stone-600 px-2.5 py-1.5 rounded-lg font-medium shadow-2xs flex items-center gap-1 transition cursor-pointer">
+                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> 更新
                     </button>
                 </div>
                 
-                <div class="divide-y divide-stone-100 max-h-[60vh] overflow-y-auto" id="customer-list">
+                <div class="divide-y divide-stone-100 max-h-[65vh] lg:max-h-[60vh] overflow-y-auto custom-scroll" id="customer-list">
                     <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
                         <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
                         <span class="text-sm">Supabaseからデータを取得中...</span>
@@ -72,32 +82,40 @@
             </div>
         </div>
 
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-xl shadow-sm border border-stone-200/60 p-6 sticky top-6 space-y-6 min-h-[70vh] flex flex-col justify-between" id="carte-panel">
+        <div id="carte-panel" class="hidden lg:block lg:col-span-1 fixed inset-0 z-50 lg:z-0 lg:static bg-stone-100 lg:bg-transparent p-4 lg:p-0">
+            <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full lg:min-h-[70vh] flex flex-col justify-between overflow-y-auto lg:overflow-visible">
                 
-                <div class="flex-1 flex flex-col items-center justify-center text-center text-stone-400 space-y-3" id="carte-empty">
+                <div class="flex lg:hidden items-center justify-between border-b border-stone-100 pb-3 mb-4">
+                    <button onclick="closeCarte()" class="flex items-center gap-1 text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg cursor-pointer">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 一覧に戻る
+                    </button>
+                    <span class="text-xs text-stone-400 font-medium">顧客カルテ詳細</span>
+                </div>
+
+                <div class="flex-1 flex flex-col items-center justify-center text-center text-stone-400 space-y-3 py-12 lg:py-0" id="carte-empty">
                     <div class="p-4 bg-stone-50 rounded-full text-stone-300"><i data-lucide="user-search" class="w-10 h-10"></i></div>
                     <div>
                         <p class="font-semibold text-stone-600">顧客カルテ未選択</p>
-                        <p class="text-xs mt-1 max-w-[200px]">左の一覧からお客様を選択すると、カウンセリング結果と指導メモが表示されます。</p>
+                        <p class="text-xs mt-1 max-w-[200px] mx-auto">左の一覧からお客様を選択すると、カウンセリング結果と指導メモが表示されます。</p>
                     </div>
                 </div>
 
-                <div class="hidden flex-1 flex flex-col justify-between h-full space-y-6" id="carte-content">
-                    <div class="space-y-5 overflow-y-auto pr-1">
+                <div class="hidden flex-1 flex flex-col justify-between h-full space-y-4 sm:space-y-6" id="carte-content">
+                    <div class="space-y-4 sm:space-y-5">
+                        
                         <div class="flex items-center space-x-4 border-b border-stone-100 pb-4">
-                            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg" id="carte-avatar">ﾖ</div>
-                            <div>
-                                <h3 class="text-lg font-bold text-stone-900" id="carte-name">-</h3>
+                            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg flex-shrink-0" id="carte-avatar">ﾖ</div>
+                            <div class="min-w-0">
+                                <h3 class="text-base sm:text-lg font-bold text-stone-900 truncate" id="carte-name">-</h3>
                                 <p class="text-xs text-stone-400 flex items-center gap-1 mt-0.5"><i data-lucide="phone" class="w-3 h-3"></i> <span id="carte-phone">-</span></p>
                             </div>
                         </div>
 
                         <div class="bg-emerald-50/60 border border-emerald-100/80 p-3 rounded-lg flex items-center space-x-3">
-                            <i data-lucide="clock" class="w-5 h-5 text-emerald-700"></i>
+                            <i data-lucide="clock" class="w-5 h-5 text-emerald-700 flex-shrink-0"></i>
                             <div>
                                 <p class="text-[10px] uppercase font-bold tracking-wider text-emerald-800 opacity-60">ご希望レッスン日時</p>
-                                <p class="text-sm font-bold text-emerald-900" id="carte-date">-</p>
+                                <p class="text-xs sm:text-sm font-bold text-emerald-900" id="carte-date">-</p>
                             </div>
                         </div>
 
@@ -126,9 +144,7 @@
                         </div>
 
                         <div class="space-y-2 pt-2 border-t border-stone-100">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400 flex items-center justify-between">
-                                <span>当日指導・レッスンメモ</span>
-                            </label>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">当日指導・レッスンメモ</label>
                             <textarea id="carte-memo" rows="4" placeholder="（例）ハムストリングスが硬い。呼吸が浅くなりがちなので、リラックス系を中心に構成。" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
                         </div>
                     </div>
@@ -145,7 +161,6 @@
     </main>
 
     <script>
-        // ⭕ 正しい接続先URLに完全に修正しました
         const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev';
 
         let allCustomers = [];
@@ -186,7 +201,6 @@
                 return;
             }
 
-            // 日時順に並び替え
             customers.sort((a, b) => new Date(b.visit_date || 0) - new Date(a.visit_date || 0));
 
             container.innerHTML = customers.map(c => {
@@ -198,15 +212,15 @@
                 const hasMemo = c.owner_memo && c.owner_memo.trim().length > 0;
 
                 return `
-                    <div onclick="selectCustomer('${c.id}')" class="p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
+                    <div onclick="selectCustomer('${c.id}')" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
                         <div class="flex items-start space-x-3 min-w-0">
-                            <div class="bg-stone-100 text-stone-600 font-bold px-2.5 py-1.5 rounded-lg text-xs tracking-tight whitespace-nowrap text-center mt-0.5 min-w-[75px]">
+                            <div class="bg-stone-100 text-stone-600 font-bold px-2 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs tracking-tight whitespace-nowrap text-center mt-0.5 min-w-[65px] sm:min-w-[75px]">
                                 ${formattedDate}
                             </div>
                             <div class="min-w-0">
-                                <p class="font-bold text-stone-900 text-sm flex items-center gap-1.5">
-                                    ${c.name || '匿名ユーザー'} 
-                                    ${hasMemo ? '<span class="inline-flex text-[10px] bg-emerald-100 text-emerald-800 font-normal px-1.5 py-0.5 rounded-sm">メモあり</span>' : '<span class="inline-flex text-[10px] bg-stone-100 text-stone-400 font-normal px-1.5 py-0.5 rounded-sm">未記入</span>'}
+                                <p class="font-bold text-stone-900 text-sm flex items-center gap-1.5 flex-wrap">
+                                    <span>${c.name || '匿名ユーザー'}</span> 
+                                    ${hasMemo ? '<span class="text-[9px] sm:text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-sm font-normal">メモあり</span>' : '<span class="text-[9px] sm:text-[10px] bg-stone-100 text-stone-400 px-1.5 py-0.5 rounded-sm font-normal">未記入</span>'}
                                 </p>
                                 <p class="text-xs text-stone-500 truncate mt-1">悩: ${goals}</p>
                             </div>
@@ -230,13 +244,17 @@
             document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
         }
 
-        // 4. 顧客の選択
+        // 4. 顧客の選択（スマホ時は画面を切り替える処理を追加）
         function selectCustomer(id) {
             selectedCustomerId = id;
             renderList(allCustomers); 
 
             const customer = allCustomers.find(c => String(c.id) === String(id));
             if (!customer) return;
+
+            // スマホ表示対応：カルテパネルをフルスクリーンで表示
+            const cartePanel = document.getElementById("carte-panel");
+            cartePanel.classList.remove("hidden");
 
             document.getElementById("carte-empty").classList.add("hidden");
             document.getElementById("carte-content").classList.remove("hidden");
@@ -255,6 +273,14 @@
             badgeContainer.innerHTML = goalsArray.map(g => `<span class="bg-white border border-stone-200 text-stone-700 text-[11px] font-medium px-2 py-0.5 rounded-full">${g}</span>`).join('');
             
             lucide.createIcons();
+        }
+
+        // スマホ用：カルテを閉じて一覧に戻る
+        function closeCarte() {
+            const cartePanel = document.getElementById("carte-panel");
+            cartePanel.classList.add("hidden");
+            selectedCustomerId = null;
+            renderList(allCustomers);
         }
 
         // 5. メモの保存
@@ -278,6 +304,11 @@
 
                 if (response.ok) {
                     alert("カルテの指導メモを保存しました！");
+                    
+                    // メモ保存後、スマホなら自動的に一覧に戻る
+                    if (window.innerWidth < 1024) {
+                        closeCarte();
+                    }
                     fetchCustomers(); 
                 } else {
                     const errText = await response.text();
