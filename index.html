@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ヨガ体験レッスン予約＆カルテ</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .step { display: none; }
+        .step.active { display: block; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800 font-sans antialiased">
+
+    <div class="max-w-md mx-auto bg-white min-h-screen shadow-md flex flex-col">
+        <header class="bg-emerald-600 text-white text-center py-6 px-4 shadow-sm">
+            <h1 class="text-xl font-bold tracking-wide">🧘‍♂️ Private Yoga Studio</h1>
+            <p class="text-xs opacity-90 mt-1">体験予約 兼 事前カウンセリング</p>
+        </header>
+
+        <main class="flex-1 p-6">
+            <form id="liffForm" onsubmit="return false;">
+                
+                <div id="step1" class="step active space-y-5">
+                    <div class="border-l-4 border-emerald-500 pl-2">
+                        <h2 class="text-lg font-bold">Step 1. ご予約日時とお名前</h2>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">体験レッスンの希望日時</label>
+                        <input type="datetime-local" id="visit_date" required class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">お名前</label>
+                        <input type="text" id="name" required placeholder="山田 太郎" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">お電話番号</label>
+                        <input type="tel" id="phone" required placeholder="09012345678" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">ヨガのご経験</label>
+                        <select id="yoga_experience" class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500">
+                            <option value="初めて">初めて（完全な未経験）</option>
+                            <option value="数回程度">数回程度したことがある</option>
+                            <option value="定期的に通っていた">過去に定期的に通っていた</option>
+                        </select>
+                    </div>
+                    <button type="button" onclick="nextStep(2)" class="w-full bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">次へ進む</button>
+                </div>
+
+                <div id="step2" class="step space-y-5">
+                    <div class="border-l-4 border-emerald-500 pl-2">
+                        <h2 class="text-lg font-bold">Step 2. お身体のお悩み</h2>
+                        <p class="text-xs text-stone-500">当日あなた専用のカルテを準備します（複数選択可）</p>
+                    </div>
+                    <div class="space-y-3">
+                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
+                            <input type="checkbox" name="primary_goal" value="肩こり・腰痛を改善したい" class="w-5 h-5 accent-emerald-600 mr-3">
+                            <span class="text-sm font-medium">肩こり・腰痛などの身体の不調を改善したい</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
+                            <input type="checkbox" name="primary_goal" value="ボディラインを引き締めたい（ダイエット）" class="w-5 h-5 accent-emerald-600 mr-3">
+                            <span class="text-sm font-medium">ボディラインを引き締めたい（ダイエット）</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
+                            <input type="checkbox" name="primary_goal" value="体力をつけたい・運動不足解消" class="w-5 h-5 accent-emerald-600 mr-3">
+                            <span class="text-sm font-medium">体力をつけたい・運動不足解消</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
+                            <input type="checkbox" name="primary_goal" value="ストレス解消・リフレッシュしたい" class="w-5 h-5 accent-emerald-600 mr-3">
+                            <span class="text-sm font-medium">ストレス解消・リフレッシュしたい</span>
+                        </label>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="nextStep(1)" class="w-1/3 bg-stone-200 text-stone-700 p-3 rounded-lg font-bold hover:bg-stone-300 transition">戻る</button>
+                        <button type="button" onclick="nextStep(3)" class="w-2/3 bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">次へ進む</button>
+                    </div>
+                </div>
+
+                <div id="step3" class="step space-y-5">
+                    <div class="border-l-4 border-emerald-500 pl-2">
+                        <h2 class="text-lg font-bold">Step 3. ライフスタイル</h2>
+                        <p class="text-xs text-stone-500">🎁 回答特典の限定ストレッチ動画をプレゼント！</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">通いやすい曜日・時間帯</label>
+                        <select id="preferred_timezone" class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500">
+                            <option value="平日（昼）">平日（昼：10:00〜15:00）</option>
+                            <option value="平日（夜）">平日（夜：18:00〜21:00）</option>
+                            <option value="土日祝">土日祝（終日）</option>
+                            <option value="いつでも可">いつでも可</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">理想の通いたいペース</label>
+                        <select id="target_pace" class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500">
+                            <option value="しっかり週1〜2回">しっかり週1〜2回（本気で変わりたい）</option>
+                            <option value="まずは月2回〜">まずは月2回〜（無理なく続けたい）</option>
+                            <option value="不定期で都度利用">不定期で都度利用したい</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="nextStep(2)" class="w-1/3 bg-stone-200 text-stone-700 p-3 rounded-lg font-bold hover:bg-stone-300 transition">戻る</button>
+                        <button type="button" onclick="submitForm()" id="submitBtn" class="w-2/3 bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">予約を確定する</button>
+                    </div>
+                </div>
+
+            </form>
+        </main>
+    </div>
+
+    <script>
+        // 設定値の書き換え箇所
+        const LIFF_ID = 'ここにあなたのLIFF_IDを貼り付け'; 
+        const WORKER_URL = 'https://yoga-liff-webhook.xxxx.workers.dev'; 
+
+        let userId = "";
+
+        // LIFFの初期化
+        document.addEventListener("DOMContentLoaded", () => {
+            liff.init({ liffId: LIFF_ID })
+                .then(() => {
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                    } else {
+                        const profile = liff.getProfile();
+                        userId = liff.getContext().userId || "";
+                    }
+                })
+                .catch((err) => { console.error("LIFF Initialization failed", err); });
+        });
+
+        // 画面遷移ロジック
+        function nextStep(stepNum) {
+            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+            document.getElementById('step' + stepNum).classList.add('active');
+        }
+
+        // フォーム送信処理
+        async function submitForm() {
+            const btn = document.getElementById("submitBtn");
+            btn.disabled = true;
+            btn.innerText = "送信中...";
+
+            // 複数選択チェックボックスの回収
+            const goals = [];
+            document.querySelectorAll('input[name="primary_goal"]:checked').forEach(cb => goals.push(cb.value));
+
+            const payload = {
+                line_user_id: userId || "demo_user_id", // LIFF環境外でのデモ用にダミーをセット
+                name: document.getElementById("name").value,
+                phone: document.getElementById("phone").value,
+                yoga_experience: document.getElementById("yoga_experience").value,
+                primary_goal: goals,
+                preferred_timezone: document.getElementById("preferred_timezone").value,
+                target_pace: document.getElementById("target_pace").value,
+                visit_date: document.getElementById("visit_date").value
+            };
+
+            try {
+                const response = await fetch(WORKER_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    alert("予約とカルテの送信が完了しました！LINE画面に戻ります。");
+                    liff.closeWindow(); // LIFFウィンドウを自動で閉じる
+                } else {
+                    alert("エラーが発生しました。時間を置いて再度お試しください。");
+                    btn.disabled = false;
+                    btn.innerText = "予約を確定する";
+                }
+            } catch (error) {
+                console.error(error);
+                alert("通信エラーが発生しました。");
+                btn.disabled = false;
+                btn.innerText = "予約を確定する";
+            }
+        }
+    </script>
+</body>
+</html>
