@@ -26,10 +26,38 @@
                     <div class="border-l-4 border-emerald-500 pl-2">
                         <h2 class="text-lg font-bold">Step 1. ご予約日時とお名前</h2>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">体験レッスンの希望日時（10:00〜19:00 / 30分単位）</label>
-                        <input type="datetime-local" id="visit_date" required class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">ご希望日</label>
+                            <input type="date" id="visit_day" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold mb-1">ご希望時間</label>
+                            <select id="visit_time" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-sm">
+                                <option value="10:00">10:00</option>
+                                <option value="10:30">10:30</option>
+                                <option value="11:00">11:00</option>
+                                <option value="11:30">11:30</option>
+                                <option value="12:00">12:00</option>
+                                <option value="12:30">12:30</option>
+                                <option value="13:00">13:00</option>
+                                <option value="13:30">13:30</option>
+                                <option value="14:00">14:00</option>
+                                <option value="14:30">14:30</option>
+                                <option value="15:00">15:00</option>
+                                <option value="15:30">15:30</option>
+                                <option value="16:00">16:00</option>
+                                <option value="16:30">16:30</option>
+                                <option value="17:00">17:00</option>
+                                <option value="17:30">17:30</option>
+                                <option value="18:00">18:00</option>
+                                <option value="18:30">18:30</option>
+                                <option value="19:00">19:00</option>
+                            </select>
+                        </div>
                     </div>
+
                     <div>
                         <label class="block text-sm font-semibold mb-1">お名前（フルネームを漢字で入力）</label>
                         <input type="text" id="name" required placeholder="山田 太郎（姓名の間にスペース）" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
@@ -118,39 +146,27 @@
 
         let userId = "";
 
-        // 日時選択の初期化（過去日を選択不可に）
-        function initDateTimePicker() {
+        // カレンダーの初期化（過去日不可 ＆ 3ヶ月先まで制限）
+        function initDatePicker() {
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const nowString = now.toISOString().slice(0, 16);
+            const todayString = now.toISOString().slice(0, 10); // 今日の日付 (YYYY-MM-DD)
             
-            const dateInput = document.getElementById("visit_date");
-            dateInput.min = nowString; 
-            dateInput.value = nowString; 
-        }
-
-        // 入力された時間を「30分単位」に強制変換する関数
-        function roundTo30Minutes(inputValue) {
-            if (!inputValue) return "";
-            const dt = new Date(inputValue);
-            const minutes = dt.getMinutes();
+            // 3ヶ月後の日付を計算
+            const maxDate = new Date();
+            maxDate.setMonth(maxDate.getMonth() + 3);
+            maxDate.setMinutes(maxDate.getMinutes() - maxDate.getTimezoneOffset());
+            const maxDateString = maxDate.toISOString().slice(0, 10); // 3ヶ月後の日付 (YYYY-MM-DD)
             
-            if (minutes < 15) {
-                dt.setMinutes(0);
-            } else if (minutes >= 15 && minutes < 45) {
-                dt.setMinutes(30);
-            } else {
-                dt.setMinutes(0);
-                dt.setHours(dt.getHours() + 1);
-            }
-            // YYYY-MM-DDTHH:mm 形式に整形して返す
-            dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
-            return dt.toISOString().slice(0, 16);
+            const dayInput = document.getElementById("visit_day");
+            dayInput.min = todayString;     // 過去日を選択不可に
+            dayInput.max = maxDateString;   // 3ヶ月先より後ろを選択不可に
+            dayInput.value = todayString;   // 初期値は今日
         }
 
         // LIFFの初期化
         document.addEventListener("DOMContentLoaded", () => {
-            initDateTimePicker();
+            initDatePicker();
             liff.init({ liffId: LIFF_ID })
                 .then(() => {
                     if (!liff.isLoggedIn()) {
@@ -185,36 +201,21 @@
                 errorEl.classList.add("hidden");
             }
 
-            // 次に進むタイミングで時間入力を30分単位に一瞬で補正する
-            const dateInput = document.getElementById("visit_date");
-            dateInput.value = roundTo30Minutes(dateInput.value);
-
-            // 営業時間チェック
-            const chosenDate = new Date(dateInput.value);
-            const hour = chosenDate.getHours();
-            if (hour < 10 || hour >= 19) {
-                alert("体験レッスンの受付時間は10:00〜19:00となります。時間帯を変更してください。");
-                return;
-            }
-
             nextStep(nextStepNum);
         }
 
         // フォーム最終送信処理
         async function submitForm() {
             const btn = document.getElementById("submitBtn");
-            const dateInput = document.getElementById("visit_date");
+            const visitDay = document.getElementById("visit_day").value;
+            const visitTime = document.getElementById("visit_time").value;
             
-            // 送信ボタンを押した瞬間にも再チェック＆強制補正
-            dateInput.value = roundTo30Minutes(dateInput.value);
-            const visitDateInput = dateInput.value;
-
-            const chosenDate = new Date(visitDateInput);
-            const hour = chosenDate.getHours();
-            if (hour < 10 || hour >= 19) {
-                alert("体験レッスンの受付時間は10:00〜19:00となります。時間帯を変更してください。");
+            if (!visitDay || !visitTime) {
+                alert("希望日と時間を選択してください。");
                 return;
             }
+
+            const combinedVisitDate = `${visitDay} ${visitTime}`;
 
             btn.disabled = true;
             btn.innerText = "送信中...";
@@ -230,7 +231,7 @@
                 primary_goal: goals.length > 0 ? goals : ["特になし"],
                 preferred_timezone: document.getElementById("preferred_timezone").value,
                 target_pace: document.getElementById("target_pace").value,
-                visit_date: visitDateInput // ここで補正された日時データが飛びます
+                visit_date: combinedVisitDate
             };
 
             try {
