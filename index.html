@@ -28,7 +28,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">体験レッスンの希望日時（10:00〜19:00 / 30分単位）</label>
-                        <input type="datetime-local" id="visit_date" step="1800" required class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                        <input type="datetime-local" id="visit_date" required class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
                     </div>
                     <div>
                         <label class="block text-sm font-semibold mb-1">お名前（フルネームを漢字で入力）</label>
@@ -118,7 +118,7 @@
 
         let userId = "";
 
-        // 日時選択の各種制限処理
+        // 日時選択の初期化（過去日を選択不可に）
         function initDateTimePicker() {
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -127,26 +127,25 @@
             const dateInput = document.getElementById("visit_date");
             dateInput.min = nowString; 
             dateInput.value = nowString; 
+        }
 
-            // ユーザーが時間を選んだ瞬間に、強制的に30分刻みにまるめる
-            dateInput.addEventListener("change", (e) => {
-                if (!e.target.value) return;
-                const dt = new Date(e.target.value);
-                const minutes = dt.getMinutes();
-                
-                // 30分に近い方にまるめる (0分 または 30分)
-                if (minutes < 15) {
-                    dt.setMinutes(0);
-                } else if (minutes >= 15 && minutes < 45) {
-                    dt.setMinutes(30);
-                } else {
-                    dt.setMinutes(0);
-                    dt.setHours(dt.getHours() + 1);
-                }
-                
-                dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
-                e.target.value = dt.toISOString().slice(0, 16);
-            });
+        // 入力された時間を「30分単位」に強制変換する関数
+        function roundTo30Minutes(inputValue) {
+            if (!inputValue) return "";
+            const dt = new Date(inputValue);
+            const minutes = dt.getMinutes();
+            
+            if (minutes < 15) {
+                dt.setMinutes(0);
+            } else if (minutes >= 15 && minutes < 45) {
+                dt.setMinutes(30);
+            } else {
+                dt.setMinutes(0);
+                dt.setHours(dt.getHours() + 1);
+            }
+            // YYYY-MM-DDTHH:mm 形式に整形して返す
+            dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+            return dt.toISOString().slice(0, 16);
         }
 
         // LIFFの初期化
@@ -171,12 +170,11 @@
             document.getElementById('step' + stepNum).classList.add('active');
         }
 
-        // Step 1 から進む際の本名フルネーム・営業時間チェック
+        // Step 1 バリデーション
         function validateAndNext(nextStepNum) {
             const nameInput = document.getElementById("name").value.trim();
             const errorEl = document.getElementById("name_error");
             
-            // 本名チェックの正規表現（全角・半角スペースのいずれかを姓名の間に挟むフルネーム）
             const fullNameRegex = /^[A-Z-a-zぁ-んァ-ヶー一-龠]+[\s ]+[A-Z-a-zぁ-んァ-ヶー一-龠]+$/;
             
             if (!fullNameRegex.test(nameInput)) {
@@ -187,15 +185,16 @@
                 errorEl.classList.add("hidden");
             }
 
-            // 念のため営業時間もここ段階で簡易チェック
-            const visitDateInput = document.getElementById("visit_date").value;
-            if (visitDateInput) {
-                const chosenDate = new Date(visitDateInput);
-                const hour = chosenDate.getHours();
-                if (hour < 10 || hour >= 19) {
-                    alert("体験レッスンの受付時間は10:00〜19:00となります。");
-                    return;
-                }
+            // 次に進むタイミングで時間入力を30分単位に一瞬で補正する
+            const dateInput = document.getElementById("visit_date");
+            dateInput.value = roundTo30Minutes(dateInput.value);
+
+            // 営業時間チェック
+            const chosenDate = new Date(dateInput.value);
+            const hour = chosenDate.getHours();
+            if (hour < 10 || hour >= 19) {
+                alert("体験レッスンの受付時間は10:00〜19:00となります。時間帯を変更してください。");
+                return;
             }
 
             nextStep(nextStepNum);
@@ -204,12 +203,11 @@
         // フォーム最終送信処理
         async function submitForm() {
             const btn = document.getElementById("submitBtn");
-            const visitDateInput = document.getElementById("visit_date").value;
+            const dateInput = document.getElementById("visit_date");
             
-            if (!visitDateInput) {
-                alert("希望日時を入力してください。");
-                return;
-            }
+            // 送信ボタンを押した瞬間にも再チェック＆強制補正
+            dateInput.value = roundTo30Minutes(dateInput.value);
+            const visitDateInput = dateInput.value;
 
             const chosenDate = new Date(visitDateInput);
             const hour = chosenDate.getHours();
@@ -232,7 +230,7 @@
                 primary_goal: goals.length > 0 ? goals : ["特になし"],
                 preferred_timezone: document.getElementById("preferred_timezone").value,
                 target_pace: document.getElementById("target_pace").value,
-                visit_date: visitDateInput
+                visit_date: visitDateInput // ここで補正された日時データが飛びます
             };
 
             try {
