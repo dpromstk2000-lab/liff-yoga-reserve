@@ -2,265 +2,226 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ヨガ体験レッスン予約＆カルテ</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style>
-        .step { display: none; }
-        .step.active { display: block; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>プライベートヨガ 予約・カルテ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
-<body class="bg-stone-50 text-stone-800 font-sans antialiased">
+<body class="bg-stone-50 text-stone-800 font-sans antialiased pb-20">
 
-    <div class="max-w-md mx-auto bg-white min-h-screen shadow-md flex flex-col">
-        <header class="bg-emerald-600 text-white text-center py-6 px-4 shadow-sm">
-            <h1 class="text-xl font-bold tracking-wide">🧘‍♂️ Private Yoga Studio</h1>
-            <p class="text-xs opacity-90 mt-1">体験予約 兼 事前カウンセリング</p>
-        </header>
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mb-4"></div>
+        <p class="text-stone-500 text-sm font-medium">お客様の情報を確認中...</p>
+    </div>
 
-        <main class="flex-1 p-6">
-            <form id="liffForm" onsubmit="submitForm(event);">
-                
-                <div id="step1" class="step active space-y-5">
-                    <div class="border-l-4 border-emerald-500 pl-2">
-                        <h2 class="text-lg font-bold">Step 1. ご予約日時とお名前</h2>
-                    </div>
-                    
+    <header class="bg-emerald-800 text-white text-center py-4 shadow-md sticky top-0 z-40">
+        <h1 class="text-lg font-bold tracking-wider">Private Yoga Studio</h1>
+        <p class="text-xs text-emerald-200 mt-1" id="header-subtitle">ご予約・事前カウンセリング</p>
+    </header>
+
+    <main class="max-w-md mx-auto p-4 hidden" id="main-form">
+        
+        <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-5 mb-5">
+            <h2 class="text-sm font-bold text-emerald-800 mb-4 border-b border-stone-100 pb-2">📅 ご希望のレッスン日時</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-stone-500 mb-1">お日にち <span class="text-red-500">*</span></label>
+                    <input type="date" id="visit_day" class="w-full p-3 bg-stone-50 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-stone-500 mb-1">お時間 <span class="text-red-500">*</span></label>
+                    <input type="time" id="visit_time" class="w-full p-3 bg-stone-50 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                </div>
+            </div>
+        </div>
+
+        <div id="new-customer-section" class="hidden">
+            <div class="bg-emerald-50 rounded-xl p-4 mb-5 border border-emerald-100 text-sm text-emerald-800 font-medium">
+                初めてのご利用ありがとうございます。<br>あなた専用のプログラムを作成するため、少しだけお聞かせください！
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-5 mb-5 space-y-6">
+                <div>
+                    <h2 class="text-sm font-bold text-emerald-800 mb-4 border-b border-stone-100 pb-2">👤 お客様情報</h2>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-semibold mb-1">ご希望日</label>
-                            <input type="date" id="visit_day" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-base">
+                            <label class="block text-xs font-bold text-stone-500 mb-1">お名前 <span class="text-red-500">*</span></label>
+                            <input type="text" id="name" placeholder="山田 花子" class="w-full p-3 bg-stone-50 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold mb-1">ご希望時間</label>
-                            <select id="visit_time" required class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500 text-base">
-                                <option value="10:00">10:00</option>
-                                <option value="10:30">10:30</option>
-                                <option value="11:00">11:00</option>
-                                <option value="11:30">11:30</option>
-                                <option value="12:00">12:00</option>
-                                <option value="12:30">12:30</option>
-                                <option value="13:00">13:00</option>
-                                <option value="13:30">13:30</option>
-                                <option value="14:00">14:00</option>
-                                <option value="14:30">14:30</option>
-                                <option value="15:00">15:00</option>
-                                <option value="15:30">15:30</option>
-                                <option value="16:00">16:00</option>
-                                <option value="16:30">16:30</option>
-                                <option value="17:00">17:00</option>
-                                <option value="17:30">17:30</option>
-                                <option value="18:00">18:00</option>
-                                <option value="18:30">18:30</option>
-                                <option value="19:00">19:00</option>
+                            <label class="block text-xs font-bold text-stone-500 mb-1">お電話番号 <span class="text-red-500">*</span></label>
+                            <input type="tel" id="phone" placeholder="090-1234-5678" class="w-full p-3 bg-stone-50 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-stone-500 mb-1">ヨガのご経験</label>
+                            <select id="yoga_experience" class="w-full p-3 bg-stone-50 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                                <option value="初めて">初めて</option>
+                                <option value="数回程度">数回程度</option>
+                                <option value="定期的に通っていた">定期的に通っていた</option>
                             </select>
                         </div>
                     </div>
-
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">お名前（フルネームを漢字で入力）</label>
-                        <input type="text" id="name" required placeholder="山田 太郎" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
-                        <p class="text-xs text-red-500 mt-1 hidden" id="name_error">※正確なカルテ作成のため、フルネーム（姓名の間にスペース）でご入力ください。</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">お電話番号</label>
-                        <input type="tel" id="phone" required placeholder="09012345678" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">ヨガのご経験</label>
-                        <select id="yoga_experience" class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500">
-                            <option value="初めて">初めて（完全な未経験）</option>
-                            <option value="数回程度">数回程度したことがある</option>
-                            <option value="定期的に通っていた">過去に定期的に通っていた</option>
-                        </select>
-                    </div>
-                    <button type="button" onclick="validateAndNext(2)" class="w-full bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">次へ進む</button>
                 </div>
 
-                <div id="step2" class="step space-y-5">
-                    <div class="border-l-4 border-emerald-500 pl-2">
-                        <h2 class="text-lg font-bold">Step 2. お身体のお悩み</h2>
-                        <p class="text-xs text-stone-500">当日あなた専用のカルテを準備します（複数選択可）</p>
+                <div>
+                    <h2 class="text-sm font-bold text-emerald-800 mb-4 border-b border-stone-100 pb-2">🎯 最も解決したいお悩み（複数可）</h2>
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 p-3 border border-stone-200 rounded-lg hover:bg-emerald-50 transition">
+                            <input type="checkbox" name="primary_goal" value="肩こり・腰痛などの改善" class="w-5 h-5 text-emerald-600 accent-emerald-600">
+                            <span class="text-sm text-stone-700 font-medium">肩こり・腰痛などの改善</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 border border-stone-200 rounded-lg hover:bg-emerald-50 transition">
+                            <input type="checkbox" name="primary_goal" value="ダイエット・引き締め" class="w-5 h-5 text-emerald-600 accent-emerald-600">
+                            <span class="text-sm text-stone-700 font-medium">ダイエット・引き締め</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 border border-stone-200 rounded-lg hover:bg-emerald-50 transition">
+                            <input type="checkbox" name="primary_goal" value="運動不足の解消" class="w-5 h-5 text-emerald-600 accent-emerald-600">
+                            <span class="text-sm text-stone-700 font-medium">運動不足の解消</span>
+                        </label>
+                        <label class="flex items-center space-x-3 p-3 border border-stone-200 rounded-lg hover:bg-emerald-50 transition">
+                            <input type="checkbox" name="primary_goal" value="ストレス解消・リラックス" class="w-5 h-5 text-emerald-600 accent-emerald-600">
+                            <span class="text-sm text-stone-700 font-medium">ストレス解消・リラックス</span>
+                        </label>
                     </div>
+                </div>
+
+                <div>
+                    <h2 class="text-sm font-bold text-emerald-800 mb-2 border-b border-stone-100 pb-2">🌱 理想の通い方ペース</h2>
+                    <p class="text-[10px] text-stone-400 mb-3">※ご回答いただいた方に「限定ストレッチ動画」をプレゼント！</p>
                     <div class="space-y-3">
-                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
-                            <input type="checkbox" name="primary_goal" value="肩こり・腰痛を改善したい" class="w-5 h-5 accent-emerald-600 mr-3">
-                            <span class="text-sm font-medium">肩こり・腰痛などの身体の不調を改善したい</span>
-                        </label>
-                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
-                            <input type="checkbox" name="primary_goal" value="ボディラインを引き締めたい（ダイエット）" class="w-5 h-5 accent-emerald-600 mr-3">
-                            <span class="text-sm font-medium">ボディラインを引き締めたい（ダイエット）</span>
-                        </label>
-                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
-                            <input type="checkbox" name="primary_goal" value="体力をつけたい・運動不足解消" class="w-5 h-5 accent-emerald-600 mr-3">
-                            <span class="text-sm font-medium">体力をつけたい・運動不足解消</span>
-                        </label>
-                        <label class="flex items-center p-3 border border-stone-200 rounded-lg bg-stone-50 cursor-pointer hover:bg-emerald-50">
-                            <input type="checkbox" name="primary_goal" value="ストレス解消・リフレッシュしたい" class="w-5 h-5 accent-emerald-600 mr-3">
-                            <span class="text-sm font-medium">ストレス解消・リフレッシュしたい</span>
-                        </label>
-                    </div>
-                    <div class="flex space-x-3">
-                        <button type="button" onclick="nextStep(1)" class="w-1/3 bg-stone-200 text-stone-700 p-3 rounded-lg font-bold hover:bg-stone-300 transition">戻る</button>
-                        <button type="button" onclick="nextStep(3)" class="w-2/3 bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">次へ進む</button>
-                    </div>
-                </div>
-
-                <div id="step3" class="step space-y-5">
-                    <div class="border-l-4 border-emerald-500 pl-2">
-                        <h2 class="text-lg font-bold">Step 3. ライフスタイル</h2>
-                        <p class="text-xs text-stone-500">🎁 回答特典の限定ストレッチ動画をプレゼント！</p>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">通いやすい曜日・時間帯</label>
-                        <select id="preferred_timezone" class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500">
-                            <option value="平日（昼）">平日（昼：10:00〜15:00）</option>
-                            <option value="平日（夕方）">平日（夕方：15:00〜18:00）</option>
-                            <option value="平日（夜）">平日（夜：18:00〜21:00）</option>
-                            <option value="土日祝">土日祝（終日）</option>
-                            <option value="いつでも可">いつでも可</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">理想の通いたいペース</label>
-                        <select id="target_pace" class="w-full p-3 border border-stone-300 rounded-lg bg-white focus:outline-emerald-500">
+                        <select id="target_pace" class="w-full p-3 bg-stone-50 border border-stone-300 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                            <option value="まずは月2回〜マイペースに">まずは月2回〜マイペースに</option>
                             <option value="しっかり週1〜2回">しっかり週1〜2回（本気で変わりたい）</option>
-                            <option value="まずは月2回〜">まずは月2回〜（無理なく続けたい）</option>
-                            <option value="不定期で都度利用">不定期で都度利用したい</option>
+                            <option value="不定期で都度利用したい">不定期で都度利用したい</option>
                         </select>
                     </div>
-                    <div class="flex space-x-3">
-                        <button type="button" onclick="nextStep(2)" class="w-1/3 bg-stone-200 text-stone-700 p-3 rounded-lg font-bold hover:bg-stone-300 transition">戻る</button>
-                        <button type="submit" id="submitBtn" class="w-2/3 bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">予約を確定する</button>
-                    </div>
                 </div>
+            </div>
+        </div>
 
-                <div id="stepSuccess" class="step space-y-5 text-center py-10">
-                    <span class="text-5xl">🎉</span>
-                    <h2 class="text-xl font-bold text-emerald-600">送信が完了しました！</h2>
-                    <p class="text-sm text-stone-600">ご予約ありがとうございます。<br>このままLINE画面に戻ってください。</p>
-                </div>
+        <div id="repeat-customer-section" class="hidden">
+            <div class="bg-emerald-50 rounded-xl p-4 mb-5 border border-emerald-100 text-sm text-emerald-800 font-medium text-center">
+                いつもありがとうございます！<br>次回のレッスン日時をお選びください。
+            </div>
+        </div>
 
-            </form>
-        </main>
-    </div>
+        <button id="submitBtn" onclick="submitForm()" class="w-full bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-emerald-800 transition active:scale-95">
+            予約を確定する
+        </button>
+
+    </main>
 
     <script>
-        const LIFF_ID = '2010377734-4tHMhUx6'; 
-        const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev'; 
-
+        // ★ご自身の情報に書き換えてください
+        const LIFF_ID = "ここにLINE Developersで発行したLIFF_IDを貼り付けます";
+        const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
+        
         let userId = "";
+        let isExisting = false;
 
-        // カレンダーの初期化
-        function initDatePicker() {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const todayString = now.toISOString().slice(0, 10); 
-            
-            const maxDate = new Date();
-            maxDate.setMonth(maxDate.getMonth() + 3);
-            maxDate.setMinutes(maxDate.getMinutes() - maxDate.getTimezoneOffset());
-            const maxDateString = maxDate.toISOString().slice(0, 10); 
-            
-            const dayInput = document.getElementById("visit_day");
-            dayInput.min = todayString;     
-            dayInput.max = maxDateString;   
-            dayInput.value = todayString;   
-        }
-
-        // LIFFの初期化
         document.addEventListener("DOMContentLoaded", () => {
-            initDatePicker();
+            // 本日以降の日付しか選べないようにする設定
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById("visit_day").setAttribute("min", today);
+
+            // LIFF初期化
             liff.init({ liffId: LIFF_ID })
                 .then(() => {
                     if (!liff.isLoggedIn()) {
                         liff.login();
                     } else {
                         liff.getProfile().then(profile => {
-                            userId = profile.userId || "";
-                        }).catch(e => console.error(e));
+                            userId = profile.userId;
+                            checkCustomerStatus(userId);
+                        }).catch(e => console.error("プロフィール取得失敗:", e));
                     }
                 })
-                .catch((err) => { console.error("LIFF Initialization failed", err); });
+                .catch(err => {
+                    console.error("LIFFの初期化失敗:", err);
+                    // LIFF外（PCブラウザ等）でのテスト用
+                    userId = "test_user_" + Math.floor(Math.random() * 1000);
+                    checkCustomerStatus(userId);
+                });
         });
 
-        // 画面遷移ロジック
-        function nextStep(stepNum) {
-            document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
-            document.getElementById('step' + stepNum).classList.add('active');
-        }
-
-        // Step 1 バリデーション
-        function validateAndNext(nextStepNum) {
-            const nameInput = document.getElementById("name").value.trim();
-            const errorEl = document.getElementById("name_error");
-            
-            // 【修正】全角スペース・半角スペースどちらでも2単語（姓名）あれば通るように修正
-            const fullNameRegex = /^[A-Za-zぁ-んァ-ヶー一-龠]+[\s ]+[A-Za-zぁ-んァ-ヶー一-龠]+$/;
-            
-            if (!fullNameRegex.test(nameInput)) {
-                errorEl.classList.remove("hidden");
-                document.getElementById("name").focus();
-                return;
-            } else {
-                errorEl.classList.add("hidden");
+        // お客様が「新規」か「リピート」かを判定する関数
+        async function checkCustomerStatus(lineId) {
+            try {
+                const response = await fetch(`${WORKER_URL}?action=get_all`);
+                if(response.ok) {
+                    const customers = await response.json();
+                    // 取得した一覧の中に、自分のLINE IDがあるか探す
+                    const found = customers.find(c => c.line_id === lineId);
+                    
+                    if(found) {
+                        isExisting = true;
+                        document.getElementById("header-subtitle").innerText = "かんたん次回予約";
+                        document.getElementById("repeat-customer-section").classList.remove("hidden");
+                    } else {
+                        isExisting = false;
+                        document.getElementById("new-customer-section").classList.remove("hidden");
+                    }
+                }
+            } catch (error) {
+                console.error("ステータス確認エラー:", error);
+                // エラー時は安全のため新規フォームを出しておく
+                document.getElementById("new-customer-section").classList.remove("hidden");
+            } finally {
+                // ローディング画面を消して、メインフォームを表示
+                document.getElementById("loading").classList.add("hidden");
+                document.getElementById("main-form").classList.remove("hidden");
             }
-
-            nextStep(nextStepNum);
         }
 
-        // フォーム最終送信処理
-        async function submitForm(event) {
-            // 【追加】フォームによる勝手なページリロードを確実に防止
-            event.preventDefault();
-
+        // 送信ボタンが押されたときの処理
+        async function submitForm() {
             const btn = document.getElementById("submitBtn");
             const visitDay = document.getElementById("visit_day").value;
             const visitTime = document.getElementById("visit_time").value;
             
             if (!visitDay || !visitTime) {
-                alert("希望日と時間を選択してください。");
+                alert("ご希望の「お日にち」と「お時間」を選択してください。");
                 return;
             }
 
-            const combinedVisitDate = `${visitDay} ${visitTime}`;
+            // 新規の場合のみ、名前の入力チェック
+            if (!isExisting) {
+                const name = document.getElementById("name").value.trim();
+                if (!name) {
+                    alert("お名前を入力してください。");
+                    return;
+                }
+            }
 
             btn.disabled = true;
             btn.innerText = "送信中...";
 
+            // 選択されたチェックボックス（お悩み）を取得
             const goals = [];
             document.querySelectorAll('input[name="primary_goal"]:checked').forEach(cb => goals.push(cb.value));
 
+            // 送信するデータ（payload）を作成
             const payload = {
-                line_user_id: userId || "demo_user_ok",
-                name: document.getElementById("name").value,
-                phone: document.getElementById("phone").value,
-                yoga_experience: document.getElementById("yoga_experience").value,
+                line_user_id: userId,
+                visit_date: `${visitDay} ${visitTime}`,
+                // 以下の項目は新規の場合のみ送信される
+                name: document.getElementById("name").value || "",
+                phone: document.getElementById("phone").value || "",
+                yoga_experience: document.getElementById("yoga_experience").value || "",
                 primary_goal: goals.length > 0 ? goals : ["特になし"],
-                preferred_timezone: document.getElementById("preferred_timezone").value,
-                target_pace: document.getElementById("target_pace").value,
-                visit_date: combinedVisitDate
+                target_pace: document.getElementById("target_pace").value || ""
             };
 
             try {
                 const response = await fetch(WORKER_URL, {
                     method: "POST",
-                    headers: { 
-                        "Content-Type": "application/json"
-                        // ※Workers側でもCORS（Access-Control-Allow-Origin: *）を返す設定が必要です！
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
-                    alert("予約とカルテの送信が完了しました！");
-                    nextStep('Success'); // 完了画面に切り替え
-                    
-                    // LIFFウィンドウを閉じる（閉じない環境のための保険が上記のnextStep）
-                    if (liff.isInClient()) {
-                        liff.closeWindow(); 
-                    }
+                    alert(isExisting ? "次回のご予約を受け付けました！" : "ご予約とアンケートの送信が完了しました！");
+                    liff.closeWindow();
                 } else {
                     const errText = await response.text();
                     alert("システムエラーが発生しました。詳細: " + errText);
@@ -269,7 +230,7 @@
                 }
             } catch (error) {
                 console.error(error);
-                alert("通信エラーが発生しました。Workers側のCORS設定、または電波状況を確認してください。");
+                alert("通信エラーが発生しました。");
                 btn.disabled = false;
                 btn.innerText = "予約を確定する";
             }
