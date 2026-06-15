@@ -20,7 +20,7 @@
         </header>
 
         <main class="flex-1 p-6">
-            <form id="liffForm" onsubmit="return false;">
+            <form id="liffForm" onsubmit="submitForm(event);">
                 
                 <div id="step1" class="step active space-y-5">
                     <div class="border-l-4 border-emerald-500 pl-2">
@@ -60,7 +60,7 @@
 
                     <div>
                         <label class="block text-sm font-semibold mb-1">お名前（フルネームを漢字で入力）</label>
-                        <input type="text" id="name" required placeholder="山田 太郎（姓名の間にスペース）" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
+                        <input type="text" id="name" required placeholder="山田 太郎" class="w-full p-3 border border-stone-300 rounded-lg focus:outline-emerald-500">
                         <p class="text-xs text-red-500 mt-1 hidden" id="name_error">※正確なカルテ作成のため、フルネーム（姓名の間にスペース）でご入力ください。</p>
                     </div>
                     <div>
@@ -132,8 +132,14 @@
                     </div>
                     <div class="flex space-x-3">
                         <button type="button" onclick="nextStep(2)" class="w-1/3 bg-stone-200 text-stone-700 p-3 rounded-lg font-bold hover:bg-stone-300 transition">戻る</button>
-                        <button type="button" onclick="submitForm()" id="submitBtn" class="w-2/3 bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">予約を確定する</button>
+                        <button type="submit" id="submitBtn" class="w-2/3 bg-emerald-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-emerald-700 transition">予約を確定する</button>
                     </div>
+                </div>
+
+                <div id="stepSuccess" class="step space-y-5 text-center py-10">
+                    <span class="text-5xl">🎉</span>
+                    <h2 class="text-xl font-bold text-emerald-600">送信が完了しました！</h2>
+                    <p class="text-sm text-stone-600">ご予約ありがとうございます。<br>このままLINE画面に戻ってください。</p>
                 </div>
 
             </form>
@@ -146,7 +152,7 @@
 
         let userId = "";
 
-        // カレンダーの初期化（過去日不可 ＆ 3ヶ月先まで制限）
+        // カレンダーの初期化
         function initDatePicker() {
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -190,7 +196,8 @@
             const nameInput = document.getElementById("name").value.trim();
             const errorEl = document.getElementById("name_error");
             
-            const fullNameRegex = /^[A-Z-a-zぁ-んァ-ヶー一-龠]+[\s ]+[A-Z-a-zぁ-んァ-ヶー一-龠]+$/;
+            // 【修正】全角スペース・半角スペースどちらでも2単語（姓名）あれば通るように修正
+            const fullNameRegex = /^[A-Za-zぁ-んァ-ヶー一-龠]+[\s ]+[A-Za-zぁ-んァ-ヶー一-龠]+$/;
             
             if (!fullNameRegex.test(nameInput)) {
                 errorEl.classList.remove("hidden");
@@ -204,7 +211,10 @@
         }
 
         // フォーム最終送信処理
-        async function submitForm() {
+        async function submitForm(event) {
+            // 【追加】フォームによる勝手なページリロードを確実に防止
+            event.preventDefault();
+
             const btn = document.getElementById("submitBtn");
             const visitDay = document.getElementById("visit_day").value;
             const visitTime = document.getElementById("visit_time").value;
@@ -214,7 +224,6 @@
                 return;
             }
 
-            // 日付と時間を結合（例: "2026-06-12 15:30"）
             const combinedVisitDate = `${visitDay} ${visitTime}`;
 
             btn.disabled = true;
@@ -231,19 +240,27 @@
                 primary_goal: goals.length > 0 ? goals : ["特になし"],
                 preferred_timezone: document.getElementById("preferred_timezone").value,
                 target_pace: document.getElementById("target_pace").value,
-                visit_date: combinedVisitDate // ここに結合された文字列を格納
+                visit_date: combinedVisitDate
             };
 
             try {
                 const response = await fetch(WORKER_URL, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json"
+                        // ※Workers側でもCORS（Access-Control-Allow-Origin: *）を返す設定が必要です！
+                    },
                     body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
-                    alert("予約とカルテの送信が完了しました！LINE画面に戻ります。");
-                    liff.closeWindow(); 
+                    alert("予約とカルテの送信が完了しました！");
+                    nextStep('Success'); // 完了画面に切り替え
+                    
+                    // LIFFウィンドウを閉じる（閉じない環境のための保険が上記のnextStep）
+                    if (liff.isInClient()) {
+                        liff.closeWindow(); 
+                    }
                 } else {
                     const errText = await response.text();
                     alert("システムエラーが発生しました。詳細: " + errText);
@@ -252,7 +269,7 @@
                 }
             } catch (error) {
                 console.error(error);
-                alert("通信エラーが発生しました。");
+                alert("通信エラーが発生しました。Workers側のCORS設定、または電波状況を確認してください。");
                 btn.disabled = false;
                 btn.innerText = "予約を確定する";
             }
