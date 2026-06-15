@@ -20,110 +20,55 @@
             margin: 0;
             padding: 20px;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: var(--primary-color);
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        /* 検索エリア（独立） */
-        .search-box {
-            position: relative;
-            margin-bottom: 25px;
-            max-width: 500px;
-        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: var(--primary-color); text-align: center; margin-bottom: 30px; }
+        
+        .search-box { position: relative; margin-bottom: 25px; max-width: 500px; }
         .search-box input {
-            width: 100%;
-            padding: 12px 40px 12px 15px;
-            border: 2px solid var(--primary-color);
-            border-radius: 25px;
-            font-size: 16px;
-            box-sizing: border-box;
+            width: 100%; padding: 12px 40px 12px 15px;
+            border: 2px solid var(--primary-color); border-radius: 25px; font-size: 16px; box-sizing: border-box;
         }
-        .search-box i {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--primary-color);
-        }
-        /* メインレイアウト */
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-        }
-        @media (max-width: 768px) {
-            .main-content { grid-template-columns: 1fr; }
-        }
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border: 1px solid var(--border-color);
-        }
-        .card h2 {
-            margin-top: 0;
-            border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 8px;
-            color: var(--primary-color);
-        }
-        /* 顧客リストスタイル */
-        .customer-item {
-            padding: 15px;
-            border-bottom: 1px solid var(--border-color);
-            cursor: pointer;
-            transition: background 0.2s;
-            border-radius: 6px;
-        }
+        .search-box i { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--primary-color); }
+        
+        .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        @media (max-width: 768px) { .main-content { grid-template-columns: 1fr; } }
+        
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+        .card h2 { margin-top: 0; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; color: var(--primary-color); }
+        
+        .customer-item { padding: 15px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s; border-radius: 6px; }
         .customer-item:hover { background-color: #f1f5f2; }
-        .customer-item.active {
-            background-color: #eaf2ec;
-            border-left: 4px solid var(--primary-color);
-        }
+        .customer-item.active { background-color: #eaf2ec; border-left: 4px solid var(--primary-color); }
         .customer-name { font-weight: bold; font-size: 16px; }
         .customer-meta { font-size: 13px; color: #6c757d; margin-top: 4px; }
         
-        /* 詳細・メモエリア */
-        .detail-row {
-            margin-bottom: 12px;
-            font-size: 15px;
-        }
+        .detail-row { margin-bottom: 12px; font-size: 15px; }
         .detail-label { font-weight: bold; color: #555; }
         
-        .memo-area {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px dashed var(--border-color);
+        /* 📜 履歴切り替えナービゲーション */
+        .history-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f1f5f2;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #dce6df;
         }
-        textarea {
-            width: 100%;
-            height: 120px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            resize: vertical;
-            font-size: 14px;
-            box-sizing: border-box;
-            margin-top: 8px;
+        .nav-btn {
+            background: var(--primary-color);
+            color: white; border: none; padding: 6px 12px;
+            border-radius: 4px; cursor: pointer; font-size: 14px; width: auto; margin: 0;
         }
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 15px;
-            margin-top: 10px;
-            width: 100%;
-            transition: background 0.2s;
-        }
-        button:hover { background-color: #3b6347; }
+        .nav-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .history-date { font-weight: bold; color: var(--primary-color); font-size: 14px; }
+
+        .memo-area { margin-top: 20px; padding-top: 20px; border-top: 2px dashed var(--border-color); }
+        textarea { width: 100%; height: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; font-size: 14px; box-sizing: border-box; margin-top: 8px; }
+        
+        .save-btn { background-color: var(--primary-color); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 15px; margin-top: 10px; width: 100%; transition: background 0.2s; }
+        .save-btn:hover { background-color: #3b6347; }
         #loading { text-align: center; font-size: 18px; color: #6c757d; padding: 40px; }
     </style>
 </head>
@@ -150,54 +95,52 @@
             <div id="customerDetails"></div>
 
             <div class="memo-area">
-                <h3><i class="fa-solid fa-pen-to-square"></i> オーナーメモ</h3>
-                <p style="font-size: 12px; color: #6c757d; margin: 0;">※入力して保存すると、このお客様の情報に反映されます。</p>
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> カルテ履歴（日付ごと確認）</h3>
+                
+                <div class="history-navigation">
+                    <button class="nav-btn" id="nextHistoryBtn" onclick="changeHistoryPage(-1)">＜ 新しい日</button>
+                    <span class="history-date" id="historyDateDisplay">履歴なし</span>
+                    <button class="nav-btn" id="prevHistoryBtn" onclick="changeHistoryPage(1)">古い日 ＞</button>
+                </div>
+
+                <p style="font-size: 12px; color: #6c757d; margin: 0;">※新しい指導内容を入力して保存すると、新しい日付で履歴が追加されます。</p>
                 <textarea id="ownerMemoInput" placeholder="本日の指導内容や、気づいた点をメモ..."></textarea>
-                <button onclick="saveOwnerMemo()"><i class="fa-solid fa-floppy-disk"></i> メモを保存する</button>
+                <button class="save-btn" onclick="saveOwnerMemo()"><i class="fa-solid fa-plus"></i> 新しいカルテ履歴として保存</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 🛠️ スクショに写っていた正確なURLに修正しました！
     const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev"; 
 
     let allCustomers = [];
+    let customerEvents = []; // 選択中ユーザーの全履歴
+    let currentEventIndex = 0; // 現在表示している履歴のインデックス
     let selectedLineUserId = null;
 
-    // 初回データ読み込み
     async function loadCustomers() {
         try {
             const res = await fetch(WORKER_URL, { method: "GET" });
             if (!res.ok) throw new Error("データの取得に失敗しました");
             allCustomers = await res.json();
-            
             document.getElementById("loading").style.display = "none";
             document.getElementById("dashboardContent").style.display = "grid";
-            
             renderList(allCustomers);
         } catch (err) {
-            document.getElementById("loading").innerHTML = `<span style="color:red;"><i class="fa-solid fa-triangle-exclamation"></i> エラー: ${err.message}</span>`;
+            document.getElementById("loading").innerHTML = `<span style="color:red;">エラー: ${err.message}</span>`;
         }
     }
 
-    // 一覧の描画
     function renderList(customers) {
         const listDiv = document.getElementById("customerList");
         document.getElementById("customerCount").innerText = customers.length;
         listDiv.innerHTML = "";
 
-        if(customers.length === 0) {
-            listDiv.innerHTML = `<p style="color:#6c757d; text-align:center;">該当するお客様が見つかりません</p>`;
-            return;
-        }
-
         customers.forEach(c => {
             const item = document.createElement("div");
             item.className = `customer-item ${c.line_user_id === selectedLineUserId ? 'active' : ''}`;
             item.onclick = () => showDetail(c.line_user_id);
-            
             item.innerHTML = `
                 <div class="customer-name">${c.customer_name || '未登録'}</div>
                 <div class="customer-meta">目的: ${c.yoga_purpose || '未回答'} | 登録日: ${new Date(c.created_at).toLocaleDateString()}</div>
@@ -206,21 +149,18 @@
         });
     }
 
-    // 検索フィルター
     function filterCustomers() {
         const query = document.getElementById("searchInput").value.toLowerCase();
         const filtered = allCustomers.filter(c => {
             return (c.customer_name && c.customer_name.toLowerCase().includes(query)) ||
-                   (c.yoga_purpose && c.yoga_purpose.toLowerCase().includes(query)) ||
-                   (c.experience && c.experience.toLowerCase().includes(query));
+                   (c.yoga_purpose && c.yoga_purpose.toLowerCase().includes(query));
         });
         renderList(filtered);
     }
 
-    // 詳細表示
-    function showDetail(lineUserId) {
+    // 🎯 ユーザー選択時に、その人の過去の履歴を全部引っ張ってくる処理
+    async function showDetail(lineUserId) {
         selectedLineUserId = lineUserId;
-        
         const items = document.querySelectorAll(".customer-item");
         items.forEach(el => el.classList.remove("active"));
         
@@ -229,52 +169,78 @@
 
         document.getElementById("detailCard").style.visibility = "visible";
         
-        const detailsDiv = document.getElementById("customerDetails");
-        detailsDiv.innerHTML = `
+        document.getElementById("customerDetails").innerHTML = `
             <div class="detail-row"><span class="detail-label">お名前:</span> ${customer.customer_name || '未登録'}</div>
             <div class="detail-row"><span class="detail-label">電話番号:</span> ${customer.phone_number || '未登録'}</div>
             <div class="detail-row"><span class="detail-label">ヨガの経験:</span> ${customer.experience || '未回答'}</div>
             <div class="detail-row"><span class="detail-label">参加の目的:</span> ${customer.yoga_purpose || '未回答'}</div>
-            <div class="detail-row"><span class="detail-label">お悩み・期待すること:</span> ${customer.concerns || '未回答'}</div>
         `;
 
-        // メモ入力欄に、現在保存されているメモを自動表示
-        document.getElementById("ownerMemoInput").value = customer.owner_memo || "";
+        // 💡 Workers経由で、過去の履歴を時系列で全取得
+        try {
+            const res = await fetch(`${WORKER_URL}?type=events&line_user_id=${lineUserId}`);
+            customerEvents = await res.json();
+            currentEventIndex = 0; // 最新の履歴を指す
+            displayHistory();
+        } catch (err) {
+            console.error("履歴の取得失敗", err);
+        }
     }
 
-    // メモの保存処理
-    async function saveOwnerMemo() {
-        if (!selectedLineUserId) {
-            alert("お客様が選択されていません。");
+    // 🎯 履歴の表示と矢印ボタンの制御
+    function displayHistory() {
+        const dateDisplay = document.getElementById("historyDateDisplay");
+        const memoInput = document.getElementById("ownerMemoInput");
+        const nextBtn = document.getElementById("nextHistoryBtn");
+        const prevBtn = document.getElementById("prevHistoryBtn");
+
+        if (!customerEvents || customerEvents.length === 0) {
+            dateDisplay.innerText = "新規カルテ入力（過去データなし）";
+            memoInput.value = "";
+            nextBtn.disabled = true;
+            prevBtn.disabled = true;
             return;
         }
 
+        const currentEvent = customerEvents[currentEventIndex];
+        const eventDate = new Date(currentEvent.created_at).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' });
+        
+        dateDisplay.innerText = `${eventDate} (${currentEventIndex + 1} / ${customerEvents.length}件)`;
+        memoInput.value = currentEvent.memo || "";
+
+        // ボタンの活性・非活性制御
+        nextBtn.disabled = (currentEventIndex === 0); // これ以上新しいのはない
+        prevBtn.disabled = (currentEventIndex === customerEvents.length - 1); // これ以上古いのはない
+    }
+
+    // 🎯 矢印を押したときにページをめくる処理
+    function changeHistoryPage(direction) {
+        currentEventIndex += direction;
+        displayHistory();
+    }
+
+    // 🎯 新しい履歴の保存
+    async function saveOwnerMemo() {
+        if (!selectedLineUserId) return;
         const memoText = document.getElementById("ownerMemoInput").value;
 
         try {
             const res = await fetch(`${WORKER_URL}?action=update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    line_user_id: selectedLineUserId,
-                    memo: memoText
-                })
+                body: JSON.stringify({ line_user_id: selectedLineUserId, memo: memoText })
             });
-
             const result = await res.json();
 
             if (res.ok && result.success) {
-                alert("オーナーメモを保存しました！");
-                
-                // 画面をリロードせずに、ローカルのデータをその場で書き換えて再表示
-                const customer = allCustomers.find(c => c.line_user_id === selectedLineUserId);
-                if (customer) customer.owner_memo = memoText;
+                alert("新しいカルテ履歴を保存しました！");
+                // 履歴を即座に再読込
                 showDetail(selectedLineUserId);
             } else {
-                alert("保存に失敗しました: " + (result.details || result.error));
+                alert("保存失敗: " + result.error);
             }
         } catch (err) {
-            alert("通信エラーが発生しました: " + err.message);
+            alert("通信エラー: " + err.message);
         }
     }
 
