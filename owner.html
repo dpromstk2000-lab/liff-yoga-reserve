@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* スクロールバーを滑らかにするための微調整 */
         .custom-scroll::-webkit-scrollbar {
             width: 4px;
         }
@@ -40,37 +39,60 @@
         <div id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
             
             <div class="grid grid-cols-3 gap-2 sm:gap-4">
-                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left">
-                    <div class="p-2 sm:p-3 bg-emerald-50 rounded-lg text-emerald-700 mb-1 sm:mb-0"><i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+                <div onclick="filterByDay('all')" class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left cursor-pointer hover:border-emerald-500 transition group">
+                    <div class="p-2 sm:p-3 bg-emerald-50 rounded-lg text-emerald-700 mb-1 sm:mb-0 group-hover:bg-emerald-100"><i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
                     <div>
-                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">今月総数</p>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">総データ数</p>
                         <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-total">- 件</p>
                     </div>
                 </div>
-                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left">
-                    <div class="p-2 sm:p-3 bg-amber-50 rounded-lg text-amber-700 mb-1 sm:mb-0"><i data-lucide="calendar" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
-                    <div>
-                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">本日予約</p>
-                        <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-today">- 件</p>
+                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col items-center justify-between relative group select-none">
+                    <div class="flex items-center justify-between w-full border-b border-stone-100 pb-1 mb-1">
+                        <button onclick="shiftDayFilter(-1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer" title="前の表示へ">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-bold tracking-wider" id="day-filter-title">本日予約</p>
+                        <button onclick="shiftDayFilter(1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer" title="次の表示へ">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div onclick="applyCurrentDayFilter()" class="flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left w-full justify-center sm:justify-start cursor-pointer">
+                        <div class="p-2 bg-amber-50 rounded-lg text-amber-700 mb-1 sm:mb-0" id="day-filter-icon"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+                        <div>
+                            <p class="text-sm sm:text-xl font-bold text-stone-800" id="kpi-day-count">- 件</p>
+                        </div>
                     </div>
                 </div>
-                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left">
-                    <div class="p-2 sm:p-3 bg-rose-50 rounded-lg text-rose-700 mb-1 sm:mb-0"><i data-lucide="clipboard-edit" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+                <div onclick="filterPending()" class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left cursor-pointer hover:border-rose-500 transition group">
+                    <div class="p-2 sm:p-3 bg-rose-50 rounded-lg text-rose-700 mb-1 sm:mb-0 group-hover:bg-rose-100"><i data-lucide="clipboard-edit" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
                     <div>
-                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">未記入</p>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">メモ未記入</p>
                         <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-pending">- 件</p>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white rounded-xl shadow-xs border border-stone-200/60 overflow-hidden">
-                <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
-                    <h2 class="font-bold text-sm sm:text-base text-stone-800 flex items-center gap-2">
-                        <i data-lucide="list-todo" class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700"></i>ご希望日時・受付一覧
-                    </h2>
-                    <button onclick="fetchCustomers()" class="text-[11px] sm:text-xs bg-white border border-stone-300 hover:bg-stone-50 text-stone-600 px-2.5 py-1.5 rounded-lg font-medium shadow-2xs flex items-center gap-1 transition cursor-pointer">
-                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> 更新
-                    </button>
+                <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-100 space-y-3 bg-stone-50/50">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-bold text-sm sm:text-base text-stone-800 flex items-center gap-2">
+                            <i data-lucide="list-todo" class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700"></i>
+                            <span id="list-title">ご希望日時・受付一覧</span>
+                        </h2>
+                        <button onclick="fetchCustomers()" class="text-[11px] sm:text-xs bg-white border border-stone-300 hover:bg-stone-50 text-stone-600 px-2.5 py-1.5 rounded-lg font-medium shadow-2xs flex items-center gap-1 transition cursor-pointer">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> 更新
+                        </button>
+                    </div>
+                    
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </div>
+                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="お客様のお名前・電話番号で検索..." class="w-full pl-9 pr-8 py-2 text-xs bg-white border border-stone-300 rounded-lg focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 font-sans">
+                        <button onclick="clearSearch()" id="search-clear-btn" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="divide-y divide-stone-100 max-h-[65vh] lg:max-h-[60vh] overflow-y-auto custom-scroll" id="customer-list">
@@ -164,7 +186,11 @@
         const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev';
 
         let allCustomers = [];
+        let filteredCustomers = [];
         let selectedCustomerId = null;
+        
+        // 日付フィルタ管理 ('all' , 'today' , 'tomorrow')
+        let currentDayFilter = 'today'; 
 
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
@@ -179,8 +205,11 @@
                 if (!response.ok) throw new Error("データの取得に失敗しました");
                 
                 allCustomers = await response.json();
-                renderList(allCustomers);
+                
+                // 初回読み込み時は、全KPIを計算し、現在選択されている日付フィルタを適用
                 calculateKPIs(allCustomers);
+                updateDayFilterUI();
+                applyCurrentDayFilter();
             } catch (error) {
                 console.error(error);
                 listContainer.innerHTML = `
@@ -197,16 +226,28 @@
         function renderList(customers) {
             const container = document.getElementById("customer-list");
             if (customers.length === 0) {
-                container.innerHTML = '<div class="p-8 text-center text-stone-400 text-sm">現在、予約データはありません。</div>';
+                container.innerHTML = '<div class="p-8 text-center text-stone-400 text-sm">該当するデータはありません。</div>';
                 return;
             }
 
+            // 日付の新しい順にソート
             customers.sort((a, b) => new Date(b.visit_date || 0) - new Date(a.visit_date || 0));
+
+            const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
             container.innerHTML = customers.map(c => {
                 const isSelected = String(selectedCustomerId) === String(c.id);
                 const dateObj = c.visit_date ? new Date(c.visit_date) : null;
-                const formattedDate = dateObj ? `${dateObj.getMonth()+1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}` : '未定';
+                
+                let formattedDate = '未定';
+                if (dateObj) {
+                    const month = dateObj.getMonth() + 1;
+                    const date = dateObj.getDate();
+                    const day = weekdays[dateObj.getDay()];
+                    const hours = String(dateObj.getHours()).padStart(2, '0');
+                    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+                    formattedDate = `${month}/${date}(${day}) ${hours}:${minutes}`;
+                }
                 
                 const goals = Array.isArray(c.primary_goal) ? c.primary_goal.join(', ') : String(c.primary_goal || '未回答');
                 const hasMemo = c.owner_memo && c.owner_memo.trim().length > 0;
@@ -214,7 +255,7 @@
                 return `
                     <div onclick="selectCustomer('${c.id}')" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
                         <div class="flex items-start space-x-3 min-w-0">
-                            <div class="bg-stone-100 text-stone-600 font-bold px-2 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs tracking-tight whitespace-nowrap text-center mt-0.5 min-w-[65px] sm:min-w-[75px]">
+                            <div class="bg-stone-100 text-stone-600 font-bold px-1.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs tracking-tight whitespace-nowrap text-center mt-0.5 min-w-[75px] sm:min-w-[85px]">
                                 ${formattedDate}
                             </div>
                             <div class="min-w-0">
@@ -232,27 +273,148 @@
             lucide.createIcons();
         }
 
-        // 3. KPIの計算
+        // 3. KPIの計算＆表示更新
         function calculateKPIs(customers) {
             document.getElementById("kpi-total").innerText = `${customers.length} 件`;
             
-            const todayStr = new Date().toISOString().slice(0, 10);
+            // 日本時間基準の今日・明日を算出
+            const todayStr = getLocalDateString(0);
+            const tomorrowStr = getLocalDateString(1);
+            
             const todayCount = customers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr)).length;
-            document.getElementById("kpi-today").innerText = `${todayCount} 件`;
+            const tomorrowCount = customers.filter(c => c.visit_date && c.visit_date.startsWith(tomorrowStr)).length;
+            
+            // 現在の選択フィルターに応じた数値を中間KPIにセット
+            if (currentDayFilter === 'today') {
+                document.getElementById("kpi-day-count").innerText = `${todayCount} 件`;
+            } else if (currentDayFilter === 'tomorrow') {
+                document.getElementById("kpi-day-count").innerText = `${tomorrowCount} 件`;
+            } else {
+                document.getElementById("kpi-day-count").innerText = `全 ${customers.length} 件`;
+            }
 
             const pendingCount = customers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0).length;
             document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
         }
 
-        // 4. 顧客の選択（スマホ時は画面を切り替える処理を追加）
+        // 基準日からのオフセット（0=今日、1=明日）で YYYY-MM-DD 文字列を取得するヘルパー
+        function getLocalDateString(offset) {
+            const d = new Date();
+            d.setDate(d.getDate() + offset);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // 矢印ボタンによる日付フィルタ切り替え処理
+        function shiftDayFilter(direction) {
+            const filters = ['today', 'tomorrow', 'all'];
+            let idx = filters.indexOf(currentDayFilter);
+            idx = (idx + direction + filters.length) % filters.length;
+            currentDayFilter = filters[idx];
+            
+            updateDayFilterUI();
+            applyCurrentDayFilter();
+        }
+
+        // 矢印切り替え時のUI表示（テキストやアイコン色）変更
+        function updateDayFilterUI() {
+            const title = document.getElementById("day-filter-title");
+            const iconContainer = document.getElementById("day-filter-icon");
+            
+            if (currentDayFilter === 'today') {
+                title.innerText = "本日予約";
+                iconContainer.className = "p-2 bg-amber-50 rounded-lg text-amber-700 mb-1 sm:mb-0";
+            } else if (currentDayFilter === 'tomorrow') {
+                title.innerText = "明日予約";
+                iconContainer.className = "p-2 bg-blue-50 rounded-lg text-blue-700 mb-1 sm:mb-0";
+            } else {
+                title.innerText = "全日程表示";
+                iconContainer.className = "p-2 bg-stone-100 rounded-lg text-stone-600 mb-1 sm:mb-0";
+            }
+            calculateKPIs(allCustomers);
+        }
+
+        // フィルター状態をリストに適用する本体
+        function applyCurrentDayFilter() {
+            // 検索キーワードが入っている場合は検索処理側で統合されるため、ここではクリアするかベースを更新
+            const searchInput = document.getElementById("search-input").value.trim();
+            
+            const todayStr = getLocalDateString(0);
+            const tomorrowStr = getLocalDateString(1);
+
+            if (currentDayFilter === 'today') {
+                document.getElementById("list-title").innerText = "本日のご希望・受付一覧";
+                filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr));
+            } else if (currentDayFilter === 'tomorrow') {
+                document.getElementById("list-title").innerText = "明日のご希望・受付一覧";
+                filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(tomorrowStr));
+            } else {
+                document.getElementById("list-title").innerText = "ご希望日時・受付一覧（全日程）";
+                filteredCustomers = [...allCustomers];
+            }
+
+            // 検索キーワードがあれば、さらに絞り込む
+            if (searchInput !== "") {
+                const keyword = searchInput.toLowerCase();
+                filteredCustomers = filteredCustomers.filter(c => 
+                    (c.name && c.name.toLowerCase().includes(keyword)) || 
+                    (c.phone && c.phone.includes(keyword))
+                );
+            }
+
+            renderList(filteredCustomers);
+        }
+
+        // 上部KPI「全件」や「未記入」をクリックした際のエスケープフィルタ
+        function filterByDay(type) {
+            currentDayFilter = type;
+            document.getElementById("search-input").value = "";
+            document.getElementById("search-clear-btn").classList.add("hidden");
+            updateDayFilterUI();
+            applyCurrentDayFilter();
+        }
+
+        function filterPending() {
+            document.getElementById("list-title").innerText = "メモ未記入のカルテ一覧";
+            document.getElementById("search-input").value = "";
+            document.getElementById("search-clear-btn").classList.add("hidden");
+            filteredCustomers = allCustomers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0);
+            renderList(filteredCustomers);
+        }
+
+        // 🛠️ 4. 検索処理（お名前・電話番号）
+        function handleSearch() {
+            const query = document.getElementById("search-input").value.trim();
+            const clearBtn = document.getElementById("search-clear-btn");
+
+            if (query.length > 0) {
+                clearBtn.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+            }
+            // 日付フィルタを維持したまま、検索語を当てはめる
+            applyCurrentDayFilter();
+        }
+
+        // 検索枠クリア
+        function clearSearch() {
+            document.getElementById("search-input").value = "";
+            document.getElementById("search-clear-btn").classList.add("hidden");
+            applyCurrentDayFilter();
+        }
+
+        // 5. 顧客の選択
         function selectCustomer(id) {
             selectedCustomerId = id;
-            renderList(allCustomers); 
+            
+            // リストの選択背景色の更新用
+            renderList(filteredCustomers); 
 
             const customer = allCustomers.find(c => String(c.id) === String(id));
             if (!customer) return;
 
-            // スマホ表示対応：カルテパネルをフルスクリーンで表示
             const cartePanel = document.getElementById("carte-panel");
             cartePanel.classList.remove("hidden");
 
@@ -266,7 +428,7 @@
             document.getElementById("carte-pace").innerText = customer.target_pace || '未回答';
             document.getElementById("carte-timezone").innerText = customer.preferred_timezone || '未回答';
             document.getElementById("carte-memo").value = customer.owner_memo || '';
-            document.getElementById("carte-avatar").innerText = (customer.name || 'ﾖ').charAt(0);
+            document.getElementById("carte-avatar").innerText = (customer.name || '原').charAt(0);
 
             const badgeContainer = document.getElementById("carte-goals");
             const goalsArray = Array.isArray(customer.primary_goal) ? customer.primary_goal : [customer.primary_goal || '未回答'];
@@ -275,15 +437,14 @@
             lucide.createIcons();
         }
 
-        // スマホ用：カルテを閉じて一覧に戻る
         function closeCarte() {
             const cartePanel = document.getElementById("carte-panel");
             cartePanel.classList.add("hidden");
             selectedCustomerId = null;
-            renderList(allCustomers);
+            renderList(filteredCustomers);
         }
 
-        // 5. メモの保存
+        // 6. メモの保存
         async function saveOwnerMemo() {
             if (!selectedCustomerId) return;
             const btn = document.getElementById("save-memo-btn");
@@ -305,7 +466,6 @@
                 if (response.ok) {
                     alert("カルテの指導メモを保存しました！");
                     
-                    // メモ保存後、スマホなら自動的に一覧に戻る
                     if (window.innerWidth < 1024) {
                         closeCarte();
                     }
