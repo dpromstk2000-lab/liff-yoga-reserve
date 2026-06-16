@@ -28,7 +28,7 @@
                 <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
                 <span class="text-xs font-medium whitespace-nowrap">同期中</span>
             </div>
-            <button onclick="openSettingsModal()" class="p-2 bg-emerald-700 hover:bg-emerald-600 rounded-full transition" title="店舗設定">
+            <button onclick="openSettingsModal()" class="p-2 bg-emerald-700 hover:bg-emerald-600 rounded-full transition cursor-pointer" title="店舗設定">
                 <i data-lucide="settings" class="w-5 h-5 text-white"></i>
             </button>
         </div>
@@ -37,18 +37,66 @@
     <main class="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 relative">
         
         <div id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
-            <div class="bg-white rounded-xl shadow-xs border border-stone-200/60 overflow-hidden">
-                <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50/50">
-                    <h2 class="font-bold text-sm sm:text-base text-stone-800 flex items-center gap-2">
-                        <i data-lucide="list-todo" class="w-4 h-4 text-emerald-700"></i>
-                        顧客リスト
-                    </h2>
-                    <button onclick="fetchCustomers()" class="text-xs bg-white border border-stone-300 hover:bg-stone-50 text-stone-600 px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1 transition">
-                        <i data-lucide="refresh-cw" class="w-3 h-3"></i> 更新
-                    </button>
+            
+            <div class="grid grid-cols-3 gap-2 sm:gap-4">
+                <div onclick="filterByDay('all')" class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left cursor-pointer hover:border-emerald-500 transition group">
+                    <div class="p-2 sm:p-3 bg-emerald-50 rounded-lg text-emerald-700 mb-1 sm:mb-0 group-hover:bg-emerald-100"><i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+                    <div>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">総データ数</p>
+                        <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-total">- 件</p>
+                    </div>
                 </div>
-                <div class="divide-y divide-stone-100 max-h-[70vh] overflow-y-auto custom-scroll" id="customer-list">
-                    <div class="p-8 text-center text-stone-400 flex flex-col items-center gap-2">
+                <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col items-center justify-between relative group select-none">
+                    <div class="flex items-center justify-between w-full border-b border-stone-100 pb-1 mb-1">
+                        <button onclick="shiftDayFilter(-1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer" title="前の表示へ">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-bold tracking-wider" id="day-filter-title">本日予約</p>
+                        <button onclick="shiftDayFilter(1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer" title="次の表示へ">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div onclick="applyCurrentDayFilter()" class="flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left w-full justify-center sm:justify-start cursor-pointer">
+                        <div class="p-2 bg-amber-50 rounded-lg text-amber-700 mb-1 sm:mb-0" id="day-filter-icon"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+                        <div>
+                            <p class="text-sm sm:text-xl font-bold text-stone-800" id="kpi-day-count">- 件</p>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="filterPending()" class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left cursor-pointer hover:border-rose-500 transition group">
+                    <div class="p-2 sm:p-3 bg-rose-50 rounded-lg text-rose-700 mb-1 sm:mb-0 group-hover:bg-rose-100"><i data-lucide="clipboard-edit" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
+                    <div>
+                        <p class="text-[10px] sm:text-xs text-stone-500 font-medium">メモ未記入</p>
+                        <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-pending">- 件</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-xs border border-stone-200/60 overflow-hidden">
+                <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-100 space-y-3 bg-stone-50/50">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-bold text-sm sm:text-base text-stone-800 flex items-center gap-2">
+                            <i data-lucide="list-todo" class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700"></i>
+                            <span id="list-title">ご希望日時・受付一覧</span>
+                        </h2>
+                        <button onclick="fetchCustomers()" class="text-[11px] sm:text-xs bg-white border border-stone-300 hover:bg-stone-50 text-stone-600 px-2.5 py-1.5 rounded-lg font-medium shadow-2xs flex items-center gap-1 transition cursor-pointer">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> 更新
+                        </button>
+                    </div>
+                    
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                        </div>
+                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="お客様のお名前・電話番号で検索..." class="w-full pl-9 pr-8 py-2 text-xs bg-white border border-stone-300 rounded-lg focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 font-sans">
+                        <button onclick="clearSearch()" id="search-clear-btn" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="divide-y divide-stone-100 max-h-[65vh] lg:max-h-[60vh] overflow-y-auto custom-scroll" id="customer-list">
+                    <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
                         <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
                         <span class="text-sm">データを取得中...</span>
                     </div>
@@ -57,40 +105,76 @@
         </div>
 
         <div id="carte-panel" class="hidden lg:block lg:col-span-1 fixed inset-0 z-50 lg:z-0 lg:static bg-stone-100 lg:bg-transparent p-4 lg:p-0">
-            <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full flex flex-col justify-between">
+            <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full lg:min-h-[70vh] flex flex-col justify-between overflow-y-auto lg:overflow-visible">
+                
                 <div class="flex lg:hidden items-center justify-between border-b border-stone-100 pb-3 mb-4">
-                    <button onclick="closeCarte()" class="text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg">
-                        <i data-lucide="arrow-left" class="w-4 h-4 inline"></i> 一覧に戻る
+                    <button onclick="closeCarte()" class="flex items-center gap-1 text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg cursor-pointer">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> 一覧に戻る
                     </button>
+                    <span class="text-xs text-stone-400 font-medium">顧客カルテ詳細</span>
                 </div>
 
-                <div class="flex-1 flex flex-col items-center justify-center text-center text-stone-400 space-y-3" id="carte-empty">
-                    <i data-lucide="user-search" class="w-10 h-10"></i>
-                    <p class="font-semibold text-stone-600">顧客カルテ未選択</p>
-                </div>
-
-                <div class="hidden flex-1 flex flex-col justify-between h-full space-y-4" id="carte-content">
+                <div class="flex-1 flex flex-col items-center justify-center text-center text-stone-400 space-y-3 py-12 lg:py-0" id="carte-empty">
+                    <div class="p-4 bg-stone-50 rounded-full text-stone-300"><i data-lucide="user-search" class="w-10 h-10"></i></div>
                     <div>
-                        <div class="flex items-center space-x-4 border-b border-stone-100 pb-4 mb-4">
+                        <p class="font-semibold text-stone-600">顧客カルテ未選択</p>
+                        <p class="text-xs mt-1 max-w-[200px] mx-auto">左の一覧からお客様を選択すると、詳細が表示されます。</p>
+                    </div>
+                </div>
+
+                <div class="hidden flex-1 flex flex-col justify-between h-full space-y-4 sm:space-y-6" id="carte-content">
+                    <div class="space-y-4 sm:space-y-5">
+                        <div class="flex items-center space-x-4 border-b border-stone-100 pb-4">
+                            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg flex-shrink-0" id="carte-avatar">ﾖ</div>
                             <div class="min-w-0">
-                                <h3 class="text-lg font-bold text-stone-900 truncate" id="carte-name">-</h3>
-                                <p class="text-xs text-stone-400 mt-1" id="carte-phone">-</p>
+                                <h3 class="text-base sm:text-lg font-bold text-stone-900 truncate" id="carte-name">-</h3>
+                                <p class="text-xs text-stone-400 flex items-center gap-1 mt-0.5"><i data-lucide="phone" class="w-3 h-3"></i> <span id="carte-phone">-</span></p>
                             </div>
                         </div>
+
+                        <div class="bg-emerald-50/60 border border-emerald-100/80 p-3 rounded-lg flex items-center space-x-3">
+                            <i data-lucide="clock" class="w-5 h-5 text-emerald-700 flex-shrink-0"></i>
+                            <div>
+                                <p class="text-[10px] uppercase font-bold tracking-wider text-emerald-800 opacity-60">ご希望レッスン日時</p>
+                                <p class="text-xs sm:text-sm font-bold text-emerald-900" id="carte-date">-</p>
+                            </div>
+                        </div>
+
                         <div class="space-y-3">
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-stone-400">事前カウンセリング回答</h4>
+                            <div class="space-y-2.5">
+                                <div class="bg-stone-50 p-3 rounded-lg border border-stone-200/40">
+                                    <p class="text-xs text-stone-500 font-medium">お身体のお悩み・目的</p>
+                                    <div class="flex flex-wrap gap-1 mt-1.5" id="carte-goals"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="bg-stone-50 p-2.5 rounded-lg border border-stone-200/40">
+                                        <p class="text-[11px] text-stone-500 font-medium">ヨガのご経験</p>
+                                        <p class="text-xs font-semibold text-stone-800 mt-1" id="carte-experience">-</p>
+                                    </div>
+                                    <div class="bg-stone-50 p-2.5 rounded-lg border border-stone-200/40">
+                                        <p class="text-[11px] text-stone-500 font-medium">理想の通うペース</p>
+                                        <p class="text-xs font-semibold text-stone-800 mt-1" id="carte-pace">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 pt-2 border-t border-stone-100">
                             <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">当日指導・レッスンメモ</label>
-                            <textarea id="carte-memo" rows="6" class="w-full p-3 text-sm border border-stone-300 rounded-xl focus:ring-1 focus:ring-emerald-600 bg-stone-50/30"></textarea>
+                            <textarea id="carte-memo" rows="4" placeholder="（例）ハムストリングスが硬い。呼吸が浅くなりがちなので、リラックス系を中心に構成。" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
                         </div>
                     </div>
+
                     <div class="pt-4 border-t border-stone-100">
-                        <button id="save-memo-btn" onclick="saveOwnerMemo()" class="w-full bg-emerald-700 text-white p-3 rounded-xl font-bold shadow-md hover:bg-emerald-800 transition">
-                            <i data-lucide="check-square" class="w-4 h-4 inline"></i> カルテメモを保存する
+                        <button id="save-memo-btn" onclick="saveOwnerMemo()" class="w-full bg-emerald-700 text-white p-3 rounded-xl font-bold shadow-md hover:bg-emerald-800 transition flex items-center justify-center gap-2 text-sm cursor-pointer">
+                            <i data-lucide="check-square" class="w-4 h-4"></i> カルテメモを保存する
                         </button>
                     </div>
                 </div>
+
             </div>
         </div>
-
     </main>
 
     <div id="settings-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
@@ -103,29 +187,29 @@
                 <div>
                     <label class="block text-sm font-bold text-stone-600 mb-2">営業時間</label>
                     <div class="flex items-center gap-2">
-                        <select id="open-time" class="p-2 border rounded-lg flex-1 focus:ring-emerald-500"></select>
+                        <select id="open-time" class="p-2 border rounded-lg flex-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"></select>
                         <span class="text-stone-400">〜</span>
-                        <select id="close-time" class="p-2 border rounded-lg flex-1 focus:ring-emerald-500"></select>
+                        <select id="close-time" class="p-2 border rounded-lg flex-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"></select>
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-sm font-bold text-stone-600 mb-2">定休日</label>
                     <div class="grid grid-cols-4 gap-2 text-sm" id="holiday-checkboxes">
-                        <label class="flex items-center gap-1"><input type="checkbox" value="1" class="w-4 h-4 text-emerald-600"> 月</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" value="2" class="w-4 h-4 text-emerald-600"> 火</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" value="3" class="w-4 h-4 text-emerald-600"> 水</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" value="4" class="w-4 h-4 text-emerald-600"> 木</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" value="5" class="w-4 h-4 text-emerald-600"> 金</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" value="6" class="w-4 h-4 text-emerald-600"> 土</label>
-                        <label class="flex items-center gap-1"><input type="checkbox" value="0" class="w-4 h-4 text-red-500"> 日</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" value="1" class="w-4 h-4 text-emerald-600 accent-emerald-600"> 月</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" value="2" class="w-4 h-4 text-emerald-600 accent-emerald-600"> 火</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" value="3" class="w-4 h-4 text-emerald-600 accent-emerald-600"> 水</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" value="4" class="w-4 h-4 text-emerald-600 accent-emerald-600"> 木</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" value="5" class="w-4 h-4 text-emerald-600 accent-emerald-600"> 金</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" value="6" class="w-4 h-4 text-emerald-600 accent-emerald-600"> 土</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" value="0" class="w-4 h-4 text-red-500 accent-red-500"> 日</label>
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-lg text-stone-500 hover:bg-stone-100 font-medium">キャンセル</button>
-                <button onclick="saveSettings()" id="save-settings-btn" class="px-4 py-2 bg-emerald-700 text-white rounded-lg font-bold hover:bg-emerald-800">保存する</button>
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-stone-100">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-lg text-stone-500 hover:bg-stone-100 font-medium cursor-pointer transition">キャンセル</button>
+                <button onclick="saveSettings()" id="save-settings-btn" class="px-4 py-2 bg-emerald-700 text-white rounded-lg font-bold hover:bg-emerald-800 cursor-pointer transition">保存する</button>
             </div>
         </div>
     </div>
@@ -133,65 +217,225 @@
     <script>
         const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev';
         let allCustomers = [];
+        let filteredCustomers = [];
         let selectedCustomerId = null;
+        let currentDayFilter = 'today'; // 'all', 'today', 'tomorrow'
 
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
             fetchCustomers();
-            generateTimeOptions();
+            generateTimeOptions(); // 店舗設定のプルダウン生成
         });
 
-        // =====================================
-        // カルテリスト・メモ関連 (修正版)
-        // =====================================
+        // 1. データの取得
         async function fetchCustomers() {
+            const listContainer = document.getElementById("customer-list");
             try {
                 const response = await fetch(`${WORKER_URL}?action=get_all`);
-                if (!response.ok) throw new Error("取得失敗");
+                if (!response.ok) throw new Error("データの取得に失敗しました");
+                
                 allCustomers = await response.json();
-                renderList(allCustomers);
+                
+                calculateKPIs(allCustomers);
+                updateDayFilterUI();
+                applyCurrentDayFilter();
             } catch (error) {
                 console.error(error);
+                listContainer.innerHTML = `<div class="p-8 text-center text-red-500 text-sm">データの取得に失敗しました。</div>`;
             }
         }
 
+        // 2. 一覧リストの描画
         function renderList(customers) {
             const container = document.getElementById("customer-list");
             if (customers.length === 0) {
-                container.innerHTML = '<div class="p-8 text-center text-stone-400">データなし</div>';
+                container.innerHTML = '<div class="p-8 text-center text-stone-400 text-sm">該当するデータはありません。</div>';
                 return;
             }
-            container.innerHTML = customers.map(c => `
-                <div onclick="selectCustomer('${c.id}')" class="p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer border-b ${selectedCustomerId === c.id ? 'bg-emerald-50' : ''}">
-                    <div>
-                        <p class="font-bold text-stone-900">${c.name || '匿名'} 様</p>
-                        <p class="text-xs text-stone-500">${c.visit_date || '日時未定'}</p>
+
+            customers.sort((a, b) => new Date(b.visit_date || 0) - new Date(a.visit_date || 0));
+            const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+            
+            container.innerHTML = customers.map(c => {
+                const isSelected = String(selectedCustomerId) === String(c.id);
+                const dateObj = c.visit_date ? new Date(c.visit_date) : null;
+                let formattedDate = '未定';
+                if (dateObj) {
+                    const month = dateObj.getMonth() + 1;
+                    const date = dateObj.getDate();
+                    const day = weekdays[dateObj.getDay()];
+                    const hours = String(dateObj.getHours()).padStart(2, '0');
+                    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+                    formattedDate = `${month}/${date}(${day}) ${hours}:${minutes}`;
+                }
+                const goals = Array.isArray(c.primary_goal) ? c.primary_goal.join(', ') : String(c.primary_goal || '未回答');
+                const hasMemo = c.owner_memo && c.owner_memo.trim().length > 0;
+
+                return `
+                    <div onclick="selectCustomer('${c.id}')" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
+                        <div class="flex items-start space-x-3 min-w-0">
+                            <div class="bg-stone-100 text-stone-600 font-bold px-1.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs tracking-tight whitespace-nowrap text-center mt-0.5 min-w-[75px] sm:min-w-[85px]">
+                                ${formattedDate}
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-bold text-stone-900 text-sm flex items-center gap-1.5 flex-wrap">
+                                    <span>${c.name || '匿名ユーザー'}</span> 
+                                    ${hasMemo ? '<span class="text-[9px] sm:text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-sm font-normal">メモあり</span>' : '<span class="text-[9px] sm:text-[10px] bg-stone-100 text-stone-400 px-1.5 py-0.5 rounded-sm font-normal">未記入</span>'}
+                                </p>
+                                <p class="text-xs text-stone-500 truncate mt-1">悩: ${goals}</p>
+                            </div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 flex-shrink-0"></i>
                     </div>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300"></i>
-                </div>
-            `).join('');
+                `;
+            }).join('');
             lucide.createIcons();
         }
 
+        // 3. KPI・フィルター機能の復活
+        function calculateKPIs(customers) {
+            document.getElementById("kpi-total").innerText = `${customers.length} 件`;
+            const todayStr = getLocalDateString(0);
+            const tomorrowStr = getLocalDateString(1);
+            
+            const todayCount = customers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr)).length;
+            const tomorrowCount = customers.filter(c => c.visit_date && c.visit_date.startsWith(tomorrowStr)).length;
+
+            if (currentDayFilter === 'today') {
+                document.getElementById("kpi-day-count").innerText = `${todayCount} 件`;
+            } else if (currentDayFilter === 'tomorrow') {
+                document.getElementById("kpi-day-count").innerText = `${tomorrowCount} 件`;
+            } else {
+                document.getElementById("kpi-day-count").innerText = `全 ${customers.length} 件`;
+            }
+
+            const pendingCount = customers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0).length;
+            document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
+        }
+
+        function getLocalDateString(offset) {
+            const d = new Date();
+            d.setDate(d.getDate() + offset);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function shiftDayFilter(direction) {
+            const filters = ['today', 'tomorrow', 'all'];
+            let idx = filters.indexOf(currentDayFilter);
+            idx = (idx + direction + filters.length) % filters.length;
+            currentDayFilter = filters[idx];
+            updateDayFilterUI();
+            applyCurrentDayFilter();
+        }
+
+        function updateDayFilterUI() {
+            const title = document.getElementById("day-filter-title");
+            const iconContainer = document.getElementById("day-filter-icon");
+            if (currentDayFilter === 'today') {
+                title.innerText = "本日予約";
+                iconContainer.className = "p-2 bg-amber-50 rounded-lg text-amber-700 mb-1 sm:mb-0";
+            } else if (currentDayFilter === 'tomorrow') {
+                title.innerText = "明日予約";
+                iconContainer.className = "p-2 bg-blue-50 rounded-lg text-blue-700 mb-1 sm:mb-0";
+            } else {
+                title.innerText = "全日程表示";
+                iconContainer.className = "p-2 bg-stone-100 rounded-lg text-stone-600 mb-1 sm:mb-0";
+            }
+            calculateKPIs(allCustomers);
+        }
+
+        function applyCurrentDayFilter() {
+            const searchInput = document.getElementById("search-input").value.trim();
+            const todayStr = getLocalDateString(0);
+            const tomorrowStr = getLocalDateString(1);
+
+            if (currentDayFilter === 'today') {
+                document.getElementById("list-title").innerText = "本日のご希望・受付一覧";
+                filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr));
+            } else if (currentDayFilter === 'tomorrow') {
+                document.getElementById("list-title").innerText = "明日のご希望・受付一覧";
+                filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(tomorrowStr));
+            } else {
+                document.getElementById("list-title").innerText = "ご希望日時・受付一覧（全日程）";
+                filteredCustomers = [...allCustomers];
+            }
+
+            if (searchInput !== "") {
+                const keyword = searchInput.toLowerCase();
+                filteredCustomers = filteredCustomers.filter(c => 
+                    (c.name && c.name.toLowerCase().includes(keyword)) || 
+                    (c.phone && c.phone.includes(keyword))
+                );
+            }
+            renderList(filteredCustomers);
+        }
+
+        function filterByDay(type) {
+            currentDayFilter = type;
+            document.getElementById("search-input").value = "";
+            document.getElementById("search-clear-btn").classList.add("hidden");
+            updateDayFilterUI();
+            applyCurrentDayFilter();
+        }
+
+        function filterPending() {
+            document.getElementById("list-title").innerText = "メモ未記入のカルテ一覧";
+            document.getElementById("search-input").value = "";
+            document.getElementById("search-clear-btn").classList.add("hidden");
+            filteredCustomers = allCustomers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0);
+            renderList(filteredCustomers);
+        }
+
+        function handleSearch() {
+            const query = document.getElementById("search-input").value.trim();
+            const clearBtn = document.getElementById("search-clear-btn");
+            if (query.length > 0) {
+                clearBtn.classList.remove("hidden");
+            } else {
+                clearBtn.classList.add("hidden");
+            }
+            applyCurrentDayFilter();
+        }
+
+        function clearSearch() {
+            document.getElementById("search-input").value = "";
+            document.getElementById("search-clear-btn").classList.add("hidden");
+            applyCurrentDayFilter();
+        }
+
+        // 4. カルテの表示とメモ保存（修正版）
         function selectCustomer(id) {
             selectedCustomerId = id;
-            const customer = allCustomers.find(c => c.id === id);
+            renderList(filteredCustomers);
+            const customer = allCustomers.find(c => String(c.id) === String(id));
             if (!customer) return;
 
+            document.getElementById("carte-panel").classList.remove("hidden");
             document.getElementById("carte-empty").classList.add("hidden");
             document.getElementById("carte-content").classList.remove("hidden");
-            document.getElementById("carte-panel").classList.remove("hidden");
 
             document.getElementById("carte-name").innerText = `${customer.name || '未入力'} 様`;
             document.getElementById("carte-phone").innerText = customer.phone || '未入力';
+            document.getElementById("carte-date").innerText = customer.visit_date || '日時データなし';
+            document.getElementById("carte-experience").innerText = customer.yoga_experience || '未回答';
+            document.getElementById("carte-pace").innerText = customer.target_pace || '未回答';
             document.getElementById("carte-memo").value = customer.owner_memo || '';
-            renderList(allCustomers);
+            document.getElementById("carte-avatar").innerText = (customer.name || '匿').charAt(0);
+
+            const badgeContainer = document.getElementById("carte-goals");
+            const goalsArray = Array.isArray(customer.primary_goal) ? customer.primary_goal : [customer.primary_goal || '未回答'];
+            badgeContainer.innerHTML = goalsArray.map(g => `<span class="bg-white border border-stone-200 text-stone-700 text-[11px] font-medium px-2 py-0.5 rounded-full">${g}</span>`).join('');
+            
+            lucide.createIcons();
         }
 
         function closeCarte() {
             document.getElementById("carte-panel").classList.add("hidden");
             selectedCustomerId = null;
-            renderList(allCustomers);
+            renderList(filteredCustomers);
         }
 
         async function saveOwnerMemo() {
@@ -202,10 +446,10 @@
             const customerName = document.getElementById("carte-name").innerText.replace(' 様', '');
 
             btn.disabled = true;
-            btn.innerText = "保存中...";
+            btn.innerText = "カルテを保存中...";
 
             try {
-                // PUTではなく、エラーの起きにくい POST(?action=update) に変更
+                // POST に変更しエラーを回避
                 const response = await fetch(`${WORKER_URL}?action=update`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -217,13 +461,14 @@
                 });
 
                 if (response.ok) {
-                    alert("カルテメモを保存しました！");
-                    fetchCustomers();
+                    alert("カルテの指導メモを保存しました！");
+                    if (window.innerWidth < 1024) closeCarte();
+                    fetchCustomers(); // リストを最新化
                 } else {
                     alert("保存エラー: " + await response.text());
                 }
             } catch (error) {
-                alert("通信エラー");
+                alert("通信エラーが発生しました。");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "カルテメモを保存する";
@@ -231,7 +476,7 @@
         }
 
         // =====================================
-        // 店舗設定関連 (新規追加)
+        // 5. 店舗設定関連
         // =====================================
         function generateTimeOptions() {
             const selects = [document.getElementById("open-time"), document.getElementById("close-time")];
@@ -246,17 +491,16 @@
 
         async function openSettingsModal() {
             document.getElementById("settings-modal").classList.remove("hidden");
-            // 現在の設定を読み込む
             try {
+                // 店舗設定を取得
                 const res = await fetch(`${WORKER_URL}?action=get_settings`);
                 const data = await res.json();
                 
                 if (data.open_time) document.getElementById("open-time").value = data.open_time;
                 if (data.close_time) document.getElementById("close-time").value = data.close_time;
                 
-                // 定休日のチェックボックス復元
                 const checkboxes = document.querySelectorAll('#holiday-checkboxes input[type="checkbox"]');
-                checkboxes.forEach(cb => cb.checked = false); // 一旦リセット
+                checkboxes.forEach(cb => cb.checked = false);
                 if (Array.isArray(data.holidays)) {
                     data.holidays.forEach(day => {
                         const cb = document.querySelector(`#holiday-checkboxes input[value="${day}"]`);
@@ -277,7 +521,6 @@
             const openTime = document.getElementById("open-time").value;
             const closeTime = document.getElementById("close-time").value;
             
-            // チェックされた曜日を取得して数値の配列にする
             const holidayCheckboxes = document.querySelectorAll('#holiday-checkboxes input[type="checkbox"]:checked');
             const holidays = Array.from(holidayCheckboxes).map(cb => parseInt(cb.value));
 
@@ -292,7 +535,7 @@
                 });
 
                 if (res.ok) {
-                    alert("店舗設定を保存しました！\n※予約フォームへ反映させる機能は次のステップで実装します。");
+                    alert("店舗設定を保存しました！");
                     closeSettingsModal();
                 } else {
                     alert("保存失敗: " + await res.text());
