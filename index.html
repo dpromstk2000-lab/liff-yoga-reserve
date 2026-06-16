@@ -136,17 +136,18 @@
     </main>
 
     <script>
+        // ★ご自身の情報に書き換えてください
         const LIFF_ID = "2010377734-4tHMhUx6";
         const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
         
         let userId = "";
         let isExisting = false;
+        let existingCustomerData = {};
 
         document.addEventListener("DOMContentLoaded", () => {
             const visitDayInput = document.getElementById("visit_day");
             const dayOfWeekDisplay = document.getElementById("dayOfWeekDisplay");
 
-            // 修正箇所③：本日以降 ＆ 3ヶ月先までの日付制限
             const today = new Date();
             const maxDate = new Date();
             maxDate.setMonth(today.getMonth() + 3);
@@ -161,7 +162,6 @@
             visitDayInput.setAttribute("min", formatDate(today));
             visitDayInput.setAttribute("max", formatDate(maxDate));
 
-            // 修正箇所①：曜日表示の自動化
             visitDayInput.addEventListener('change', function() {
                 if (this.value) {
                     const date = new Date(this.value);
@@ -172,7 +172,6 @@
                 }
             });
 
-            // LIFF初期化
             liff.init({ liffId: LIFF_ID })
                 .then(() => {
                     if (!liff.isLoggedIn()) {
@@ -186,13 +185,11 @@
                 })
                 .catch(err => {
                     console.error("LIFFの初期化失敗:", err);
-                    // LIFF外（PCブラウザ等）でのテスト用
                     userId = "test_user_" + Math.floor(Math.random() * 1000);
                     checkCustomerStatus(userId);
                 });
         });
 
-        // お客様が「新規」か「リピート」かを判定する関数
         async function checkCustomerStatus(lineId) {
             try {
                 const response = await fetch(`${WORKER_URL}?action=get_all`);
@@ -202,6 +199,7 @@
                     
                     if(found) {
                         isExisting = true;
+                        existingCustomerData = found;
                         document.getElementById("header-subtitle").innerText = "かんたん次回予約";
                         document.getElementById("repeat-customer-section").classList.remove("hidden");
                     } else {
@@ -218,7 +216,6 @@
             }
         }
 
-        // 送信ボタンが押されたときの処理
         async function submitForm() {
             const btn = document.getElementById("submitBtn");
             const visitDay = document.getElementById("visit_day").value;
@@ -229,29 +226,36 @@
                 return;
             }
 
+            let payload = {
+                line_user_id: userId,
+                visit_date: `${visitDay} ${visitTime}`
+            };
+
             if (!isExisting) {
                 const name = document.getElementById("name").value.trim();
                 if (!name) {
                     alert("お名前を入力してください。");
                     return;
                 }
+                const goals = [];
+                document.querySelectorAll('input[name="primary_goal"]:checked').forEach(cb => goals.push(cb.value));
+
+                payload.name = name;
+                payload.phone = document.getElementById("phone").value || "";
+                payload.yoga_experience = document.getElementById("yoga_experience").value || "";
+                payload.primary_goal = goals.length > 0 ? goals : ["特になし"];
+                payload.target_pace = document.getElementById("target_pace").value || "";
+            } else {
+                // リピート客の場合、前回のデータを引き継いで上書き保存する
+                payload.name = existingCustomerData.name;
+                payload.phone = existingCustomerData.phone;
+                payload.yoga_experience = existingCustomerData.yoga_experience;
+                payload.primary_goal = existingCustomerData.primary_goal;
+                payload.target_pace = existingCustomerData.target_pace;
             }
 
             btn.disabled = true;
             btn.innerText = "送信中...";
-
-            const goals = [];
-            document.querySelectorAll('input[name="primary_goal"]:checked').forEach(cb => goals.push(cb.value));
-
-            const payload = {
-                line_user_id: userId,
-                visit_date: `${visitDay} ${visitTime}`,
-                name: document.getElementById("name").value || "",
-                phone: document.getElementById("phone").value || "",
-                yoga_experience: document.getElementById("yoga_experience").value || "",
-                primary_goal: goals.length > 0 ? goals : ["特になし"],
-                target_pace: document.getElementById("target_pace").value || ""
-            };
 
             try {
                 const response = await fetch(WORKER_URL, {
