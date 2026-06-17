@@ -473,7 +473,7 @@ allCustomers = customers.map(customer => {
 
             try {
                 // POST に変更しエラーを回避
-                const response = await fetch(`${WORKER_URL}?action=update`, {
+                const response = await fetch(`${WORKER_URL}?action=update_memo`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
