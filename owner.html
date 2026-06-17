@@ -247,6 +247,8 @@ allCustomers = customers.map(customer => {
     const event = events.find(
         e => e.line_user_id === customer.line_id
     );
+    console.log(customer);
+　　　console.log(event);
 
     return {
         ...customer,
