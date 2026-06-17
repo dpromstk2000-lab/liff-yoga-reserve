@@ -38,7 +38,6 @@
         
         <div id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
             
-            <!-- Sランク②: 本日のフォロー対象自動アラートエリア -->
             <div id="follow-container" class="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-xs hidden transition-all">
                 <h3 class="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2.5 uppercase tracking-wider">
                     <i data-lucide="bell" class="w-4 h-4 text-amber-600 animate-bounce"></i> 本日のフォロー対象（要LINE連絡）
@@ -80,6 +79,32 @@
                 </div>
             </div>
 
+            <div class="bg-gradient-to-br from-stone-800 to-stone-900 text-white rounded-xl p-4 shadow-sm border border-stone-700 space-y-3">
+                <h3 class="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i> スタジオ成約率・経営分析KPI（リアルタイム）
+                </h3>
+                <div class="grid grid-cols-4 gap-2 text-center">
+                    <div class="bg-white/5 rounded-lg p-2 border border-white/5">
+                        <p class="text-[10px] text-stone-400 font-medium">予約数</p>
+                        <p class="text-base sm:text-lg font-bold text-stone-200 mt-0.5" id="kpi-funnel-reserve">- 名</p>
+                    </div>
+                    <div class="bg-white/5 rounded-lg p-2 border border-white/5 relative">
+                        <div class="absolute -left-1.5 top-1/2 -translate-y-1/2 text-stone-600 hidden sm:block"><i data-lucide="chevron-right" class="w-3 h-3"></i></div>
+                        <p class="text-[10px] text-stone-400 font-medium">来店数</p>
+                        <p class="text-base sm:text-lg font-bold text-amber-300 mt-0.5" id="kpi-funnel-visit">- 名</p>
+                    </div>
+                    <div class="bg-white/5 rounded-lg p-2 border border-white/5 relative">
+                        <div class="absolute -left-1.5 top-1/2 -translate-y-1/2 text-stone-600 hidden sm:block"><i data-lucide="chevron-right" class="w-3 h-3"></i></div>
+                        <p class="text-[10px] text-stone-400 font-medium">入会数</p>
+                        <p class="text-base sm:text-lg font-bold text-emerald-400 mt-0.5" id="kpi-funnel-join">- 名</p>
+                    </div>
+                    <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2">
+                        <p class="text-[10px] text-emerald-300 font-bold tracking-wider">入会率</p>
+                        <p class="text-base sm:text-xl font-black text-emerald-400 mt-0.5" id="kpi-funnel-rate">-%</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white rounded-xl shadow-xs border border-stone-200/60 overflow-hidden">
                 <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-100 space-y-3 bg-stone-50/50">
                     <div class="flex justify-between items-center">
@@ -96,13 +121,12 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
                             <i data-lucide="search" class="w-4 h-4"></i>
                         </div>
-                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="お客様のお名前・電話番号で検索..." class="w-full pl-9 pr-8 py-2 text-xs bg-white border border-stone-300 rounded-lg focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 font-sans">
+                        <input type="text" id="search-input" oninput="handleSearch()" placeholder="名前・電話番号で検索..." class="w-full pl-9 pr-8 py-2 text-xs bg-white border border-stone-300 rounded-lg focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 font-sans">
                         <button onclick="clearSearch()" id="search-clear-btn" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400 hover:text-stone-600 cursor-pointer">
                             <i data-lucide="x-circle" class="w-4 h-4"></i>
                         </button>
                     </div>
 
-                    <!-- 🌟 Aランク⑥: ステータス別の絞り込みクイックフィルターチップ -->
                     <div class="flex flex-wrap gap-1.5 pt-1" id="status-filter-container">
                         <button onclick="filterByStatus('all')" id="btn-status-all" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-emerald-700 bg-emerald-700 text-white transition shadow-2xs cursor-pointer">すべて</button>
                         <button onclick="filterByStatus('新規予約')" id="btn-status-new" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟡 新規予約</button>
@@ -113,8 +137,7 @@
                     </div>
                 </div>
                 
-                <!-- Sランク③: 日付グループ順スケジュールリスト -->
-                <div class="divide-y divide-stone-200 max-h-[55vh] lg:max-h-[52vh] overflow-y-auto custom-scroll" id="customer-list">
+                <div class="divide-y divide-stone-200 max-h-[45vh] lg:max-h-[42vh] overflow-y-auto custom-scroll" id="customer-list">
                     <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
                         <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
                         <span class="text-sm">データを取得中...</span>
@@ -124,7 +147,7 @@
         </div>
 
         <div id="carte-panel" class="hidden lg:block lg:col-span-1 fixed inset-0 z-50 lg:z-0 lg:static bg-stone-100 lg:bg-transparent p-4 lg:p-0">
-            <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full max-h-[90vh] lg:max-h-none flex flex-col justify-between overflow-y-auto custom-scroll">
+            <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full max-h-[95vh] lg:max-h-none flex flex-col justify-between overflow-y-auto custom-scroll">
                 
                 <div class="flex lg:hidden items-center justify-between border-b border-stone-100 pb-3 mb-4">
                     <button onclick="closeCarte()" class="flex items-center gap-1 text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg cursor-pointer">
@@ -141,29 +164,31 @@
                     </div>
                 </div>
 
-                <div class="hidden flex-1 flex flex-col justify-between space-y-4 sm:space-y-5" id="carte-content">
-                    <div class="space-y-4 sm:space-y-5">
-                        <div class="flex items-center justify-between border-b border-stone-100 pb-4">
-                            <div class="flex items-center space-x-3 min-w-0">
-                                <div class="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-base flex-shrink-0" id="carte-avatar">ﾖ</div>
+                <div class="hidden flex-1 flex flex-col justify-between space-y-4" id="carte-content">
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between border-b border-stone-100 pb-3">
+                            <div class="flex items-center space-x-2.5 min-w-0">
+                                <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm flex-shrink-0" id="carte-avatar">ﾖ</div>
                                 <div class="min-w-0">
-                                    <h3 class="text-base font-bold text-stone-900 truncate" id="carte-name">-</h3>
-                                    <p class="text-xs text-stone-400 flex items-center gap-1 mt-0.5"><i data-lucide="phone" class="w-3 h-3"></i> <span id="carte-phone">-</span></p>
+                                    <h3 class="text-sm font-bold text-stone-900 truncate" id="carte-name">-</h3>
+                                    <p class="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5"><i data-lucide="phone" class="w-3 h-3"></i> <span id="carte-phone">-</span></p>
                                 </div>
                             </div>
                             
-                            <!-- 🌟 Aランク⑦: ワンクリックLINE連携（チャット・IDコピー） -->
                             <div class="flex items-center space-x-1 flex-shrink-0">
-                                <button onclick="openLineChat()" class="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition cursor-pointer" title="LINE公式のチャット画面を開く">
-                                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                                <button onclick="copyThankYouMessage()" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg transition cursor-pointer text-[11px] font-bold flex items-center gap-1" title="体験レッスンお礼メッセージをコピー">
+                                    <i data-lucide="send" class="w-3.5 h-3.5 text-amber-600"></i> お礼LINE作成
                                 </button>
-                                <button onclick="copyLineId()" class="p-2 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg transition cursor-pointer" title="LINEユーザーIDをコピー（個別検索用）">
-                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                <button onclick="copyLineId()" class="p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg transition cursor-pointer" title="LINEユーザーIDをコピー（検索用）">
+                                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                                </button>
+                                <button onclick="openLineChat()" class="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition cursor-pointer" title="LINE Official Account Managerを開く">
+                                    <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <div class="bg-emerald-50/60 border border-emerald-100/80 p-2.5 rounded-lg flex items-center space-x-3">
+                        <div class="bg-emerald-50/60 border border-emerald-100/80 p-2 rounded-lg flex items-center space-x-3">
                             <i data-lucide="clock" class="w-4 h-4 text-emerald-700 flex-shrink-0"></i>
                             <div>
                                 <p class="text-[9px] uppercase font-bold tracking-wider text-emerald-800 opacity-60">ご希望レッスン日時</p>
@@ -171,9 +196,9 @@
                             </div>
                         </div>
 
-                        <div class="space-y-2">
-                            <h4 class="text-xs font-bold uppercase tracking-wider text-stone-400">事前カウンセリング回答</h4>
-                            <div class="space-y-1.5">
+                        <div class="space-y-1.5">
+                            <h4 class="text-[11px] font-bold uppercase tracking-wider text-stone-400">事前カウンセリング回答</h4>
+                            <div class="space-y-1">
                                 <div class="bg-stone-50 p-2 rounded-lg border border-stone-200/40">
                                     <p class="text-[10px] text-stone-500 font-medium">お身体のお悩み・目的</p>
                                     <div class="flex flex-wrap gap-1 mt-1" id="carte-goals"></div>
@@ -191,10 +216,9 @@
                             </div>
                         </div>
 
-                        <!-- Sランク①: ステータス欄 -->
-                        <div class="space-y-1.5 pt-1.5 border-t border-stone-100">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">ステータス</label>
-                            <select id="carte-status" class="w-full p-2.5 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-bold">
+                        <div class="space-y-1 pt-1 border-t border-stone-100">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400">ステータス</label>
+                            <select id="carte-status" class="w-full p-2 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-bold">
                                 <option value="新規予約">🟡 新規予約</option>
                                 <option value="来店済">🔵 来店済</option>
                                 <option value="入会">🟢 入会</option>
@@ -203,30 +227,26 @@
                             </select>
                         </div>
 
-                        <!-- Sランク②: 次回フォロー予定日の入力欄 -->
-                        <div class="space-y-1.5 pt-1.5 border-t border-stone-100">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">次回フォロー予定日</label>
-                            <input type="date" id="carte-next-date" class="w-full p-2.5 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30">
+                        <div class="space-y-1 pt-1 border-t border-stone-100">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400">次回フォロー予定日</label>
+                            <input type="date" id="carte-next-date" class="w-full p-2 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30">
                         </div>
 
-                        <!-- 🌟 Aランク⑤: 自動追記式メモ（今回の入力エリア） -->
-                        <div class="space-y-1.5 pt-1.5 border-t border-stone-100">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">本日の進捗・レッスンメモ（履歴に自動追加）</label>
-                            <textarea id="carte-memo" rows="2" placeholder="（例）ハーフプランク時の腰の反りを修正。次回は呼吸法を多めに。" class="w-full p-2.5 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
+                        <div class="space-y-1 pt-1 border-t border-stone-100">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400">本日のレッスンメモ（履歴に自動追加）</label>
+                            <textarea id="carte-memo" rows="2" placeholder="（例）ハーフプランク時の腰の反りを修正。次回は呼吸法を多めに。" class="w-full p-2 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
                         </div>
 
-                        <!-- 🌟 Aランク④: 過去の経緯が積み重なるタイムライン履歴表示エリア -->
-                        <div class="space-y-2 pt-2 border-t border-stone-100">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1">
+                        <div class="space-y-1.5 pt-1 border-t border-stone-100">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1">
                                 <i data-lucide="history" class="w-3.5 h-3.5 text-stone-500"></i> 過去の対応・カルテ履歴
                             </label>
-                            <div id="carte-history" class="border border-stone-200/60 rounded-xl p-3 bg-stone-50/40 space-y-3 max-h-[18vh] overflow-y-auto custom-scroll text-xs">
-                                <!-- JavaScriptで過去の対応を新しい順にレンダリング -->
-                            </div>
+                            <div id="carte-history" class="border border-stone-200/60 rounded-xl p-2.5 bg-stone-50/40 space-y-2.5 max-h-[14vh] overflow-y-auto custom-scroll text-xs">
+                                </div>
                         </div>
                     </div>
 
-                    <div class="pt-2 border-t border-stone-100">
+                    <div class="pt-1.5 border-t border-stone-100">
                         <button id="save-memo-btn" onclick="saveOwnerMemo()" class="w-full bg-emerald-700 text-white p-2.5 rounded-xl font-bold shadow-md hover:bg-emerald-800 transition flex items-center justify-center gap-2 text-xs cursor-pointer">
                             <i data-lucide="check-square" class="w-4 h-4"></i> カルテ内容を保存する
                         </button>
@@ -237,7 +257,6 @@
         </div>
     </main>
 
-    <!-- 店舗設定モーダル -->
     <div id="settings-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h2 class="text-lg font-bold text-stone-800 border-b pb-3 mb-4 flex items-center gap-2">
@@ -276,10 +295,10 @@
         const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev';
         let allCustomers = [];
         let filteredCustomers = [];
-        let rawEvents = []; // 🌟 Aランク④用: 生の全イベントデータを保持
+        let rawEvents = []; 
         let selectedCustomerId = null;
-        let currentDayFilter = 'today'; // 'all', 'today', 'tomorrow'
-        let currentStatusFilter = 'all'; // 🌟 Aランク⑥用: ステータスフィルター用
+        let currentDayFilter = 'today'; 
+        let currentStatusFilter = 'all'; 
 
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
@@ -295,7 +314,7 @@
                 
                 const result = await response.json();
                 const customers = result.customers || [];
-                rawEvents = result.events || []; // 🌟 履歴用に全体を退避
+                rawEvents = result.events || []; 
 
                 allCustomers = customers.map(customer => {
                     const userEvents = rawEvents.filter(e => e.line_user_id === customer.line_id);
@@ -402,6 +421,7 @@
             lucide.createIcons();
         }
 
+        // 🌟 統計KPI ＆ 成約ファネルのリアルタイム自動集計ロジック（Bランク⑧）
         function calculateKPIs(customers) {
             document.getElementById("kpi-total").innerText = `${customers.length} 件`;
             const todayStr = getLocalDateString(0);
@@ -421,6 +441,22 @@
             const pendingCount = customers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0).length;
             document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
 
+            // --- Bランク⑧: 成約ファネル計算 ---
+            // 予約数: キャンセルを含む全蓄積データ（分母）
+            const reserveTotal = customers.length;
+            // 来店数: 一度でも「来店済」「入会」「継続中」になった人
+            const visitTotal = customers.filter(c => ['来店済', '入会', '継続中'].includes(c.status)).length;
+            // 入会数: 「入会」または「継続中」の人
+            const joinTotal = customers.filter(c => ['入会', '継続中'].includes(c.status)).length;
+            // 入会率: (入会数 ÷ 来店数) × 100
+            const joinRate = visitTotal > 0 ? Math.round((joinTotal / visitTotal) * 100) : 0;
+
+            document.getElementById("kpi-funnel-reserve").innerText = `${reserveTotal} 名`;
+            document.getElementById("kpi-funnel-visit").innerText = `${visitTotal} 名`;
+            document.getElementById("kpi-funnel-join").innerText = `${joinTotal} 名`;
+            document.getElementById("kpi-funnel-rate").innerText = `${joinRate} %`;
+
+            // フォロー対象アラート
             const followCustomers = customers.filter(c => c.next_guidance_date === todayStr);
             const followContainer = document.getElementById("follow-container");
             const followList = document.getElementById("follow-list");
@@ -473,15 +509,12 @@
             calculateKPIs(allCustomers);
         }
 
-        // 🌟 Aランク⑥: ステータスフィルター切替ロジック
         function filterByStatus(status) {
             currentStatusFilter = status;
-            
             const btnMap = {
                 'all': 'btn-status-all', '新規予約': 'btn-status-new', '来店済': 'btn-status-visited',
                 '入会': 'btn-status-joined', '継続中': 'btn-status-active', 'キャンセル': 'btn-status-cancel'
             };
-            
             Object.keys(btnMap).forEach(key => {
                 const btn = document.getElementById(btnMap[key]);
                 if (key === status) {
@@ -490,17 +523,14 @@
                     btn.className = "text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer";
                 }
             });
-            
             applyCurrentFilters();
         }
 
-        // 🌟 統合された掛け合わせ検索フィルター
         function applyCurrentFilters() {
             const searchInput = document.getElementById("search-input").value.trim();
             const todayStr = getLocalDateString(0);
             const tomorrowStr = getLocalDateString(1);
 
-            // 1. 日付フィルター
             if (currentDayFilter === 'today') {
                 document.getElementById("list-title").innerText = "本日のスケジュール一覧";
                 filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr));
@@ -512,12 +542,10 @@
                 filteredCustomers = [...allCustomers];
             }
 
-            // 2. ステータスフィルターの掛け合わせ
             if (currentStatusFilter !== 'all') {
                 filteredCustomers = filteredCustomers.filter(c => c.status === currentStatusFilter);
             }
 
-            // 3. キーワード検索の掛け合わせ
             if (searchInput !== "") {
                 const keyword = searchInput.toLowerCase();
                 filteredCustomers = filteredCustomers.filter(c => 
@@ -558,7 +586,6 @@
             applyCurrentFilters();
         }
 
-        // 3. カルテ展開と履歴タイムラインの生成
         function selectCustomer(id) {
             selectedCustomerId = id;
             renderList(filteredCustomers);
@@ -575,7 +602,6 @@
             document.getElementById("carte-experience").innerText = customer.yoga_experience || '未回答';
             document.getElementById("carte-pace").innerText = customer.target_pace || '未回答';
             
-            // 🌟 メモ入力欄は「追記用」として毎回空にする仕様に変更（前回の内容は履歴に残るため）
             document.getElementById("carte-memo").value = '';
             document.getElementById("carte-status").value = customer.status || "新規予約";
             document.getElementById("carte-next-date").value = customer.next_guidance_date || '';
@@ -585,7 +611,6 @@
             const goalsArray = Array.isArray(customer.primary_goal) ? customer.primary_goal : [customer.primary_goal || '未回答'];
             badgeContainer.innerHTML = goalsArray.map(g => `<span class="bg-white border border-stone-200 text-stone-700 text-[11px] font-medium px-2 py-0.5 rounded-full">${g}</span>`).join('');
             
-            // 🌟 Aランク④: 過去の履歴（タイムライン）を生成
             renderHistoryTimeline(customer.line_id);
 
             if (window.innerWidth < 1024) {
@@ -594,7 +619,6 @@
             lucide.createIcons();
         }
 
-        // 🌟 Aランク④タイムライン表示ロジック
         function renderHistoryTimeline(lineId) {
             const historyContainer = document.getElementById("carte-history");
             const userEvents = rawEvents.filter(e => e.line_user_id === lineId);
@@ -604,7 +628,6 @@
                 return;
             }
 
-            // 新しいイベント（created_at）順にソート
             userEvents.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
             let html = `<div class="relative border-l-2 border-stone-200 ml-2 pl-4 space-y-3">`;
@@ -642,10 +665,28 @@
             historyContainer.innerHTML = html;
         }
 
-        // 🌟 Aランク⑦: LINE連携関数群
+        // 🌟 Bランク⑦: お礼LINE用定型文のワンクリック自動作成・コピーロジック
+        function copyThankYouMessage() {
+            if (!selectedCustomerId) return;
+            const customer = allCustomers.find(c => String(c.id) === String(selectedCustomerId));
+            if (!customer) return;
+
+            const name = customer.name || "お客様";
+            
+            // 🌟 現場で即戦力になる差し込み型定型文
+            const template = `${name}様\n\n先日は体験レッスンにご参加いただきありがとうございました。\n\nその後、お身体の調子はいかがでしょうか？\nまたいつでもお待ちしておりますので、気になることがあればお気軽にこのLINEでお声がけくださいね。`;
+
+            navigator.clipboard.writeText(template).then(() => {
+                alert(`${name}様へのお礼メッセージをコピーしました！\nLINE公式アカウント画面に切り替わったら、そのままチャット欄に貼り付けて送信してください。`);
+                openLineChat(); // メッセージコピー後に自動でLINE公式管理画面を開く親切動線
+            }).catch(err => {
+                console.error("コピー失敗", err);
+                alert("メッセージのコピーに失敗しました。");
+            });
+        }
+
         function openLineChat() {
-            // LINE公式アカウントの公式チャット管理画面トップへ遷移（別タブ）
-            window.open("https://manager.line.biz/", "_blankk");
+            window.open("https://manager.line.biz/", "_blank");
         }
 
         function copyLineId() {
@@ -654,10 +695,9 @@
             if (!customer || !customer.line_id) return;
 
             navigator.clipboard.writeText(customer.line_id).then(() => {
-                alert("LINEユーザーIDをクリップボードにコピーしました！\nLINEチャット画面の検索窓に貼り付けて顧客を特定できます。");
+                alert("LINEユーザーIDをクリップボードにコピーしました！\nLINE管理画面のチャット検索に貼り付けてください。");
             }).catch(err => {
-                console.error("コピー失敗", err);
-                alert("コピーに失敗しました。ID: " + customer.line_id);
+                alert("コピー失敗。ID: " + customer.line_id);
             });
         }
 
@@ -688,7 +728,7 @@
                     body: JSON.stringify({
                         lineUserId: selectedCustomer.line_id,
                         customerName: customerName,
-                        memoContent: memoValue, // 空欄でもステータス変更ログとして保存可能
+                        memoContent: memoValue, 
                         status: statusValue,
                         nextGuidanceDate: nextDateValue || null
                     })
@@ -696,7 +736,7 @@
 
                 if (response.ok) {
                     alert("カルテの履歴を更新しました！");
-                    fetchCustomers(); // 全データを再取得してリフレッシュ
+                    fetchCustomers(); 
                 } else {
                     alert("保存エラー: " + await response.text());
                 }
