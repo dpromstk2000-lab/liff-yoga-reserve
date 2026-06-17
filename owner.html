@@ -521,7 +521,8 @@ console.log(JSON.stringify(customerEvents, null, 2));
                 const response = await fetch(`${WORKER_URL}?action=update_memo`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                   
+                   const memoValue =
+    　　　　　　　　　document.getElementById("carte-memo").value;
                     const statusValue =
     　　　　　　　　　　document.getElementById("carte-status").value;
                     body: JSON.stringify({
