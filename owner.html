@@ -38,6 +38,14 @@
         
         <div id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
             
+            <div id="follow-container" class="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-xs hidden transition-all">
+                <h3 class="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2.5 uppercase tracking-wider">
+                    <i data-lucide="bell" class="w-4 h-4 text-amber-600 animate-bounce"></i> 🔔 本日のフォロー対象（要LINE連絡）
+                </h3>
+                <div id="follow-list" class="flex flex-wrap gap-2">
+                    </div>
+            </div>
+
             <div class="grid grid-cols-3 gap-2 sm:gap-4">
                 <div onclick="filterByDay('all')" class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left cursor-pointer hover:border-emerald-500 transition group">
                     <div class="p-2 sm:p-3 bg-emerald-50 rounded-lg text-emerald-700 mb-1 sm:mb-0 group-hover:bg-emerald-100"><i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i></div>
@@ -76,8 +84,8 @@
                 <div class="px-4 py-3 sm:px-6 sm:py-4 border-b border-stone-100 space-y-3 bg-stone-50/50">
                     <div class="flex justify-between items-center">
                         <h2 class="font-bold text-sm sm:text-base text-stone-800 flex items-center gap-2">
-                            <i data-lucide="list-todo" class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700"></i>
-                            <span id="list-title">ご希望日時・受付一覧</span>
+                            <i data-lucide="calendar-days" class="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700"></i>
+                            <span id="list-title">本日のスケジュール一覧</span>
                         </h2>
                         <button onclick="fetchCustomers()" class="text-[11px] sm:text-xs bg-white border border-stone-300 hover:bg-stone-50 text-stone-600 px-2.5 py-1.5 rounded-lg font-medium shadow-2xs flex items-center gap-1 transition cursor-pointer">
                             <i data-lucide="refresh-cw" class="w-3 h-3"></i> 更新
@@ -95,7 +103,7 @@
                     </div>
                 </div>
                 
-                <div class="divide-y divide-stone-100 max-h-[65vh] lg:max-h-[60vh] overflow-y-auto custom-scroll" id="customer-list">
+                <div class="divide-y divide-stone-200 max-h-[65vh] lg:max-h-[60vh] overflow-y-auto custom-scroll" id="customer-list">
                     <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
                         <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
                         <span class="text-sm">データを取得中...</span>
@@ -118,7 +126,7 @@
                     <div class="p-4 bg-stone-50 rounded-full text-stone-300"><i data-lucide="user-search" class="w-10 h-10"></i></div>
                     <div>
                         <p class="font-semibold text-stone-600">顧客カルテ未選択</p>
-                        <p class="text-xs mt-1 max-w-[200px] mx-auto">左の一覧からお客様を選択すると、詳細が表示されます。</p>
+                        <p class="text-xs mt-1 max-w-[200px] mx-auto">左のスケジュールからお客様を選択すると、カルテ詳細が表示されます。</p>
                     </div>
                 </div>
 
@@ -159,31 +167,32 @@
                                 </div>
                             </div>
                         </div>
-　　　　　　　　　　　　　　<div class="space-y-2 pt-2 border-t border-stone-100">
-    <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">
-        ステータス
-    </label>
 
-    <select
-        id="carte-status"
-        class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30"
-    >
-        <option value="新規予約">新規予約</option>
-        <option value="来店済">来店済</option>
-        <option value="入会">入会</option>
-        <option value="継続中">継続中</option>
-        <option value="キャンセル">キャンセル</option>
-    </select>
-</div>
+                        <div class="space-y-2 pt-2 border-t border-stone-100">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">ステータス</label>
+                            <select id="carte-status" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-bold">
+                                <option value="新規予約">🟡 新規予約</option>
+                                <option value="来店済">🔵 来店済</option>
+                                <option value="入会">🟢 入会</option>
+                                <option value="継続中">🟣 継続中</option>
+                                <option value="キャンセル">🔴 キャンセル</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-2 pt-2 border-t border-stone-100">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">次回フォロー予定日</label>
+                            <input type="date" id="carte-next-date" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30">
+                        </div>
+
                         <div class="space-y-2 pt-2 border-t border-stone-100">
                             <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">当日指導・レッスンメモ</label>
-                            <textarea id="carte-memo" rows="4" placeholder="（例）ハムストリングスが硬い。呼吸が浅くなりがちなので、リラックス系を中心に構成。" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
+                            <textarea id="carte-memo" rows="3" placeholder="（例）ハムストリングスが硬い。呼吸が浅くなりがちなので、リラックス系を中心に構成。" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
                         </div>
                     </div>
 
                     <div class="pt-4 border-t border-stone-100">
                         <button id="save-memo-btn" onclick="saveOwnerMemo()" class="w-full bg-emerald-700 text-white p-3 rounded-xl font-bold shadow-md hover:bg-emerald-800 transition flex items-center justify-center gap-2 text-sm cursor-pointer">
-                            <i data-lucide="check-square" class="w-4 h-4"></i> カルテメモを保存する
+                            <i data-lucide="check-square" class="w-4 h-4"></i> カルテ内容を保存する
                         </button>
                     </div>
                 </div>
@@ -197,7 +206,6 @@
             <h2 class="text-lg font-bold text-stone-800 border-b pb-3 mb-4 flex items-center gap-2">
                 <i data-lucide="store" class="text-emerald-700"></i> 店舗の設定
             </h2>
-            
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-bold text-stone-600 mb-2">営業時間</label>
@@ -207,7 +215,6 @@
                         <select id="close-time" class="p-2 border rounded-lg flex-1 focus:outline-none focus:ring-1 focus:ring-emerald-500"></select>
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-sm font-bold text-stone-600 mb-2">定休日</label>
                     <div class="grid grid-cols-4 gap-2 text-sm" id="holiday-checkboxes">
@@ -221,7 +228,6 @@
                     </div>
                 </div>
             </div>
-
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-stone-100">
                 <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-lg text-stone-500 hover:bg-stone-100 font-medium cursor-pointer transition">キャンセル</button>
                 <button onclick="saveSettings()" id="save-settings-btn" class="px-4 py-2 bg-emerald-700 text-white rounded-lg font-bold hover:bg-emerald-800 cursor-pointer transition">保存する</button>
@@ -239,62 +245,34 @@
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
             fetchCustomers();
-            generateTimeOptions(); // 店舗設定のプルダウン生成
+            generateTimeOptions();
         });
 
-        // 1. データの取得
+        // 1. データの同期・取得
         async function fetchCustomers() {
             const listContainer = document.getElementById("customer-list");
             try {
-               const response = await fetch(`${WORKER_URL}?action=get_customers`, 
-                );
+                const response = await fetch(`${WORKER_URL}?action=get_customers`);
                 if (!response.ok) throw new Error("データの取得に失敗しました");
                 
                 const result = await response.json();
+                const customers = result.customers || [];
+                const events = result.events || [];
 
-console.log(result);
+                allCustomers = customers.map(customer => {
+                    const event = events.find(e => e.line_user_id === customer.line_id && e.reservation_date);
+                    const latestMemo = events.filter(e => e.line_user_id === customer.line_id && e.memo).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                    const latestNextDate = events.filter(e => e.line_user_id === customer.line_id && e.next_guidance_date).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                    
+                    return {
+                        ...customer,
+                        visit_date: event ? `${event.reservation_date} ${event.reservation_time}` : null,
+                        owner_memo: latestMemo?.memo || "",
+                        status: latestMemo?.status || event?.status || "新規予約",
+                        next_guidance_date: latestNextDate?.next_guidance_date || null // 🌟 次回フォロー予定日の紐付け
+                    };
+                });
 
-const customers = result.customers || [];
-const events = result.events || [];
-
-allCustomers = customers.map(customer => {
-
-    const event = events.find(
-         e =>
-        e.line_user_id === customer.line_id &&
-        e.reservation_date
-);
-    const latestMemo = events
-    .filter(
-        e =>
-            e.line_user_id === customer.line_id &&
-            e.memo
-    )
-    .sort(
-        (a, b) =>
-            new Date(b.created_at) -
-            new Date(a.created_at)
-    )[0];
-    console.log(JSON.stringify(customer, null, 2));
-　　console.log(JSON.stringify(events, null, 2));
-
-    const customerEvents = events.filter(
-    e => e.line_user_id === customer.line_id
-);
-
-console.log(JSON.stringify(customerEvents, null, 2));
-
-    return {
-        ...customer,
-
-        visit_date: event
-            ? `${event.reservation_date} ${event.reservation_time}`
-            : null,
-
-        owner_memo: latestMemo?.memo || ""
-    };
-});
-                
                 calculateKPIs(allCustomers);
                 updateDayFilterUI();
                 applyCurrentDayFilter();
@@ -304,54 +282,98 @@ console.log(JSON.stringify(customerEvents, null, 2));
             }
         }
 
-        // 2. 一覧リストの描画
+        // 🌟 Sランク①: ステータスに応じた色分けバッジを生成する関数
+        function getStatusBadge(status) {
+            switch(status) {
+                case "入会":
+                    return `<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟢 入会</span>`;
+                case "来店済":
+                    return `<span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔵 来店済</span>`;
+                case "新規予約":
+                    return `<span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟡 新規予約</span>`;
+                case "継続中":
+                    return `<span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 継続中</span>`;
+                case "キャンセル":
+                    return `<span class="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔴 キャンセル</span>`;
+                default:
+                    return `<span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${status || '新規予約'}</span>`;
+            }
+        }
+
+        // 🌟 Sランク③: 日付グループ別のスケジュール帳形式で一覧を描画
         function renderList(customers) {
             const container = document.getElementById("customer-list");
             if (customers.length === 0) {
-                container.innerHTML = '<div class="p-8 text-center text-stone-400 text-sm">該当するデータはありません。</div>';
+                container.innerHTML = '<div class="p-8 text-center text-stone-400 text-sm">該当するスケジュールはありません。</div>';
                 return;
             }
 
-            customers.sort((a, b) => new Date(b.visit_date || 0) - new Date(a.visit_date || 0));
-            const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-            
-            container.innerHTML = customers.map(c => {
-                const isSelected = String(selectedCustomerId) === String(c.id);
-                const dateObj = c.visit_date ? new Date(c.visit_date) : null;
-                let formattedDate = '未定';
-                if (dateObj) {
-                    const month = dateObj.getMonth() + 1;
-                    const date = dateObj.getDate();
-                    const day = weekdays[dateObj.getDay()];
-                    const hours = String(dateObj.getHours()).padStart(2, '0');
-                    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-                    formattedDate = `${month}/${date}(${day}) ${hours}:${minutes}`;
-                }
-                const goals = Array.isArray(c.primary_goal) ? c.primary_goal.join(', ') : String(c.primary_goal || '未回答');
-                const hasMemo = c.owner_memo && c.owner_memo.trim().length > 0;
+            // 【ソート規則】日付は最新・未来が上（降順）、同じ日付の枠内では時間が朝から（昇順）
+            customers.sort((a, b) => {
+                if (!a.visit_date) return 1;
+                if (!b.visit_date) return -1;
+                const [dateA, timeA] = a.visit_date.split(' ');
+                const [dateB, timeB] = b.visit_date.split(' ');
+                if (dateA !== dateB) return dateB.localeCompare(dateA);
+                return timeA.localeCompare(timeB);
+            });
 
-                return `
+            const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+            let currentGroupDate = null;
+            let html = "";
+
+            customers.forEach(c => {
+                const isSelected = String(selectedCustomerId) === String(c.id);
+                let dateStr = "日時未定";
+                let timeStr = "時間未定";
+
+                if (c.visit_date) {
+                    const parts = c.visit_date.split(' ');
+                    dateStr = parts[0];
+                    timeStr = parts[1] ? parts[1].substring(0, 5) : "未定";
+                }
+
+                // 日付が変わったらグループヘッダーを挿入
+                if (dateStr !== currentGroupDate) {
+                    currentGroupDate = dateStr;
+                    let headerLabel = dateStr;
+                    if (dateStr !== "日時未定") {
+                        const d = new Date(dateStr);
+                        headerLabel = `${d.getMonth() + 1}月${d.getDate()}日(${weekdays[d.getDay()]})`;
+                    }
+                    html += `
+                        <div class="bg-stone-200/70 px-4 py-1.5 text-[11px] font-bold text-stone-600 sticky top-0 z-10 flex justify-between items-center shadow-2xs">
+                            <span>📅 ${headerLabel}</span>
+                        </div>
+                    `;
+                }
+
+                html += `
                     <div onclick="selectCustomer('${c.id}')" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
-                        <div class="flex items-start space-x-3 min-w-0">
-                            <div class="bg-stone-100 text-stone-600 font-bold px-1.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs tracking-tight whitespace-nowrap text-center mt-0.5 min-w-[75px] sm:min-w-[85px]">
-                                ${formattedDate}
+                        <div class="flex items-center space-x-4 min-w-0 flex-1">
+                            <div class="text-xs font-bold text-stone-600 tracking-tight whitespace-nowrap min-w-[50px] bg-stone-100 py-1 px-2 rounded text-center">
+                                ${timeStr}
                             </div>
-                            <div class="min-w-0">
-                                <p class="font-bold text-stone-900 text-sm flex items-center gap-1.5 flex-wrap">
-                                    <span>${c.name || '匿名ユーザー'}</span> 
-                                    ${hasMemo ? '<span class="text-[9px] sm:text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-sm font-normal">メモあり</span>' : '<span class="text-[9px] sm:text-[10px] bg-stone-100 text-stone-400 px-1.5 py-0.5 rounded-sm font-normal">未記入</span>'}
+                            <div class="min-w-0 flex-1">
+                                <p class="font-bold text-stone-900 text-sm truncate flex items-center gap-1.5">
+                                    <span>${c.name || '匿名ユーザー'}</span>
+                                    ${c.owner_memo && c.owner_memo.trim() ? '<span class="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="カルテメモあり"></span>' : ''}
                                 </p>
-                                <p class="text-xs text-stone-500 truncate mt-1">悩: ${goals}</p>
+                            </div>
+                            <div class="flex-shrink-0">
+                                ${getStatusBadge(c.status)}
                             </div>
                         </div>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 flex-shrink-0"></i>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 flex-shrink-0 ml-2"></i>
                     </div>
                 `;
-            }).join('');
+            });
+
+            container.innerHTML = html;
             lucide.createIcons();
         }
 
-        // 3. KPI・フィルター機能の復活
+        // 2. KPI集計 & 🌟 Sランク②: フォロー対象のアラート抽出
         function calculateKPIs(customers) {
             document.getElementById("kpi-total").innerText = `${customers.length} 件`;
             const todayStr = getLocalDateString(0);
@@ -370,6 +392,24 @@ console.log(JSON.stringify(customerEvents, null, 2));
 
             const pendingCount = customers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0).length;
             document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
+
+            // 🌟 【次回フォロー予定日が今日】のお客様を自動抽出
+            const followCustomers = customers.filter(c => c.next_guidance_date === todayStr);
+            const followContainer = document.getElementById("follow-container");
+            const followList = document.getElementById("follow-list");
+
+            if (followCustomers.length > 0) {
+                followContainer.classList.remove("hidden");
+                followList.innerHTML = followCustomers.map(c => `
+                    <button onclick="selectCustomer('${c.id}')" class="bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer">
+                        <span class="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
+                        <span>${c.name || '匿名'} 様</span>
+                    </button>
+                `).join('');
+            } else {
+                followContainer.classList.add("hidden");
+            }
+            lucide.createIcons();
         }
 
         function getLocalDateString(offset) {
@@ -412,13 +452,13 @@ console.log(JSON.stringify(customerEvents, null, 2));
             const tomorrowStr = getLocalDateString(1);
 
             if (currentDayFilter === 'today') {
-                document.getElementById("list-title").innerText = "本日のご希望・受付一覧";
+                document.getElementById("list-title").innerText = "本日のスケジュール一覧";
                 filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr));
             } else if (currentDayFilter === 'tomorrow') {
-                document.getElementById("list-title").innerText = "明日のご希望・受付一覧";
+                document.getElementById("list-title").innerText = "明日のスケジュール一覧";
                 filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(tomorrowStr));
             } else {
-                document.getElementById("list-title").innerText = "ご希望日時・受付一覧（全日程）";
+                document.getElementById("list-title").innerText = "スケジュール一覧（全日程表示）";
                 filteredCustomers = [...allCustomers];
             }
 
@@ -441,7 +481,7 @@ console.log(JSON.stringify(customerEvents, null, 2));
         }
 
         function filterPending() {
-            document.getElementById("list-title").innerText = "メモ未記入のカルテ一覧";
+            document.getElementById("list-title").innerText = "レッスンメモ未記入の一覧";
             document.getElementById("search-input").value = "";
             document.getElementById("search-clear-btn").classList.add("hidden");
             filteredCustomers = allCustomers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0);
@@ -465,7 +505,7 @@ console.log(JSON.stringify(customerEvents, null, 2));
             applyCurrentDayFilter();
         }
 
-        // 4. カルテの表示とメモ保存（修正版）
+        // 3. カルテ展開とデータロード
         function selectCustomer(id) {
             selectedCustomerId = id;
             renderList(filteredCustomers);
@@ -481,15 +521,21 @@ console.log(JSON.stringify(customerEvents, null, 2));
             document.getElementById("carte-date").innerText = customer.visit_date || '日時データなし';
             document.getElementById("carte-experience").innerText = customer.yoga_experience || '未回答';
             document.getElementById("carte-pace").innerText = customer.target_pace || '未回答';
+            
             document.getElementById("carte-memo").value = customer.owner_memo || '';
-            document.getElementById("carte-status").value =
-   　　　　　 customer.status || "新規予約";
+            document.getElementById("carte-status").value = customer.status || "新規予約";
+            document.getElementById("carte-next-date").value = customer.next_guidance_date || ''; // 🌟 画面へセット
+            
             document.getElementById("carte-avatar").innerText = (customer.name || '匿').charAt(0);
 
             const badgeContainer = document.getElementById("carte-goals");
             const goalsArray = Array.isArray(customer.primary_goal) ? customer.primary_goal : [customer.primary_goal || '未回答'];
             badgeContainer.innerHTML = goalsArray.map(g => `<span class="bg-white border border-stone-200 text-stone-700 text-[11px] font-medium px-2 py-0.5 rounded-full">${g}</span>`).join('');
             
+            // モバイルスクロール対策
+            if (window.innerWidth < 1024) {
+                document.getElementById("carte-panel").scrollIntoView({ behavior: 'smooth' });
+            }
             lucide.createIcons();
         }
 
@@ -499,43 +545,38 @@ console.log(JSON.stringify(customerEvents, null, 2));
             renderList(filteredCustomers);
         }
 
+        // 4. カルテ内容（メモ・ステータス・次回フォロー日）の保存
         async function saveOwnerMemo() {
             if (!selectedCustomerId) return;
-            const selectedCustomer =
-    allCustomers.find(
-        c => String(c.id) === String(selectedCustomerId)
-    );
-
-            alert(JSON.stringify(selectedCustomer, null, 2));
+            const selectedCustomer = allCustomers.find(c => String(c.id) === String(selectedCustomerId));
             
             const btn = document.getElementById("save-memo-btn");
-            const memoValue = document.getElementById("carte-memo").value;
-            // 名前の「 様」を消して元の名前だけ取得
             const customerName = document.getElementById("carte-name").innerText.replace(' 様', '');
+            
+            const memoValue = document.getElementById("carte-memo").value;
+            const statusValue = document.getElementById("carte-status").value;
+            const nextDateValue = document.getElementById("carte-next-date").value; // 🌟 入力値の取得
 
             btn.disabled = true;
-            btn.innerText = "カルテを保存中...";
+            btn.innerText = "変更を保存中...";
 
             try {
-                // POST に変更しエラーを回避
                 const response = await fetch(`${WORKER_URL}?action=update_memo`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                   const memoValue =
-    　　　　　　　　　document.getElementById("carte-memo").value;
-                    const statusValue =
-    　　　　　　　　　　document.getElementById("carte-status").value;
                     body: JSON.stringify({
                         lineUserId: selectedCustomer.line_id,
-　　　　　　　　　　　　　customerName: customerName,
-　　　　　　　　　　　　　memoContent: memoValue
+                        customerName: customerName,
+                        memoContent: memoValue,
+                        status: statusValue,
+                        nextGuidanceDate: nextDateValue || null // 🌟 Workerへ送る
                     })
                 });
 
                 if (response.ok) {
-                    alert("カルテの指導メモを保存しました！");
+                    alert("カルテの内容を正常に更新しました！");
                     if (window.innerWidth < 1024) closeCarte();
-                    fetchCustomers(); // リストを最新化
+                    fetchCustomers(); // 再読込してアラートや一覧をリフレッシュ
                 } else {
                     alert("保存エラー: " + await response.text());
                 }
@@ -543,13 +584,11 @@ console.log(JSON.stringify(customerEvents, null, 2));
                 alert("通信エラーが発生しました。");
             } finally {
                 btn.disabled = false;
-                btn.innerText = "カルテメモを保存する";
+                btn.innerText = "カルテ内容を保存する";
             }
         }
 
-        // =====================================
-        // 5. 店舗設定関連
-        // =====================================
+        // 店舗設定関数群
         function generateTimeOptions() {
             const selects = [document.getElementById("open-time"), document.getElementById("close-time")];
             let options = "";
@@ -564,13 +603,10 @@ console.log(JSON.stringify(customerEvents, null, 2));
         async function openSettingsModal() {
             document.getElementById("settings-modal").classList.remove("hidden");
             try {
-                // 店舗設定を取得
                 const res = await fetch(`${WORKER_URL}?action=get_settings`);
                 const data = await res.json();
-                
                 if (data.open_time) document.getElementById("open-time").value = data.open_time;
                 if (data.close_time) document.getElementById("close-time").value = data.close_time;
-                
                 const checkboxes = document.querySelectorAll('#holiday-checkboxes input[type="checkbox"]');
                 checkboxes.forEach(cb => cb.checked = false);
                 if (Array.isArray(data.holidays)) {
@@ -592,20 +628,16 @@ console.log(JSON.stringify(customerEvents, null, 2));
             const btn = document.getElementById("save-settings-btn");
             const openTime = document.getElementById("open-time").value;
             const closeTime = document.getElementById("close-time").value;
-            
             const holidayCheckboxes = document.querySelectorAll('#holiday-checkboxes input[type="checkbox"]:checked');
             const holidays = Array.from(holidayCheckboxes).map(cb => parseInt(cb.value));
-
             btn.disabled = true;
             btn.innerText = "保存中...";
-
             try {
                 const res = await fetch(`${WORKER_URL}?action=save_settings`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ open_time: openTime, close_time: closeTime, holidays: holidays })
                 });
-
                 if (res.ok) {
                     alert("店舗設定を保存しました！");
                     closeSettingsModal();
