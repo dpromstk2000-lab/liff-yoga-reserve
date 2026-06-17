@@ -231,8 +231,9 @@
         async function fetchCustomers() {
             const listContainer = document.getElementById("customer-list");
             try {
-                const response = await fetch(`${WORKER_URL}?action=get_customers`, {
-    method: "POST"
+               const response = await fetch(`${WORKER_URL}?action=get_customers`, {
+                    method: "POST"
+                });
                 if (!response.ok) throw new Error("データの取得に失敗しました");
                 
                 allCustomers = await response.json();
