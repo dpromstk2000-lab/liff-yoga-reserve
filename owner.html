@@ -237,6 +237,8 @@
                 
                 const result = await response.json();
 
+　　　　　　　　　console.log(result);
+                
 　　　　　　　　　allCustomers = result.customers || [];
                 
                 calculateKPIs(allCustomers);
