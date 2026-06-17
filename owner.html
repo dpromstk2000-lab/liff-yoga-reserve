@@ -55,7 +55,7 @@
                     <i data-lucide="calendar-days" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                 </div>
                 <div>
-                    <p class="text-[10px] sm:text-xs text-stone-500 font-medium">総予約件数</p>
+                    <p class="text-[10px] sm:text-xs text-stone-500 font-medium">有効予約件数</p>
                     <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-total">- 件</p>
                 </div>
             </div>
@@ -100,7 +100,7 @@
 
             <div class="grid grid-cols-4 gap-2 text-center">
                 <div class="bg-white/5 rounded-lg p-2 border border-white/5">
-                    <p class="text-[10px] text-stone-400 font-medium">予約件数</p>
+                    <p class="text-[10px] text-stone-400 font-medium">有効予約</p>
                     <p class="text-base sm:text-lg font-bold text-stone-200 mt-0.5" id="kpi-funnel-reserve">- 件</p>
                 </div>
 
@@ -155,10 +155,7 @@
                         <i data-lucide="x-circle" class="w-4 h-4"></i>
                     </button>
 
-                    <div
-                        id="search-suggestions"
-                        class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto custom-scroll"
-                    ></div>
+                    <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto custom-scroll"></div>
                 </div>
 
                 <div class="flex flex-wrap gap-1.5 pt-1" id="status-filter-container">
@@ -297,7 +294,6 @@
                     </button>
                 </div>
             </div>
-
         </div>
     </aside>
 </main>
@@ -492,7 +488,13 @@
 
     function getLatestMemoEvent(lineId) {
         return getEventsByLineId(lineId)
-            .filter(e => e.memo || e.status || e.next_guidance_date)
+            .filter(e => e.memo && String(e.memo).trim())
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
+    }
+
+    function getLatestStatusEvent(lineId) {
+        return getEventsByLineId(lineId)
+            .filter(e => e.status)
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
     }
 
@@ -502,8 +504,50 @@
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
     }
 
+    function getSupersededReservationKeys() {
+        const sorted = [...allReservations].sort((a, b) => {
+            return new Date(a.event_created_at || 0) - new Date(b.event_created_at || 0);
+        });
+
+        const latestActiveByLineId = new Map();
+        const supersededKeys = new Set();
+
+        sorted.forEach(reservation => {
+            const lineId = reservation.line_id;
+            const status = reservation.reservation_status;
+
+            if (!lineId) return;
+
+            if (["変更前", "変更済"].includes(status)) {
+                supersededKeys.add(reservation.reservation_key);
+                return;
+            }
+
+            if (status === "予約変更") {
+                const previousReservation = latestActiveByLineId.get(lineId);
+
+                if (
+                    previousReservation &&
+                    previousReservation.reservation_key !== reservation.reservation_key
+                ) {
+                    supersededKeys.add(previousReservation.reservation_key);
+                }
+            }
+
+            latestActiveByLineId.set(lineId, reservation);
+        });
+
+        return supersededKeys;
+    }
+
     function getActiveReservations() {
-        return allReservations.filter(r => !["変更前", "変更済"].includes(r.reservation_status));
+        const supersededKeys = getSupersededReservationKeys();
+
+        return allReservations.filter(reservation => {
+            if (["変更前", "変更済"].includes(reservation.reservation_status)) return false;
+            if (supersededKeys.has(reservation.reservation_key)) return false;
+            return true;
+        });
     }
 
     async function fetchCustomers() {
@@ -549,6 +593,7 @@
         allReservations = reservationEvents.map((event, index) => {
             const customer = getCustomerByLineId(event.line_user_id);
             const latestMemo = getLatestMemoEvent(event.line_user_id);
+            const latestStatus = getLatestStatusEvent(event.line_user_id);
             const latestNextDate = getLatestNextDateEvent(event.line_user_id);
 
             const reservationTime = normalizeTime(event.reservation_time || "", "");
@@ -575,8 +620,7 @@
                 visit_date: event.reservation_date ? `${event.reservation_date} ${reservationTime}` : null,
 
                 reservation_status: event.status || "新規予約",
-                status: event.status || latestMemo?.status || "新規予約",
-                customer_latest_status: latestMemo?.status || event.status || "新規予約",
+                customer_latest_status: latestStatus?.status || event.status || "新規予約",
 
                 owner_memo: latestMemo?.memo || "",
                 next_guidance_date: latestNextDate?.next_guidance_date || null
@@ -588,12 +632,13 @@
         customerSummaries = rawCustomers.map(customer => {
             const lineId = customer.line_id;
             const latestMemo = getLatestMemoEvent(lineId);
+            const latestStatus = getLatestStatusEvent(lineId);
             const latestNextDate = getLatestNextDateEvent(lineId);
 
             return {
                 ...customer,
                 line_id: lineId,
-                latest_status: latestMemo?.status || "新規予約",
+                latest_status: latestStatus?.status || "新規予約",
                 owner_memo: latestMemo?.memo || "",
                 next_guidance_date: latestNextDate?.next_guidance_date || null
             };
@@ -612,6 +657,8 @@
                 return `<span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 次回予約</span>`;
             case "予約変更":
                 return `<span class="text-[10px] bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔁 予約変更</span>`;
+            case "変更前":
+                return `<span class="text-[10px] bg-stone-200 text-stone-500 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">変更前</span>`;
             case "継続中":
                 return `<span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 継続中</span>`;
             case "キャンセル":
@@ -728,7 +775,7 @@
             followContainer.classList.remove("hidden");
 
             followList.innerHTML = followCustomers.map(c => {
-                const latestReservation = allReservations
+                const latestReservation = getActiveReservations()
                     .filter(r => r.line_id === c.line_id)
                     .sort((a, b) => new Date(b.event_created_at || 0) - new Date(a.event_created_at || 0))[0];
 
@@ -827,7 +874,7 @@
 
         if (!keyword) return [];
 
-        return allReservations
+        return getActiveReservations()
             .map(reservation => {
                 const nameText = normalizeSearchText(reservation.name);
                 const phoneText = normalizeSearchText(reservation.phone);
@@ -962,10 +1009,11 @@
         const searchInput = document.getElementById("search-input").value.trim();
         const todayStr = getLocalDateString(0);
         const tomorrowStr = getLocalDateString(1);
+        const activeReservations = getActiveReservations();
 
         if (selectedSearchReservationKey) {
             document.getElementById("list-title").innerText = "選択中の予約";
-            filteredReservations = allReservations.filter(r => r.reservation_key === String(selectedSearchReservationKey));
+            filteredReservations = activeReservations.filter(r => r.reservation_key === String(selectedSearchReservationKey));
             renderList(filteredReservations);
             return;
         }
@@ -974,7 +1022,7 @@
             const keyword = normalizeSearchText(searchInput);
             document.getElementById("list-title").innerText = `検索結果「${searchInput}」`;
 
-            filteredReservations = allReservations.filter(r => getReservationSearchText(r).includes(keyword));
+            filteredReservations = activeReservations.filter(r => getReservationSearchText(r).includes(keyword));
 
             if (currentStatusFilter !== 'all') {
                 filteredReservations = filteredReservations.filter(r =>
@@ -990,13 +1038,13 @@
 
         if (currentDayFilter === 'today') {
             document.getElementById("list-title").innerText = "本日のスケジュール一覧";
-            filteredReservations = allReservations.filter(r => r.reservation_date === todayStr);
+            filteredReservations = activeReservations.filter(r => r.reservation_date === todayStr);
         } else if (currentDayFilter === 'tomorrow') {
             document.getElementById("list-title").innerText = "明日のスケジュール一覧";
-            filteredReservations = allReservations.filter(r => r.reservation_date === tomorrowStr);
+            filteredReservations = activeReservations.filter(r => r.reservation_date === tomorrowStr);
         } else {
-            document.getElementById("list-title").innerText = "スケジュール一覧（全予約表示）";
-            filteredReservations = [...allReservations];
+            document.getElementById("list-title").innerText = "スケジュール一覧（有効予約のみ）";
+            filteredReservations = [...activeReservations];
         }
 
         if (currentStatusFilter !== 'all') {
@@ -1023,7 +1071,11 @@
         clearSearchFieldOnly();
 
         document.getElementById("list-title").innerText = "レッスンメモ未記入の予約一覧";
-        filteredReservations = allReservations.filter(r => !r.owner_memo || r.owner_memo.trim().length === 0);
+
+        filteredReservations = getActiveReservations().filter(r =>
+            !r.owner_memo || r.owner_memo.trim().length === 0
+        );
+
         renderList(filteredReservations);
     }
 
