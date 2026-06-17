@@ -463,6 +463,13 @@ allCustomers = customers.map(customer => {
 
         async function saveOwnerMemo() {
             if (!selectedCustomerId) return;
+            const selectedCustomer =
+    allCustomers.find(
+        c => String(c.id) === String(selectedCustomerId)
+    );
+
+            console.log(selectedCustomer);
+            
             const btn = document.getElementById("save-memo-btn");
             const memoValue = document.getElementById("carte-memo").value;
             // 名前の「 様」を消して元の名前だけ取得
