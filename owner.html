@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>オーナー専用 ダッシュボード＆動的カルテ</title>
+    <title>オーナー専用 ダッシュボード＆予約イベント別カルテ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -21,7 +21,7 @@
         </div>
         <div>
             <h1 class="text-base sm:text-xl font-bold tracking-wide">Private Yoga Studio</h1>
-            <p class="text-[10px] sm:text-xs text-emerald-200/80">オーナー専用管理ダッシュボード</p>
+            <p class="text-[10px] sm:text-xs text-emerald-200/80">予約イベント別 管理ダッシュボード</p>
         </div>
     </div>
 
@@ -39,7 +39,7 @@
 
 <main class="flex-1 p-4 sm:p-6 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 relative">
 
-    <div id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
+    <section id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
 
         <div id="follow-container" class="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-xs hidden transition-all">
             <h3 class="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2.5 uppercase tracking-wider">
@@ -52,10 +52,10 @@
         <div class="grid grid-cols-3 gap-2 sm:gap-4">
             <div onclick="filterByDay('all')" class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left cursor-pointer hover:border-emerald-500 transition group">
                 <div class="p-2 sm:p-3 bg-emerald-50 rounded-lg text-emerald-700 mb-1 sm:mb-0 group-hover:bg-emerald-100">
-                    <i data-lucide="users" class="w-5 h-5 sm:w-6 sm:h-6"></i>
+                    <i data-lucide="calendar-days" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                 </div>
                 <div>
-                    <p class="text-[10px] sm:text-xs text-stone-500 font-medium">総データ数</p>
+                    <p class="text-[10px] sm:text-xs text-stone-500 font-medium">総予約件数</p>
                     <p class="text-sm sm:text-xl font-bold text-stone-800 mt-0.5" id="kpi-total">- 件</p>
                 </div>
             </div>
@@ -95,22 +95,22 @@
         <div class="bg-gradient-to-br from-stone-800 to-stone-900 text-white rounded-xl p-4 shadow-sm border border-stone-700 space-y-3">
             <h3 class="text-xs font-bold text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
                 <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
-                スタジオ成約率・経営分析KPI（リアルタイム）
+                スタジオ成約率・経営分析KPI
             </h3>
 
             <div class="grid grid-cols-4 gap-2 text-center">
                 <div class="bg-white/5 rounded-lg p-2 border border-white/5">
-                    <p class="text-[10px] text-stone-400 font-medium">予約数</p>
-                    <p class="text-base sm:text-lg font-bold text-stone-200 mt-0.5" id="kpi-funnel-reserve">- 名</p>
+                    <p class="text-[10px] text-stone-400 font-medium">予約件数</p>
+                    <p class="text-base sm:text-lg font-bold text-stone-200 mt-0.5" id="kpi-funnel-reserve">- 件</p>
                 </div>
 
                 <div class="bg-white/5 rounded-lg p-2 border border-white/5">
-                    <p class="text-[10px] text-stone-400 font-medium">来店数</p>
+                    <p class="text-[10px] text-stone-400 font-medium">来店者数</p>
                     <p class="text-base sm:text-lg font-bold text-amber-300 mt-0.5" id="kpi-funnel-visit">- 名</p>
                 </div>
 
                 <div class="bg-white/5 rounded-lg p-2 border border-white/5">
-                    <p class="text-[10px] text-stone-400 font-medium">入会数</p>
+                    <p class="text-[10px] text-stone-400 font-medium">入会者数</p>
                     <p class="text-base sm:text-lg font-bold text-emerald-400 mt-0.5" id="kpi-funnel-join">- 名</p>
                 </div>
 
@@ -147,7 +147,7 @@
                         onfocus="renderSearchSuggestions()"
                         onkeydown="handleSearchKeydown(event)"
                         autocomplete="off"
-                        placeholder="苗字・名前・電話番号で検索..."
+                        placeholder="苗字・名前・電話番号・予約日で検索..."
                         class="w-full pl-9 pr-8 py-2 text-xs bg-white border border-stone-300 rounded-lg focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 font-sans"
                     >
 
@@ -165,6 +165,7 @@
                     <button onclick="filterByStatus('all')" id="btn-status-all" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-emerald-700 bg-emerald-700 text-white transition shadow-2xs cursor-pointer">すべて</button>
                     <button onclick="filterByStatus('新規予約')" id="btn-status-new" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟡 新規予約</button>
                     <button onclick="filterByStatus('次回予約')" id="btn-status-repeat" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟣 次回予約</button>
+                    <button onclick="filterByStatus('予約変更')" id="btn-status-change" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🔁 予約変更</button>
                     <button onclick="filterByStatus('来店済')" id="btn-status-visited" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🔵 来店済</button>
                     <button onclick="filterByStatus('入会')" id="btn-status-joined" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟢 入会</button>
                     <button onclick="filterByStatus('継続中')" id="btn-status-active" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟣 継続中</button>
@@ -172,16 +173,16 @@
                 </div>
             </div>
 
-            <div class="divide-y divide-stone-200 max-h-[45vh] lg:max-h-[42vh] overflow-y-auto custom-scroll" id="customer-list">
+            <div class="divide-y divide-stone-200 max-h-[48vh] lg:max-h-[45vh] overflow-y-auto custom-scroll" id="reservation-list">
                 <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
                     <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
                     <span class="text-sm">データを取得中...</span>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div id="carte-panel" class="hidden lg:block lg:col-span-1 fixed inset-0 z-50 lg:z-0 lg:static bg-stone-100 lg:bg-transparent p-4 lg:p-0">
+    <aside id="carte-panel" class="hidden lg:block lg:col-span-1 fixed inset-0 z-50 lg:z-0 lg:static bg-stone-100 lg:bg-transparent p-4 lg:p-0">
         <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full max-h-[95vh] lg:max-h-none flex flex-col justify-between overflow-y-auto custom-scroll">
 
             <div class="flex lg:hidden items-center justify-between border-b border-stone-100 pb-3 mb-4">
@@ -189,7 +190,7 @@
                     <i data-lucide="arrow-left" class="w-4 h-4"></i>
                     一覧に戻る
                 </button>
-                <span class="text-xs text-stone-400 font-medium">顧客カルテ詳細</span>
+                <span class="text-xs text-stone-400 font-medium">予約・顧客カルテ詳細</span>
             </div>
 
             <div class="flex-1 flex flex-col items-center justify-center text-center text-stone-400 space-y-3 py-12 lg:py-0" id="carte-empty">
@@ -197,8 +198,8 @@
                     <i data-lucide="user-search" class="w-10 h-10"></i>
                 </div>
                 <div>
-                    <p class="font-semibold text-stone-600">顧客カルテ未選択</p>
-                    <p class="text-xs mt-1 max-w-[200px] mx-auto">左のスケジュールからお客様を選択すると、カルテ詳細が表示されます。</p>
+                    <p class="font-semibold text-stone-600">予約未選択</p>
+                    <p class="text-xs mt-1 max-w-[220px] mx-auto">左のスケジュールから予約を選択すると、顧客カルテと予約詳細が表示されます。</p>
                 </div>
             </div>
 
@@ -228,12 +229,10 @@
                         </div>
                     </div>
 
-                    <div class="bg-emerald-50/60 border border-emerald-100/80 p-2 rounded-lg flex items-center space-x-3">
-                        <i data-lucide="clock" class="w-4 h-4 text-emerald-700 flex-shrink-0"></i>
-                        <div>
-                            <p class="text-[9px] uppercase font-bold tracking-wider text-emerald-800 opacity-60">ご希望レッスン日時</p>
-                            <p class="text-xs font-bold text-emerald-900" id="carte-date">-</p>
-                        </div>
+                    <div class="bg-emerald-50/60 border border-emerald-100/80 p-3 rounded-lg space-y-1">
+                        <p class="text-[9px] uppercase font-bold tracking-wider text-emerald-800 opacity-60">この予約</p>
+                        <p class="text-sm font-black text-emerald-900" id="carte-date">-</p>
+                        <p class="text-xs font-bold text-emerald-800" id="carte-reservation-status">-</p>
                     </div>
 
                     <div class="space-y-1.5">
@@ -260,10 +259,11 @@
                     </div>
 
                     <div class="space-y-1 pt-1 border-t border-stone-100">
-                        <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400">ステータス</label>
+                        <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400">顧客ステータス</label>
                         <select id="carte-status" class="w-full p-2 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-bold">
                             <option value="新規予約">🟡 新規予約</option>
                             <option value="次回予約">🟣 次回予約</option>
+                            <option value="予約変更">🔁 予約変更</option>
                             <option value="来店済">🔵 来店済</option>
                             <option value="入会">🟢 入会</option>
                             <option value="継続中">🟣 継続中</option>
@@ -284,9 +284,9 @@
                     <div class="space-y-1.5 pt-1 border-t border-stone-100">
                         <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1">
                             <i data-lucide="history" class="w-3.5 h-3.5 text-stone-500"></i>
-                            過去の対応・カルテ履歴
+                            過去の予約・カルテ履歴
                         </label>
-                        <div id="carte-history" class="border border-stone-200/60 rounded-xl p-2.5 bg-stone-50/40 space-y-2.5 max-h-[14vh] overflow-y-auto custom-scroll text-xs"></div>
+                        <div id="carte-history" class="border border-stone-200/60 rounded-xl p-2.5 bg-stone-50/40 space-y-2.5 max-h-[18vh] overflow-y-auto custom-scroll text-xs"></div>
                     </div>
                 </div>
 
@@ -299,7 +299,7 @@
             </div>
 
         </div>
-    </div>
+    </aside>
 </main>
 
 <div id="settings-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
@@ -349,12 +349,15 @@
 <script>
     const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev';
 
-    let allCustomers = [];
-    let filteredCustomers = [];
+    let rawCustomers = [];
     let rawEvents = [];
 
-    let selectedCustomerKey = null;
-    let selectedSearchCustomerKey = null;
+    let allReservations = [];
+    let filteredReservations = [];
+    let customerSummaries = [];
+
+    let selectedReservationKey = null;
+    let selectedSearchReservationKey = null;
 
     let currentDayFilter = 'today';
     let currentStatusFilter = 'all';
@@ -386,14 +389,6 @@
         });
     });
 
-    function getCustomerKey(customer) {
-        return String(customer?.id || customer?.line_id || "");
-    }
-
-    function findCustomerByKey(key) {
-        return allCustomers.find(c => getCustomerKey(c) === String(key));
-    }
-
     function escapeHtml(value) {
         return String(value ?? "").replace(/[&<>"']/g, char => ({
             "&": "&amp;",
@@ -412,9 +407,11 @@
             .replace(/[\s　\-ー−―()（）]/g, "");
     }
 
-    function normalizeTime(value, fallback = "10:00") {
-        if (typeof value !== "string" || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) return fallback;
-        return value;
+    function normalizeTime(value, fallback = "") {
+        if (typeof value !== "string") return fallback;
+        const compact = value.substring(0, 5);
+        if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(compact)) return fallback;
+        return compact;
     }
 
     function timeToMinutes(time) {
@@ -446,247 +443,16 @@
         return normalized.length ? normalized.map(day => `${weekdays[day]}曜`).join("・") : "なし";
     }
 
-    function renderSettingsSummary() {
-        const el = document.getElementById("settings-current-summary");
-        if (!el) return;
-
-        el.innerHTML = `
-            <span class="font-bold">現在の設定：</span>
-            営業時間 ${escapeHtml(shopSettings.open_time)}〜${escapeHtml(shopSettings.close_time)} /
-            定休日 ${escapeHtml(formatHolidayNames(shopSettings.holidays))}
-        `;
+    function formatDateLabel(dateStr) {
+        if (!dateStr) return "日時未定";
+        const d = new Date(`${dateStr}T00:00:00`);
+        if (isNaN(d.getTime())) return dateStr;
+        return `${d.getMonth() + 1}月${d.getDate()}日(${weekdays[d.getDay()]})`;
     }
 
-    async function loadShopSettings(applyToModal = true) {
-        try {
-            const res = await fetch(`${WORKER_URL}?action=get_settings`);
-            if (!res.ok) throw new Error(await res.text());
-
-            const data = await res.json();
-            shopSettings = normalizeShopSettings(data);
-
-            if (applyToModal) {
-                document.getElementById("open-time").value = shopSettings.open_time;
-                document.getElementById("close-time").value = shopSettings.close_time;
-
-                document.querySelectorAll('#holiday-checkboxes input[type="checkbox"]').forEach(cb => {
-                    cb.checked = shopSettings.holidays.includes(Number(cb.value));
-                });
-            }
-        } catch (error) {
-            console.error("店舗設定の取得エラー:", error);
-        }
-
-        renderSettingsSummary();
-        return shopSettings;
-    }
-
-    async function fetchCustomers() {
-        const listContainer = document.getElementById("customer-list");
-        listContainer.innerHTML = `
-            <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
-                <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
-                <span class="text-sm">データを取得中...</span>
-            </div>
-        `;
-        lucide.createIcons();
-
-        try {
-            const response = await fetch(`${WORKER_URL}?action=get_customers`);
-            if (!response.ok) throw new Error("データの取得に失敗しました");
-
-            const result = await response.json();
-            const customers = result.customers || [];
-            rawEvents = result.events || [];
-
-            allCustomers = customers.map(customer => {
-                const userEvents = rawEvents.filter(e => e.line_user_id === customer.line_id);
-
-                const reservationEvent = userEvents
-                    .filter(e => e.reservation_date)
-                    .sort((a, b) => {
-                        const aKey = `${a.reservation_date || ""} ${a.reservation_time || ""}`;
-                        const bKey = `${b.reservation_date || ""} ${b.reservation_time || ""}`;
-                        if (aKey !== bKey) return bKey.localeCompare(aKey);
-                        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
-                    })[0];
-
-                const latestMemo = userEvents
-                    .filter(e => e.memo)
-                    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
-
-                const latestNextDate = userEvents
-                    .filter(e => e.next_guidance_date)
-                    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
-
-                return {
-                    ...customer,
-                    customer_key: String(customer.id || customer.line_id || ""),
-                    reservation_date: reservationEvent?.reservation_date || "",
-                    reservation_time: reservationEvent?.reservation_time || "",
-                    visit_date: reservationEvent ? `${reservationEvent.reservation_date} ${reservationEvent.reservation_time || ""}` : null,
-                    owner_memo: latestMemo?.memo || "",
-                    status: latestMemo?.status || reservationEvent?.status || "新規予約",
-                    next_guidance_date: latestNextDate?.next_guidance_date || null
-                };
-            });
-
-            calculateKPIs(allCustomers);
-            updateDayFilterUI();
-            applyCurrentFilters();
-        } catch (error) {
-            console.error(error);
-            listContainer.innerHTML = `<div class="p-8 text-center text-red-500 text-sm">データの取得に失敗しました。</div>`;
-        }
-    }
-
-    function getStatusBadge(status) {
-        switch (status) {
-            case "入会":
-                return `<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟢 入会</span>`;
-            case "来店済":
-                return `<span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔵 来店済</span>`;
-            case "新規予約":
-                return `<span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟡 新規予約</span>`;
-            case "次回予約":
-                return `<span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 次回予約</span>`;
-            case "継続中":
-                return `<span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 継続中</span>`;
-            case "キャンセル":
-                return `<span class="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔴 キャンセル</span>`;
-            default:
-                return `<span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${escapeHtml(status || '新規予約')}</span>`;
-        }
-    }
-
-    function renderList(customers) {
-        const container = document.getElementById("customer-list");
-
-        if (customers.length === 0) {
-            container.innerHTML = '<div class="p-8 text-center text-stone-400 text-sm">該当するスケジュールはありません。</div>';
-            return;
-        }
-
-        customers.sort((a, b) => {
-            if (!a.visit_date) return 1;
-            if (!b.visit_date) return -1;
-
-            const [dateA, timeA = ""] = a.visit_date.split(" ");
-            const [dateB, timeB = ""] = b.visit_date.split(" ");
-
-            if (dateA !== dateB) return dateB.localeCompare(dateA);
-            return timeA.localeCompare(timeB);
-        });
-
-        let currentGroupDate = null;
-        let html = "";
-
-        customers.forEach(c => {
-            const key = getCustomerKey(c);
-            const isSelected = String(selectedCustomerKey) === String(key);
-
-            let dateStr = "日時未定";
-            let timeStr = "時間未定";
-
-            if (c.visit_date) {
-                const parts = c.visit_date.split(" ");
-                dateStr = parts[0];
-                timeStr = parts[1] ? parts[1].substring(0, 5) : "未定";
-            }
-
-            if (dateStr !== currentGroupDate) {
-                currentGroupDate = dateStr;
-
-                let headerLabel = dateStr;
-                if (dateStr !== "日時未定") {
-                    const d = new Date(`${dateStr}T00:00:00`);
-                    headerLabel = `${d.getMonth() + 1}月${d.getDate()}日(${weekdays[d.getDay()]})`;
-                }
-
-                html += `
-                    <div class="bg-stone-200/70 px-4 py-1.5 text-[11px] font-bold text-stone-600 sticky top-0 z-10 flex justify-between items-center shadow-2xs">
-                        <span>📅 ${escapeHtml(headerLabel)}</span>
-                    </div>
-                `;
-            }
-
-            html += `
-                <div data-customer-key="${escapeHtml(key)}" onclick="selectCustomer(this.dataset.customerKey)" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
-                    <div class="flex items-center space-x-4 min-w-0 flex-1">
-                        <div class="text-xs font-bold text-stone-600 tracking-tight whitespace-nowrap min-w-[50px] bg-stone-100 py-1 px-2 rounded text-center">
-                            ${escapeHtml(timeStr)}
-                        </div>
-
-                        <div class="min-w-0 flex-1">
-                            <p class="font-bold text-stone-900 text-sm truncate flex items-center gap-1.5">
-                                <span>${escapeHtml(c.name || '匿名ユーザー')}</span>
-                                ${c.owner_memo && c.owner_memo.trim() ? '<span class="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="カルテメモあり"></span>' : ''}
-                            </p>
-                            <p class="text-[11px] text-stone-400 mt-0.5 truncate">${escapeHtml(c.phone || '')}</p>
-                        </div>
-
-                        <div class="flex-shrink-0">
-                            ${getStatusBadge(c.status)}
-                        </div>
-                    </div>
-
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 flex-shrink-0 ml-2"></i>
-                </div>
-            `;
-        });
-
-        container.innerHTML = html;
-        lucide.createIcons();
-    }
-
-    function calculateKPIs(customers) {
-        document.getElementById("kpi-total").innerText = `${customers.length} 件`;
-
-        const todayStr = getLocalDateString(0);
-        const tomorrowStr = getLocalDateString(1);
-
-        const todayCount = customers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr)).length;
-        const tomorrowCount = customers.filter(c => c.visit_date && c.visit_date.startsWith(tomorrowStr)).length;
-
-        if (currentDayFilter === 'today') {
-            document.getElementById("kpi-day-count").innerText = `${todayCount} 件`;
-        } else if (currentDayFilter === 'tomorrow') {
-            document.getElementById("kpi-day-count").innerText = `${tomorrowCount} 件`;
-        } else {
-            document.getElementById("kpi-day-count").innerText = `全 ${customers.length} 件`;
-        }
-
-        const pendingCount = customers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0).length;
-        document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
-
-        const reserveTotal = customers.length;
-        const visitTotal = customers.filter(c => ['来店済', '入会', '継続中'].includes(c.status)).length;
-        const joinTotal = customers.filter(c => ['入会', '継続中'].includes(c.status)).length;
-        const joinRate = visitTotal > 0 ? Math.round((joinTotal / visitTotal) * 100) : 0;
-
-        document.getElementById("kpi-funnel-reserve").innerText = `${reserveTotal} 名`;
-        document.getElementById("kpi-funnel-visit").innerText = `${visitTotal} 名`;
-        document.getElementById("kpi-funnel-join").innerText = `${joinTotal} 名`;
-        document.getElementById("kpi-funnel-rate").innerText = `${joinRate} %`;
-
-        const followCustomers = customers.filter(c => c.next_guidance_date === todayStr);
-        const followContainer = document.getElementById("follow-container");
-        const followList = document.getElementById("follow-list");
-
-        if (followCustomers.length > 0) {
-            followContainer.classList.remove("hidden");
-            followList.innerHTML = followCustomers.map(c => `
-                <button data-customer-key="${escapeHtml(getCustomerKey(c))}" onclick="selectCustomer(this.dataset.customerKey)" class="bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer">
-                    <span class="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
-                    <span>${escapeHtml(c.name || '匿名')} 様</span>
-                </button>
-            `).join('');
-        } else {
-            followContainer.classList.add("hidden");
-            followList.innerHTML = "";
-        }
-
-        lucide.createIcons();
+    function formatDateTimeLabel(dateStr, timeStr) {
+        if (!dateStr) return "日時データなし";
+        return `${formatDateLabel(dateStr)} ${normalizeTime(timeStr, timeStr || "").substring(0, 5)}`;
     }
 
     function getLocalDateString(offset) {
@@ -700,8 +466,291 @@
         return `${year}-${month}-${day}`;
     }
 
+    function getCustomerKey(customer) {
+        return String(customer?.id || customer?.line_id || "");
+    }
+
+    function getReservationKey(event, index = 0) {
+        return String(
+            event.id ||
+            event.event_id ||
+            `${event.line_user_id || ""}__${event.reservation_date || ""}__${normalizeTime(event.reservation_time || "", "")}__${event.created_at || index}`
+        );
+    }
+
+    function findReservationByKey(key) {
+        return allReservations.find(r => String(r.reservation_key) === String(key));
+    }
+
+    function getCustomerByLineId(lineId) {
+        return rawCustomers.find(c => String(c.line_id) === String(lineId)) || {};
+    }
+
+    function getEventsByLineId(lineId) {
+        return rawEvents.filter(e => String(e.line_user_id) === String(lineId));
+    }
+
+    function getLatestMemoEvent(lineId) {
+        return getEventsByLineId(lineId)
+            .filter(e => e.memo || e.status || e.next_guidance_date)
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
+    }
+
+    function getLatestNextDateEvent(lineId) {
+        return getEventsByLineId(lineId)
+            .filter(e => e.next_guidance_date)
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
+    }
+
+    function getActiveReservations() {
+        return allReservations.filter(r => !["変更前", "変更済"].includes(r.reservation_status));
+    }
+
+    async function fetchCustomers() {
+        const listContainer = document.getElementById("reservation-list");
+        listContainer.innerHTML = `
+            <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
+                <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
+                <span class="text-sm">データを取得中...</span>
+            </div>
+        `;
+        lucide.createIcons();
+
+        try {
+            const response = await fetch(`${WORKER_URL}?action=get_customers`, { cache: "no-store" });
+            if (!response.ok) throw new Error("データの取得に失敗しました");
+
+            const result = await response.json();
+            rawCustomers = result.customers || [];
+            rawEvents = result.events || [];
+
+            buildReservationRows();
+            buildCustomerSummaries();
+
+            calculateKPIs();
+            updateDayFilterUI();
+            applyCurrentFilters();
+        } catch (error) {
+            console.error(error);
+            listContainer.innerHTML = `<div class="p-8 text-center text-red-500 text-sm">データの取得に失敗しました。</div>`;
+        }
+    }
+
+    function buildReservationRows() {
+        const reservationEvents = rawEvents
+            .filter(e => e.reservation_date)
+            .sort((a, b) => {
+                const aKey = `${a.reservation_date || ""} ${normalizeTime(a.reservation_time || "", "")}`;
+                const bKey = `${b.reservation_date || ""} ${normalizeTime(b.reservation_time || "", "")}`;
+                if (aKey !== bKey) return aKey.localeCompare(bKey);
+                return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+            });
+
+        allReservations = reservationEvents.map((event, index) => {
+            const customer = getCustomerByLineId(event.line_user_id);
+            const latestMemo = getLatestMemoEvent(event.line_user_id);
+            const latestNextDate = getLatestNextDateEvent(event.line_user_id);
+
+            const reservationTime = normalizeTime(event.reservation_time || "", "");
+
+            return {
+                ...customer,
+
+                reservation_key: getReservationKey(event, index),
+                event_created_at: event.created_at || "",
+                event_raw: event,
+
+                line_id: event.line_user_id,
+                customer_key: getCustomerKey(customer) || event.line_user_id,
+
+                name: customer.name || event.customer_name || "匿名ユーザー",
+                phone: customer.phone || "",
+
+                yoga_experience: customer.yoga_experience || "",
+                primary_goal: customer.primary_goal || "",
+                target_pace: customer.target_pace || "",
+
+                reservation_date: event.reservation_date || "",
+                reservation_time: reservationTime,
+                visit_date: event.reservation_date ? `${event.reservation_date} ${reservationTime}` : null,
+
+                reservation_status: event.status || "新規予約",
+                status: event.status || latestMemo?.status || "新規予約",
+                customer_latest_status: latestMemo?.status || event.status || "新規予約",
+
+                owner_memo: latestMemo?.memo || "",
+                next_guidance_date: latestNextDate?.next_guidance_date || null
+            };
+        });
+    }
+
+    function buildCustomerSummaries() {
+        customerSummaries = rawCustomers.map(customer => {
+            const lineId = customer.line_id;
+            const latestMemo = getLatestMemoEvent(lineId);
+            const latestNextDate = getLatestNextDateEvent(lineId);
+
+            return {
+                ...customer,
+                line_id: lineId,
+                latest_status: latestMemo?.status || "新規予約",
+                owner_memo: latestMemo?.memo || "",
+                next_guidance_date: latestNextDate?.next_guidance_date || null
+            };
+        });
+    }
+
+    function getStatusBadge(status) {
+        switch (status) {
+            case "入会":
+                return `<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟢 入会</span>`;
+            case "来店済":
+                return `<span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔵 来店済</span>`;
+            case "新規予約":
+                return `<span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟡 新規予約</span>`;
+            case "次回予約":
+                return `<span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 次回予約</span>`;
+            case "予約変更":
+                return `<span class="text-[10px] bg-cyan-100 text-cyan-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔁 予約変更</span>`;
+            case "継続中":
+                return `<span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 継続中</span>`;
+            case "キャンセル":
+                return `<span class="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔴 キャンセル</span>`;
+            default:
+                return `<span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${escapeHtml(status || '新規予約')}</span>`;
+        }
+    }
+
+    function renderList(reservations) {
+        const container = document.getElementById("reservation-list");
+
+        if (reservations.length === 0) {
+            container.innerHTML = '<div class="p-8 text-center text-stone-400 text-sm">該当する予約はありません。</div>';
+            return;
+        }
+
+        reservations.sort((a, b) => {
+            const aKey = `${a.reservation_date || "9999-99-99"} ${a.reservation_time || "99:99"}`;
+            const bKey = `${b.reservation_date || "9999-99-99"} ${b.reservation_time || "99:99"}`;
+            if (aKey !== bKey) return aKey.localeCompare(bKey);
+            return new Date(a.event_created_at || 0) - new Date(b.event_created_at || 0);
+        });
+
+        let currentGroupDate = null;
+        let html = "";
+
+        reservations.forEach(r => {
+            const isSelected = String(selectedReservationKey) === String(r.reservation_key);
+
+            const dateStr = r.reservation_date || "日時未定";
+            const timeStr = r.reservation_time || "時間未定";
+
+            if (dateStr !== currentGroupDate) {
+                currentGroupDate = dateStr;
+
+                const headerLabel = dateStr === "日時未定"
+                    ? "日時未定"
+                    : formatDateLabel(dateStr);
+
+                html += `
+                    <div class="bg-stone-200/70 px-4 py-1.5 text-[11px] font-bold text-stone-600 sticky top-0 z-10 flex justify-between items-center shadow-2xs">
+                        <span>📅 ${escapeHtml(headerLabel)}</span>
+                        <span>${reservations.filter(x => x.reservation_date === dateStr).length} 件</span>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div data-reservation-key="${escapeHtml(r.reservation_key)}" onclick="selectReservation(this.dataset.reservationKey)" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
+                    <div class="flex items-center space-x-4 min-w-0 flex-1">
+                        <div class="text-xs font-bold text-stone-600 tracking-tight whitespace-nowrap min-w-[50px] bg-stone-100 py-1 px-2 rounded text-center">
+                            ${escapeHtml(timeStr)}
+                        </div>
+
+                        <div class="min-w-0 flex-1">
+                            <p class="font-bold text-stone-900 text-sm truncate flex items-center gap-1.5">
+                                <span>${escapeHtml(r.name || '匿名ユーザー')}</span>
+                                ${r.owner_memo && r.owner_memo.trim() ? '<span class="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="カルテメモあり"></span>' : ''}
+                            </p>
+                            <p class="text-[11px] text-stone-400 mt-0.5 truncate">${escapeHtml(r.phone || '')}</p>
+                        </div>
+
+                        <div class="flex-shrink-0">
+                            ${getStatusBadge(r.reservation_status)}
+                        </div>
+                    </div>
+
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-stone-300 flex-shrink-0 ml-2"></i>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        lucide.createIcons();
+    }
+
+    function calculateKPIs() {
+        const activeReservations = getActiveReservations();
+
+        document.getElementById("kpi-total").innerText = `${activeReservations.length} 件`;
+
+        const todayStr = getLocalDateString(0);
+        const tomorrowStr = getLocalDateString(1);
+
+        const todayCount = activeReservations.filter(r => r.reservation_date === todayStr).length;
+        const tomorrowCount = activeReservations.filter(r => r.reservation_date === tomorrowStr).length;
+
+        if (currentDayFilter === 'today') {
+            document.getElementById("kpi-day-count").innerText = `${todayCount} 件`;
+        } else if (currentDayFilter === 'tomorrow') {
+            document.getElementById("kpi-day-count").innerText = `${tomorrowCount} 件`;
+        } else {
+            document.getElementById("kpi-day-count").innerText = `全 ${activeReservations.length} 件`;
+        }
+
+        const pendingCount = activeReservations.filter(r => !r.owner_memo || r.owner_memo.trim().length === 0).length;
+        document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
+
+        const visitTotal = customerSummaries.filter(c => ['来店済', '入会', '継続中'].includes(c.latest_status)).length;
+        const joinTotal = customerSummaries.filter(c => ['入会', '継続中'].includes(c.latest_status)).length;
+        const joinRate = visitTotal > 0 ? Math.round((joinTotal / visitTotal) * 100) : 0;
+
+        document.getElementById("kpi-funnel-reserve").innerText = `${activeReservations.length} 件`;
+        document.getElementById("kpi-funnel-visit").innerText = `${visitTotal} 名`;
+        document.getElementById("kpi-funnel-join").innerText = `${joinTotal} 名`;
+        document.getElementById("kpi-funnel-rate").innerText = `${joinRate} %`;
+
+        const followCustomers = customerSummaries.filter(c => c.next_guidance_date === todayStr);
+        const followContainer = document.getElementById("follow-container");
+        const followList = document.getElementById("follow-list");
+
+        if (followCustomers.length > 0) {
+            followContainer.classList.remove("hidden");
+
+            followList.innerHTML = followCustomers.map(c => {
+                const latestReservation = allReservations
+                    .filter(r => r.line_id === c.line_id)
+                    .sort((a, b) => new Date(b.event_created_at || 0) - new Date(a.event_created_at || 0))[0];
+
+                const key = latestReservation?.reservation_key || "";
+
+                return `
+                    <button data-reservation-key="${escapeHtml(key)}" onclick="${key ? 'selectReservation(this.dataset.reservationKey)' : ''}" class="bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer">
+                        <span class="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
+                        <span>${escapeHtml(c.name || '匿名')} 様</span>
+                    </button>
+                `;
+            }).join('');
+        } else {
+            followContainer.classList.add("hidden");
+            followList.innerHTML = "";
+        }
+
+        lucide.createIcons();
+    }
+
     function shiftDayFilter(direction) {
-        selectedSearchCustomerKey = null;
+        selectedSearchReservationKey = null;
         clearSearchFieldOnly();
 
         const filters = ['today', 'tomorrow', 'all'];
@@ -728,7 +777,7 @@
             iconContainer.className = "p-2 bg-stone-100 rounded-lg text-stone-600 mb-1 sm:mb-0";
         }
 
-        calculateKPIs(allCustomers);
+        calculateKPIs();
     }
 
     function updateStatusButtonUI(status) {
@@ -736,6 +785,7 @@
             'all': 'btn-status-all',
             '新規予約': 'btn-status-new',
             '次回予約': 'btn-status-repeat',
+            '予約変更': 'btn-status-change',
             '来店済': 'btn-status-visited',
             '入会': 'btn-status-joined',
             '継続中': 'btn-status-active',
@@ -754,17 +804,19 @@
         });
     }
 
-    function getCustomerSearchText(customer) {
-        const goals = Array.isArray(customer.primary_goal)
-            ? customer.primary_goal.join(" ")
-            : customer.primary_goal || "";
+    function getReservationSearchText(reservation) {
+        const goals = Array.isArray(reservation.primary_goal)
+            ? reservation.primary_goal.join(" ")
+            : reservation.primary_goal || "";
 
         return normalizeSearchText([
-            customer.name,
-            customer.phone,
-            customer.line_id,
-            customer.visit_date,
-            customer.status,
+            reservation.name,
+            reservation.phone,
+            reservation.line_id,
+            reservation.reservation_date,
+            reservation.reservation_time,
+            reservation.reservation_status,
+            reservation.customer_latest_status,
             goals
         ].join(" "));
     }
@@ -775,28 +827,32 @@
 
         if (!keyword) return [];
 
-        return allCustomers
-            .map(customer => {
-                const nameText = normalizeSearchText(customer.name);
-                const phoneText = normalizeSearchText(customer.phone);
-                const allText = getCustomerSearchText(customer);
+        return allReservations
+            .map(reservation => {
+                const nameText = normalizeSearchText(reservation.name);
+                const phoneText = normalizeSearchText(reservation.phone);
+                const dateText = normalizeSearchText(reservation.reservation_date);
+                const allText = getReservationSearchText(reservation);
 
                 let score = 999;
 
                 if (nameText.startsWith(keyword)) score = 1;
                 else if (nameText.includes(keyword)) score = 2;
                 else if (phoneText.includes(keyword)) score = 3;
-                else if (allText.includes(keyword)) score = 4;
+                else if (dateText.includes(keyword)) score = 4;
+                else if (allText.includes(keyword)) score = 5;
 
-                return { customer, score };
+                return { reservation, score };
             })
             .filter(item => item.score < 999)
             .sort((a, b) => {
                 if (a.score !== b.score) return a.score - b.score;
-                return String(a.customer.name || "").localeCompare(String(b.customer.name || ""), "ja");
+                const aDate = `${a.reservation.reservation_date || ""} ${a.reservation.reservation_time || ""}`;
+                const bDate = `${b.reservation.reservation_date || ""} ${b.reservation.reservation_time || ""}`;
+                return aDate.localeCompare(bDate);
             })
             .slice(0, limit)
-            .map(item => item.customer);
+            .map(item => item.reservation);
     }
 
     function renderSearchSuggestions() {
@@ -818,45 +874,36 @@
         if (matches.length === 0) {
             box.innerHTML = `
                 <div class="px-4 py-3 text-xs text-stone-400">
-                    該当するお客様が見つかりません。
+                    該当する予約が見つかりません。
                 </div>
             `;
             box.classList.remove("hidden");
             return;
         }
 
-        box.innerHTML = matches.map(customer => {
-            let dateLabel = "予約日時なし";
-
-            if (customer.visit_date) {
-                const parts = customer.visit_date.split(" ");
-                dateLabel = `${parts[0] || ""} ${parts[1] ? parts[1].substring(0, 5) : ""}`;
-            }
-
-            return `
-                <button
-                    type="button"
-                    data-customer-key="${escapeHtml(getCustomerKey(customer))}"
-                    onclick="chooseSearchCandidate(this.dataset.customerKey)"
-                    class="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-stone-100 last:border-b-0 transition"
-                >
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <p class="text-sm font-bold text-stone-900 truncate">
-                                ${escapeHtml(customer.name || "匿名ユーザー")}
-                            </p>
-                            <p class="text-[11px] text-stone-500 mt-0.5">
-                                ${escapeHtml(customer.phone || "電話番号なし")} / ${escapeHtml(dateLabel)}
-                            </p>
-                        </div>
-
-                        <div class="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 rounded-full px-2 py-1 whitespace-nowrap">
-                            選択
-                        </div>
+        box.innerHTML = matches.map(r => `
+            <button
+                type="button"
+                data-reservation-key="${escapeHtml(r.reservation_key)}"
+                onclick="chooseSearchCandidate(this.dataset.reservationKey)"
+                class="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-stone-100 last:border-b-0 transition"
+            >
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-stone-900 truncate">
+                            ${escapeHtml(r.name || "匿名ユーザー")}
+                        </p>
+                        <p class="text-[11px] text-stone-500 mt-0.5">
+                            ${escapeHtml(r.phone || "電話番号なし")} / ${escapeHtml(formatDateTimeLabel(r.reservation_date, r.reservation_time))}
+                        </p>
                     </div>
-                </button>
-            `;
-        }).join("");
+
+                    <div class="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-100 rounded-full px-2 py-1 whitespace-nowrap">
+                        選択
+                    </div>
+                </div>
+            </button>
+        `).join("");
 
         box.classList.remove("hidden");
     }
@@ -867,17 +914,17 @@
         box.classList.add("hidden");
     }
 
-    function chooseSearchCandidate(customerKey) {
-        const customer = findCustomerByKey(customerKey);
-        if (!customer) {
-            console.warn("検索候補の顧客が見つかりません:", customerKey);
+    function chooseSearchCandidate(reservationKey) {
+        const reservation = findReservationByKey(reservationKey);
+        if (!reservation) {
+            console.warn("検索候補の予約が見つかりません:", reservationKey);
             return;
         }
 
-        selectedSearchCustomerKey = getCustomerKey(customer);
+        selectedSearchReservationKey = reservation.reservation_key;
 
         const input = document.getElementById("search-input");
-        input.value = customer.name || customer.phone || "";
+        input.value = `${reservation.name || ""} ${reservation.reservation_date || ""}`.trim();
 
         document.getElementById("search-clear-btn").classList.remove("hidden");
         hideSearchSuggestions();
@@ -889,7 +936,7 @@
         updateStatusButtonUI("all");
 
         applyCurrentFilters();
-        selectCustomer(selectedSearchCustomerKey);
+        selectReservation(selectedSearchReservationKey);
     }
 
     function handleSearchKeydown(event) {
@@ -899,12 +946,12 @@
 
         if (matches.length > 0) {
             event.preventDefault();
-            chooseSearchCandidate(getCustomerKey(matches[0]));
+            chooseSearchCandidate(matches[0].reservation_key);
         }
     }
 
     function filterByStatus(status) {
-        selectedSearchCustomerKey = null;
+        selectedSearchReservationKey = null;
         currentStatusFilter = status;
 
         updateStatusButtonUI(status);
@@ -916,10 +963,10 @@
         const todayStr = getLocalDateString(0);
         const tomorrowStr = getLocalDateString(1);
 
-        if (selectedSearchCustomerKey) {
-            document.getElementById("list-title").innerText = "選択中のお客様";
-            filteredCustomers = allCustomers.filter(c => getCustomerKey(c) === String(selectedSearchCustomerKey));
-            renderList(filteredCustomers);
+        if (selectedSearchReservationKey) {
+            document.getElementById("list-title").innerText = "選択中の予約";
+            filteredReservations = allReservations.filter(r => r.reservation_key === String(selectedSearchReservationKey));
+            renderList(filteredReservations);
             return;
         }
 
@@ -927,37 +974,43 @@
             const keyword = normalizeSearchText(searchInput);
             document.getElementById("list-title").innerText = `検索結果「${searchInput}」`;
 
-            filteredCustomers = allCustomers.filter(c => getCustomerSearchText(c).includes(keyword));
+            filteredReservations = allReservations.filter(r => getReservationSearchText(r).includes(keyword));
 
             if (currentStatusFilter !== 'all') {
-                filteredCustomers = filteredCustomers.filter(c => c.status === currentStatusFilter);
+                filteredReservations = filteredReservations.filter(r =>
+                    r.reservation_status === currentStatusFilter ||
+                    r.customer_latest_status === currentStatusFilter
+                );
             }
 
-            renderList(filteredCustomers);
+            renderList(filteredReservations);
             renderSearchSuggestions();
             return;
         }
 
         if (currentDayFilter === 'today') {
             document.getElementById("list-title").innerText = "本日のスケジュール一覧";
-            filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr));
+            filteredReservations = allReservations.filter(r => r.reservation_date === todayStr);
         } else if (currentDayFilter === 'tomorrow') {
             document.getElementById("list-title").innerText = "明日のスケジュール一覧";
-            filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(tomorrowStr));
+            filteredReservations = allReservations.filter(r => r.reservation_date === tomorrowStr);
         } else {
-            document.getElementById("list-title").innerText = "スケジュール一覧（全日程表示）";
-            filteredCustomers = [...allCustomers];
+            document.getElementById("list-title").innerText = "スケジュール一覧（全予約表示）";
+            filteredReservations = [...allReservations];
         }
 
         if (currentStatusFilter !== 'all') {
-            filteredCustomers = filteredCustomers.filter(c => c.status === currentStatusFilter);
+            filteredReservations = filteredReservations.filter(r =>
+                r.reservation_status === currentStatusFilter ||
+                r.customer_latest_status === currentStatusFilter
+            );
         }
 
-        renderList(filteredCustomers);
+        renderList(filteredReservations);
     }
 
     function filterByDay(type) {
-        selectedSearchCustomerKey = null;
+        selectedSearchReservationKey = null;
         currentDayFilter = type;
 
         clearSearchFieldOnly();
@@ -966,16 +1019,16 @@
     }
 
     function filterPending() {
-        selectedSearchCustomerKey = null;
+        selectedSearchReservationKey = null;
         clearSearchFieldOnly();
 
-        document.getElementById("list-title").innerText = "レッスンメモ未記入の一覧";
-        filteredCustomers = allCustomers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0);
-        renderList(filteredCustomers);
+        document.getElementById("list-title").innerText = "レッスンメモ未記入の予約一覧";
+        filteredReservations = allReservations.filter(r => !r.owner_memo || r.owner_memo.trim().length === 0);
+        renderList(filteredReservations);
     }
 
     function handleSearch() {
-        selectedSearchCustomerKey = null;
+        selectedSearchReservationKey = null;
 
         const query = document.getElementById("search-input").value.trim();
         const clearBtn = document.getElementById("search-clear-btn");
@@ -1005,21 +1058,21 @@
     }
 
     function clearSearch() {
-        selectedSearchCustomerKey = null;
+        selectedSearchReservationKey = null;
         clearSearchFieldOnly();
         applyCurrentFilters();
     }
 
-    function selectCustomer(customerKey) {
-        const customer = findCustomerByKey(customerKey);
+    function selectReservation(reservationKey) {
+        const reservation = findReservationByKey(reservationKey);
 
-        if (!customer) {
-            console.warn("顧客が見つかりません:", customerKey, allCustomers);
-            alert("顧客データが見つかりませんでした。更新ボタンを押して再度お試しください。");
+        if (!reservation) {
+            console.warn("予約データが見つかりません:", reservationKey, allReservations);
+            alert("予約データが見つかりませんでした。更新ボタンを押して再度お試しください。");
             return;
         }
 
-        selectedCustomerKey = getCustomerKey(customer);
+        selectedReservationKey = reservation.reservation_key;
 
         const cartePanel = document.getElementById("carte-panel");
         const carteEmpty = document.getElementById("carte-empty");
@@ -1029,28 +1082,30 @@
         if (carteEmpty) carteEmpty.classList.add("hidden");
         if (carteContent) carteContent.classList.remove("hidden");
 
-        document.getElementById("carte-name").innerText = `${customer.name || '未入力'} 様`;
-        document.getElementById("carte-phone").innerText = customer.phone || '未入力';
-        document.getElementById("carte-date").innerText = customer.visit_date || '日時データなし';
-        document.getElementById("carte-experience").innerText = customer.yoga_experience || '未回答';
-        document.getElementById("carte-pace").innerText = customer.target_pace || '未回答';
+        document.getElementById("carte-name").innerText = `${reservation.name || '未入力'} 様`;
+        document.getElementById("carte-phone").innerText = reservation.phone || '未入力';
+        document.getElementById("carte-date").innerText = formatDateTimeLabel(reservation.reservation_date, reservation.reservation_time);
+        document.getElementById("carte-reservation-status").innerText = `予約種別：${reservation.reservation_status || '-'}`;
+
+        document.getElementById("carte-experience").innerText = reservation.yoga_experience || '未回答';
+        document.getElementById("carte-pace").innerText = reservation.target_pace || '未回答';
 
         document.getElementById("carte-memo").value = '';
-        document.getElementById("carte-status").value = customer.status || "新規予約";
-        document.getElementById("carte-next-date").value = customer.next_guidance_date || '';
-        document.getElementById("carte-avatar").innerText = (customer.name || '匿').charAt(0);
+        document.getElementById("carte-status").value = reservation.customer_latest_status || reservation.reservation_status || "新規予約";
+        document.getElementById("carte-next-date").value = reservation.next_guidance_date || '';
+        document.getElementById("carte-avatar").innerText = (reservation.name || '匿').charAt(0);
 
         const badgeContainer = document.getElementById("carte-goals");
-        const goalsArray = Array.isArray(customer.primary_goal)
-            ? customer.primary_goal
-            : [customer.primary_goal || '未回答'];
+        const goalsArray = Array.isArray(reservation.primary_goal)
+            ? reservation.primary_goal
+            : [reservation.primary_goal || '未回答'];
 
         badgeContainer.innerHTML = goalsArray.map(g => `
             <span class="bg-white border border-stone-200 text-stone-700 text-[11px] font-medium px-2 py-0.5 rounded-full">${escapeHtml(g)}</span>
         `).join('');
 
-        renderHistoryTimeline(customer.line_id);
-        renderList(filteredCustomers);
+        renderHistoryTimeline(reservation.line_id);
+        renderList(filteredReservations);
 
         if (window.innerWidth < 1024 && cartePanel) {
             cartePanel.scrollIntoView({ behavior: 'smooth' });
@@ -1061,7 +1116,7 @@
 
     function renderHistoryTimeline(lineId) {
         const historyContainer = document.getElementById("carte-history");
-        const userEvents = rawEvents.filter(e => e.line_user_id === lineId);
+        const userEvents = getEventsByLineId(lineId);
 
         if (userEvents.length === 0) {
             historyContainer.innerHTML = `<p class="text-stone-400 text-center py-2">対応履歴はまだありません。</p>`;
@@ -1083,8 +1138,8 @@
                 logTitle = `📝 カルテ追記 / <span class="font-bold">${escapeHtml(e.status || 'ステータス不変')}</span>`;
                 logBody = `<p class="text-stone-700 bg-white p-2 rounded-lg border border-stone-200/50 mt-1 whitespace-pre-wrap leading-relaxed">${escapeHtml(e.memo)}</p>`;
             } else if (e.reservation_date) {
-                logTitle = `📅 フォームより予約受付`;
-                logBody = `<p class="text-stone-600 bg-emerald-50/50 p-1.5 rounded border border-emerald-100 mt-1 font-medium">予約日時: ${escapeHtml(e.reservation_date)} ${escapeHtml(e.reservation_time ? e.reservation_time.substring(0, 5) : '')}</p>`;
+                logTitle = `📅 予約受付 / <span class="font-bold">${escapeHtml(e.status || '')}</span>`;
+                logBody = `<p class="text-stone-600 bg-emerald-50/50 p-1.5 rounded border border-emerald-100 mt-1 font-medium">予約日時: ${escapeHtml(formatDateTimeLabel(e.reservation_date, e.reservation_time))}</p>`;
             } else {
                 logTitle = `⚙️ ステータス更新: ${escapeHtml(e.status || '')}`;
             }
@@ -1112,29 +1167,31 @@
     }
 
     function copyLineId() {
-        if (!selectedCustomerKey) return;
+        if (!selectedReservationKey) return;
 
-        const customer = findCustomerByKey(selectedCustomerKey);
-        if (!customer || !customer.line_id) return;
+        const reservation = findReservationByKey(selectedReservationKey);
+        if (!reservation || !reservation.line_id) return;
 
-        navigator.clipboard.writeText(customer.line_id).then(() => {
+        navigator.clipboard.writeText(reservation.line_id).then(() => {
             alert("LINEユーザーIDをクリップボードにコピーしました！\nLINE管理画面のチャット検索に貼り付けてください。");
         }).catch(() => {
-            alert("コピー失敗。ID: " + customer.line_id);
+            alert("コピー失敗。ID: " + reservation.line_id);
         });
     }
 
     function closeCarte() {
         document.getElementById("carte-panel").classList.add("hidden");
-        selectedCustomerKey = null;
-        renderList(filteredCustomers);
+        selectedReservationKey = null;
+        renderList(filteredReservations);
     }
 
     async function saveOwnerMemo() {
-        if (!selectedCustomerKey) return;
+        if (!selectedReservationKey) return;
 
-        const selectedCustomer = findCustomerByKey(selectedCustomerKey);
-        if (!selectedCustomer) return;
+        const reservation = findReservationByKey(selectedReservationKey);
+        if (!reservation) return;
+
+        const keepKey = selectedReservationKey;
 
         const btn = document.getElementById("save-memo-btn");
         const customerName = document.getElementById("carte-name").innerText.replace(' 様', '');
@@ -1142,8 +1199,6 @@
         const memoValue = document.getElementById("carte-memo").value;
         const statusValue = document.getElementById("carte-status").value;
         const nextDateValue = document.getElementById("carte-next-date").value;
-
-        const keepKey = selectedCustomerKey;
 
         btn.disabled = true;
         btn.innerText = "変更を保存中...";
@@ -1153,7 +1208,7 @@
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    lineUserId: selectedCustomer.line_id,
+                    lineUserId: reservation.line_id,
                     customerName: customerName,
                     memoContent: memoValue,
                     status: statusValue,
@@ -1165,8 +1220,8 @@
                 alert("カルテの履歴を更新しました！");
                 await fetchCustomers();
 
-                const updated = findCustomerByKey(keepKey);
-                if (updated) selectCustomer(getCustomerKey(updated));
+                const updated = findReservationByKey(keepKey);
+                if (updated) selectReservation(updated.reservation_key);
             } else {
                 alert("保存エラー: " + await response.text());
             }
@@ -1201,6 +1256,41 @@
 
     function closeSettingsModal() {
         document.getElementById("settings-modal").classList.add("hidden");
+    }
+
+    function renderSettingsSummary() {
+        const el = document.getElementById("settings-current-summary");
+        if (!el) return;
+
+        el.innerHTML = `
+            <span class="font-bold">現在の設定：</span>
+            営業時間 ${escapeHtml(shopSettings.open_time)}〜${escapeHtml(shopSettings.close_time)} /
+            定休日 ${escapeHtml(formatHolidayNames(shopSettings.holidays))}
+        `;
+    }
+
+    async function loadShopSettings(applyToModal = true) {
+        try {
+            const res = await fetch(`${WORKER_URL}?action=get_settings`, { cache: "no-store" });
+            if (!res.ok) throw new Error(await res.text());
+
+            const data = await res.json();
+            shopSettings = normalizeShopSettings(data);
+
+            if (applyToModal) {
+                document.getElementById("open-time").value = shopSettings.open_time;
+                document.getElementById("close-time").value = shopSettings.close_time;
+
+                document.querySelectorAll('#holiday-checkboxes input[type="checkbox"]').forEach(cb => {
+                    cb.checked = shopSettings.holidays.includes(Number(cb.value));
+                });
+            }
+        } catch (error) {
+            console.error("店舗設定の取得エラー:", error);
+        }
+
+        renderSettingsSummary();
+        return shopSettings;
     }
 
     async function saveSettings() {
