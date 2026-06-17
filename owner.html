@@ -468,7 +468,7 @@ allCustomers = customers.map(customer => {
         c => String(c.id) === String(selectedCustomerId)
     );
 
-            console.log(selectedCustomer);
+            alert(JSON.stringify(selectedCustomer, null, 2));
             
             const btn = document.getElementById("save-memo-btn");
             const memoValue = document.getElementById("carte-memo").value;
