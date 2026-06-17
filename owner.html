@@ -249,6 +249,17 @@ allCustomers = customers.map(customer => {
         e.line_user_id === customer.line_id &&
         e.reservation_date
 );
+    const latestMemo = events
+    .filter(
+        e =>
+            e.line_user_id === customer.line_id &&
+            e.memo
+    )
+    .sort(
+        (a, b) =>
+            new Date(b.created_at) -
+            new Date(a.created_at)
+    )[0];
     console.log(JSON.stringify(customer, null, 2));
 　　console.log(JSON.stringify(events, null, 2));
 
