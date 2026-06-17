@@ -38,12 +38,12 @@
         
         <div id="left-panel" class="lg:col-span-2 space-y-4 sm:space-y-6 block">
             
+            <!-- Sランク②: 本日のフォロー対象自動アラートエリア -->
             <div id="follow-container" class="bg-amber-50 border border-amber-200 rounded-xl p-4 shadow-xs hidden transition-all">
                 <h3 class="text-xs font-bold text-amber-800 flex items-center gap-1.5 mb-2.5 uppercase tracking-wider">
-                    <i data-lucide="bell" class="w-4 h-4 text-amber-600 animate-bounce"></i> 🔔 本日のフォロー対象（要LINE連絡）
+                    <i data-lucide="bell" class="w-4 h-4 text-amber-600 animate-bounce"></i> 本日のフォロー対象（要LINE連絡）
                 </h3>
-                <div id="follow-list" class="flex flex-wrap gap-2">
-                    </div>
+                <div id="follow-list" class="flex flex-wrap gap-2"></div>
             </div>
 
             <div class="grid grid-cols-3 gap-2 sm:gap-4">
@@ -56,15 +56,15 @@
                 </div>
                 <div class="bg-white p-3 sm:p-4 rounded-xl shadow-xs border border-stone-200/60 flex flex-col items-center justify-between relative group select-none">
                     <div class="flex items-center justify-between w-full border-b border-stone-100 pb-1 mb-1">
-                        <button onclick="shiftDayFilter(-1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer" title="前の表示へ">
+                        <button onclick="shiftDayFilter(-1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer">
                             <i data-lucide="chevron-left" class="w-4 h-4"></i>
                         </button>
                         <p class="text-[10px] sm:text-xs text-stone-500 font-bold tracking-wider" id="day-filter-title">本日予約</p>
-                        <button onclick="shiftDayFilter(1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer" title="次の表示へ">
+                        <button onclick="shiftDayFilter(1)" class="p-1 hover:bg-stone-100 rounded text-stone-400 hover:text-stone-700 transition cursor-pointer">
                             <i data-lucide="chevron-right" class="w-4 h-4"></i>
                         </button>
                     </div>
-                    <div onclick="applyCurrentDayFilter()" class="flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left w-full justify-center sm:justify-start cursor-pointer">
+                    <div onclick="applyCurrentFilters()" class="flex flex-col sm:flex-row items-center sm:space-x-4 text-center sm:text-left w-full justify-center sm:justify-start cursor-pointer">
                         <div class="p-2 bg-amber-50 rounded-lg text-amber-700 mb-1 sm:mb-0" id="day-filter-icon"><i data-lucide="calendar" class="w-5 h-5"></i></div>
                         <div>
                             <p class="text-sm sm:text-xl font-bold text-stone-800" id="kpi-day-count">- 件</p>
@@ -101,9 +101,20 @@
                             <i data-lucide="x-circle" class="w-4 h-4"></i>
                         </button>
                     </div>
+
+                    <!-- 🌟 Aランク⑥: ステータス別の絞り込みクイックフィルターチップ -->
+                    <div class="flex flex-wrap gap-1.5 pt-1" id="status-filter-container">
+                        <button onclick="filterByStatus('all')" id="btn-status-all" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-emerald-700 bg-emerald-700 text-white transition shadow-2xs cursor-pointer">すべて</button>
+                        <button onclick="filterByStatus('新規予約')" id="btn-status-new" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟡 新規予約</button>
+                        <button onclick="filterByStatus('来店済')" id="btn-status-visited" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🔵 来店済</button>
+                        <button onclick="filterByStatus('入会')" id="btn-status-joined" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟢 入会</button>
+                        <button onclick="filterByStatus('継続中')" id="btn-status-active" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🟣 継続中</button>
+                        <button onclick="filterByStatus('キャンセル')" id="btn-status-cancel" class="text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer">🔴 キャンセル</button>
+                    </div>
                 </div>
                 
-                <div class="divide-y divide-stone-200 max-h-[65vh] lg:max-h-[60vh] overflow-y-auto custom-scroll" id="customer-list">
+                <!-- Sランク③: 日付グループ順スケジュールリスト -->
+                <div class="divide-y divide-stone-200 max-h-[55vh] lg:max-h-[52vh] overflow-y-auto custom-scroll" id="customer-list">
                     <div class="p-8 text-center text-stone-400 flex flex-col items-center justify-center gap-2">
                         <i data-lucide="loader-2" class="w-6 h-6 animate-spin text-emerald-600"></i>
                         <span class="text-sm">データを取得中...</span>
@@ -113,7 +124,7 @@
         </div>
 
         <div id="carte-panel" class="hidden lg:block lg:col-span-1 fixed inset-0 z-50 lg:z-0 lg:static bg-stone-100 lg:bg-transparent p-4 lg:p-0">
-            <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full lg:min-h-[70vh] flex flex-col justify-between overflow-y-auto lg:overflow-visible">
+            <div class="bg-white rounded-xl shadow-md lg:shadow-xs border border-stone-200/60 p-4 sm:p-6 h-full max-h-[90vh] lg:max-h-none flex flex-col justify-between overflow-y-auto custom-scroll">
                 
                 <div class="flex lg:hidden items-center justify-between border-b border-stone-100 pb-3 mb-4">
                     <button onclick="closeCarte()" class="flex items-center gap-1 text-sm font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg cursor-pointer">
@@ -130,47 +141,60 @@
                     </div>
                 </div>
 
-                <div class="hidden flex-1 flex flex-col justify-between h-full space-y-4 sm:space-y-6" id="carte-content">
+                <div class="hidden flex-1 flex flex-col justify-between space-y-4 sm:space-y-5" id="carte-content">
                     <div class="space-y-4 sm:space-y-5">
-                        <div class="flex items-center space-x-4 border-b border-stone-100 pb-4">
-                            <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg flex-shrink-0" id="carte-avatar">ﾖ</div>
-                            <div class="min-w-0">
-                                <h3 class="text-base sm:text-lg font-bold text-stone-900 truncate" id="carte-name">-</h3>
-                                <p class="text-xs text-stone-400 flex items-center gap-1 mt-0.5"><i data-lucide="phone" class="w-3 h-3"></i> <span id="carte-phone">-</span></p>
+                        <div class="flex items-center justify-between border-b border-stone-100 pb-4">
+                            <div class="flex items-center space-x-3 min-w-0">
+                                <div class="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-base flex-shrink-0" id="carte-avatar">ﾖ</div>
+                                <div class="min-w-0">
+                                    <h3 class="text-base font-bold text-stone-900 truncate" id="carte-name">-</h3>
+                                    <p class="text-xs text-stone-400 flex items-center gap-1 mt-0.5"><i data-lucide="phone" class="w-3 h-3"></i> <span id="carte-phone">-</span></p>
+                                </div>
+                            </div>
+                            
+                            <!-- 🌟 Aランク⑦: ワンクリックLINE連携（チャット・IDコピー） -->
+                            <div class="flex items-center space-x-1 flex-shrink-0">
+                                <button onclick="openLineChat()" class="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition cursor-pointer" title="LINE公式のチャット画面を開く">
+                                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="copyLineId()" class="p-2 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-lg transition cursor-pointer" title="LINEユーザーIDをコピー（個別検索用）">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                </button>
                             </div>
                         </div>
 
-                        <div class="bg-emerald-50/60 border border-emerald-100/80 p-3 rounded-lg flex items-center space-x-3">
-                            <i data-lucide="clock" class="w-5 h-5 text-emerald-700 flex-shrink-0"></i>
+                        <div class="bg-emerald-50/60 border border-emerald-100/80 p-2.5 rounded-lg flex items-center space-x-3">
+                            <i data-lucide="clock" class="w-4 h-4 text-emerald-700 flex-shrink-0"></i>
                             <div>
-                                <p class="text-[10px] uppercase font-bold tracking-wider text-emerald-800 opacity-60">ご希望レッスン日時</p>
-                                <p class="text-xs sm:text-sm font-bold text-emerald-900" id="carte-date">-</p>
+                                <p class="text-[9px] uppercase font-bold tracking-wider text-emerald-800 opacity-60">ご希望レッスン日時</p>
+                                <p class="text-xs font-bold text-emerald-900" id="carte-date">-</p>
                             </div>
                         </div>
 
-                        <div class="space-y-3">
+                        <div class="space-y-2">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-stone-400">事前カウンセリング回答</h4>
-                            <div class="space-y-2.5">
-                                <div class="bg-stone-50 p-3 rounded-lg border border-stone-200/40">
-                                    <p class="text-xs text-stone-500 font-medium">お身体のお悩み・目的</p>
-                                    <div class="flex flex-wrap gap-1 mt-1.5" id="carte-goals"></div>
+                            <div class="space-y-1.5">
+                                <div class="bg-stone-50 p-2 rounded-lg border border-stone-200/40">
+                                    <p class="text-[10px] text-stone-500 font-medium">お身体のお悩み・目的</p>
+                                    <div class="flex flex-wrap gap-1 mt-1" id="carte-goals"></div>
                                 </div>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <div class="bg-stone-50 p-2.5 rounded-lg border border-stone-200/40">
-                                        <p class="text-[11px] text-stone-500 font-medium">ヨガのご経験</p>
-                                        <p class="text-xs font-semibold text-stone-800 mt-1" id="carte-experience">-</p>
+                                    <div class="bg-stone-50 p-2 rounded-lg border border-stone-200/40">
+                                        <p class="text-[10px] text-stone-500 font-medium">ヨガのご経験</p>
+                                        <p class="text-xs font-semibold text-stone-800 mt-0.5" id="carte-experience">-</p>
                                     </div>
-                                    <div class="bg-stone-50 p-2.5 rounded-lg border border-stone-200/40">
-                                        <p class="text-[11px] text-stone-500 font-medium">理想の通うペース</p>
-                                        <p class="text-xs font-semibold text-stone-800 mt-1" id="carte-pace">-</p>
+                                    <div class="bg-stone-50 p-2 rounded-lg border border-stone-200/40">
+                                        <p class="text-[10px] text-stone-500 font-medium">理想の通うペース</p>
+                                        <p class="text-xs font-semibold text-stone-800 mt-0.5" id="carte-pace">-</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="space-y-2 pt-2 border-t border-stone-100">
+                        <!-- Sランク①: ステータス欄 -->
+                        <div class="space-y-1.5 pt-1.5 border-t border-stone-100">
                             <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">ステータス</label>
-                            <select id="carte-status" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-bold">
+                            <select id="carte-status" class="w-full p-2.5 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-bold">
                                 <option value="新規予約">🟡 新規予約</option>
                                 <option value="来店済">🔵 来店済</option>
                                 <option value="入会">🟢 入会</option>
@@ -179,19 +203,31 @@
                             </select>
                         </div>
 
-                        <div class="space-y-2 pt-2 border-t border-stone-100">
+                        <!-- Sランク②: 次回フォロー予定日の入力欄 -->
+                        <div class="space-y-1.5 pt-1.5 border-t border-stone-100">
                             <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">次回フォロー予定日</label>
-                            <input type="date" id="carte-next-date" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30">
+                            <input type="date" id="carte-next-date" class="w-full p-2.5 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30">
                         </div>
 
+                        <!-- 🌟 Aランク⑤: 自動追記式メモ（今回の入力エリア） -->
+                        <div class="space-y-1.5 pt-1.5 border-t border-stone-100">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">本日の進捗・レッスンメモ（履歴に自動追加）</label>
+                            <textarea id="carte-memo" rows="2" placeholder="（例）ハーフプランク時の腰の反りを修正。次回は呼吸法を多めに。" class="w-full p-2.5 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
+                        </div>
+
+                        <!-- 🌟 Aランク④: 過去の経緯が積み重なるタイムライン履歴表示エリア -->
                         <div class="space-y-2 pt-2 border-t border-stone-100">
-                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400">当日指導・レッスンメモ</label>
-                            <textarea id="carte-memo" rows="3" placeholder="（例）ハムストリングスが硬い。呼吸が浅くなりがちなので、リラックス系を中心に構成。" class="w-full p-3 text-xs border border-stone-300 rounded-xl focus:outline-emerald-600 focus:ring-1 focus:ring-emerald-600 bg-stone-50/30 font-sans leading-relaxed"></textarea>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1">
+                                <i data-lucide="history" class="w-3.5 h-3.5 text-stone-500"></i> 過去の対応・カルテ履歴
+                            </label>
+                            <div id="carte-history" class="border border-stone-200/60 rounded-xl p-3 bg-stone-50/40 space-y-3 max-h-[18vh] overflow-y-auto custom-scroll text-xs">
+                                <!-- JavaScriptで過去の対応を新しい順にレンダリング -->
+                            </div>
                         </div>
                     </div>
 
-                    <div class="pt-4 border-t border-stone-100">
-                        <button id="save-memo-btn" onclick="saveOwnerMemo()" class="w-full bg-emerald-700 text-white p-3 rounded-xl font-bold shadow-md hover:bg-emerald-800 transition flex items-center justify-center gap-2 text-sm cursor-pointer">
+                    <div class="pt-2 border-t border-stone-100">
+                        <button id="save-memo-btn" onclick="saveOwnerMemo()" class="w-full bg-emerald-700 text-white p-2.5 rounded-xl font-bold shadow-md hover:bg-emerald-800 transition flex items-center justify-center gap-2 text-xs cursor-pointer">
                             <i data-lucide="check-square" class="w-4 h-4"></i> カルテ内容を保存する
                         </button>
                     </div>
@@ -201,6 +237,7 @@
         </div>
     </main>
 
+    <!-- 店舗設定モーダル -->
     <div id="settings-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <h2 class="text-lg font-bold text-stone-800 border-b pb-3 mb-4 flex items-center gap-2">
@@ -239,8 +276,10 @@
         const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev';
         let allCustomers = [];
         let filteredCustomers = [];
+        let rawEvents = []; // 🌟 Aランク④用: 生の全イベントデータを保持
         let selectedCustomerId = null;
         let currentDayFilter = 'today'; // 'all', 'today', 'tomorrow'
+        let currentStatusFilter = 'all'; // 🌟 Aランク⑥用: ステータスフィルター用
 
         document.addEventListener("DOMContentLoaded", () => {
             lucide.createIcons();
@@ -248,7 +287,6 @@
             generateTimeOptions();
         });
 
-        // 1. データの同期・取得
         async function fetchCustomers() {
             const listContainer = document.getElementById("customer-list");
             try {
@@ -257,50 +295,43 @@
                 
                 const result = await response.json();
                 const customers = result.customers || [];
-                const events = result.events || [];
+                rawEvents = result.events || []; // 🌟 履歴用に全体を退避
 
                 allCustomers = customers.map(customer => {
-                    const event = events.find(e => e.line_user_id === customer.line_id && e.reservation_date);
-                    const latestMemo = events.filter(e => e.line_user_id === customer.line_id && e.memo).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-                    const latestNextDate = events.filter(e => e.line_user_id === customer.line_id && e.next_guidance_date).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                    const userEvents = rawEvents.filter(e => e.line_user_id === customer.line_id);
+                    const event = userEvents.find(e => e.reservation_date);
+                    const latestMemo = userEvents.filter(e => e.memo).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+                    const latestNextDate = userEvents.filter(e => e.next_guidance_date).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
                     
                     return {
                         ...customer,
                         visit_date: event ? `${event.reservation_date} ${event.reservation_time}` : null,
                         owner_memo: latestMemo?.memo || "",
                         status: latestMemo?.status || event?.status || "新規予約",
-                        next_guidance_date: latestNextDate?.next_guidance_date || null // 🌟 次回フォロー予定日の紐付け
+                        next_guidance_date: latestNextDate?.next_guidance_date || null
                     };
                 });
 
                 calculateKPIs(allCustomers);
                 updateDayFilterUI();
-                applyCurrentDayFilter();
+                applyCurrentFilters();
             } catch (error) {
                 console.error(error);
                 listContainer.innerHTML = `<div class="p-8 text-center text-red-500 text-sm">データの取得に失敗しました。</div>`;
             }
         }
 
-        // 🌟 Sランク①: ステータスに応じた色分けバッジを生成する関数
         function getStatusBadge(status) {
             switch(status) {
-                case "入会":
-                    return `<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟢 入会</span>`;
-                case "来店済":
-                    return `<span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔵 来店済</span>`;
-                case "新規予約":
-                    return `<span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟡 新規予約</span>`;
-                case "継続中":
-                    return `<span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 継続中</span>`;
-                case "キャンセル":
-                    return `<span class="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔴 キャンセル</span>`;
-                default:
-                    return `<span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${status || '新規予約'}</span>`;
+                case "入会": return `<span class="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟢 入会</span>`;
+                case "来店済": return `<span class="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔵 来店済</span>`;
+                case "新規予約": return `<span class="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟡 新規予約</span>`;
+                case "継続中": return `<span class="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🟣 継続中</span>`;
+                case "キャンセル": return `<span class="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">🔴 キャンセル</span>`;
+                default: return `<span class="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full font-medium whitespace-nowrap">${status || '新規予約'}</span>`;
             }
         }
 
-        // 🌟 Sランク③: 日付グループ別のスケジュール帳形式で一覧を描画
         function renderList(customers) {
             const container = document.getElementById("customer-list");
             if (customers.length === 0) {
@@ -308,7 +339,6 @@
                 return;
             }
 
-            // 【ソート規則】日付は最新・未来が上（降順）、同じ日付の枠内では時間が朝から（昇順）
             customers.sort((a, b) => {
                 if (!a.visit_date) return 1;
                 if (!b.visit_date) return -1;
@@ -333,7 +363,6 @@
                     timeStr = parts[1] ? parts[1].substring(0, 5) : "未定";
                 }
 
-                // 日付が変わったらグループヘッダーを挿入
                 if (dateStr !== currentGroupDate) {
                     currentGroupDate = dateStr;
                     let headerLabel = dateStr;
@@ -373,7 +402,6 @@
             lucide.createIcons();
         }
 
-        // 2. KPI集計 & 🌟 Sランク②: フォロー対象のアラート抽出
         function calculateKPIs(customers) {
             document.getElementById("kpi-total").innerText = `${customers.length} 件`;
             const todayStr = getLocalDateString(0);
@@ -393,7 +421,6 @@
             const pendingCount = customers.filter(c => !c.owner_memo || c.owner_memo.trim().length === 0).length;
             document.getElementById("kpi-pending").innerText = `${pendingCount} 件`;
 
-            // 🌟 【次回フォロー予定日が今日】のお客様を自動抽出
             const followCustomers = customers.filter(c => c.next_guidance_date === todayStr);
             const followContainer = document.getElementById("follow-container");
             const followList = document.getElementById("follow-list");
@@ -427,7 +454,7 @@
             idx = (idx + direction + filters.length) % filters.length;
             currentDayFilter = filters[idx];
             updateDayFilterUI();
-            applyCurrentDayFilter();
+            applyCurrentFilters();
         }
 
         function updateDayFilterUI() {
@@ -446,11 +473,34 @@
             calculateKPIs(allCustomers);
         }
 
-        function applyCurrentDayFilter() {
+        // 🌟 Aランク⑥: ステータスフィルター切替ロジック
+        function filterByStatus(status) {
+            currentStatusFilter = status;
+            
+            const btnMap = {
+                'all': 'btn-status-all', '新規予約': 'btn-status-new', '来店済': 'btn-status-visited',
+                '入会': 'btn-status-joined', '継続中': 'btn-status-active', 'キャンセル': 'btn-status-cancel'
+            };
+            
+            Object.keys(btnMap).forEach(key => {
+                const btn = document.getElementById(btnMap[key]);
+                if (key === status) {
+                    btn.className = "text-[11px] px-2.5 py-1 rounded-full font-bold border border-emerald-700 bg-emerald-700 text-white transition shadow-2xs cursor-pointer";
+                } else {
+                    btn.className = "text-[11px] px-2.5 py-1 rounded-full font-bold border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition shadow-2xs cursor-pointer";
+                }
+            });
+            
+            applyCurrentFilters();
+        }
+
+        // 🌟 統合された掛け合わせ検索フィルター
+        function applyCurrentFilters() {
             const searchInput = document.getElementById("search-input").value.trim();
             const todayStr = getLocalDateString(0);
             const tomorrowStr = getLocalDateString(1);
 
+            // 1. 日付フィルター
             if (currentDayFilter === 'today') {
                 document.getElementById("list-title").innerText = "本日のスケジュール一覧";
                 filteredCustomers = allCustomers.filter(c => c.visit_date && c.visit_date.startsWith(todayStr));
@@ -462,6 +512,12 @@
                 filteredCustomers = [...allCustomers];
             }
 
+            // 2. ステータスフィルターの掛け合わせ
+            if (currentStatusFilter !== 'all') {
+                filteredCustomers = filteredCustomers.filter(c => c.status === currentStatusFilter);
+            }
+
+            // 3. キーワード検索の掛け合わせ
             if (searchInput !== "") {
                 const keyword = searchInput.toLowerCase();
                 filteredCustomers = filteredCustomers.filter(c => 
@@ -477,7 +533,7 @@
             document.getElementById("search-input").value = "";
             document.getElementById("search-clear-btn").classList.add("hidden");
             updateDayFilterUI();
-            applyCurrentDayFilter();
+            applyCurrentFilters();
         }
 
         function filterPending() {
@@ -491,21 +547,18 @@
         function handleSearch() {
             const query = document.getElementById("search-input").value.trim();
             const clearBtn = document.getElementById("search-clear-btn");
-            if (query.length > 0) {
-                clearBtn.classList.remove("hidden");
-            } else {
-                clearBtn.classList.add("hidden");
-            }
-            applyCurrentDayFilter();
+            if (query.length > 0) clearBtn.classList.remove("hidden");
+            else clearBtn.classList.add("hidden");
+            applyCurrentFilters();
         }
 
         function clearSearch() {
             document.getElementById("search-input").value = "";
             document.getElementById("search-clear-btn").classList.add("hidden");
-            applyCurrentDayFilter();
+            applyCurrentFilters();
         }
 
-        // 3. カルテ展開とデータロード
+        // 3. カルテ展開と履歴タイムラインの生成
         function selectCustomer(id) {
             selectedCustomerId = id;
             renderList(filteredCustomers);
@@ -522,21 +575,90 @@
             document.getElementById("carte-experience").innerText = customer.yoga_experience || '未回答';
             document.getElementById("carte-pace").innerText = customer.target_pace || '未回答';
             
-            document.getElementById("carte-memo").value = customer.owner_memo || '';
+            // 🌟 メモ入力欄は「追記用」として毎回空にする仕様に変更（前回の内容は履歴に残るため）
+            document.getElementById("carte-memo").value = '';
             document.getElementById("carte-status").value = customer.status || "新規予約";
-            document.getElementById("carte-next-date").value = customer.next_guidance_date || ''; // 🌟 画面へセット
-            
+            document.getElementById("carte-next-date").value = customer.next_guidance_date || '';
             document.getElementById("carte-avatar").innerText = (customer.name || '匿').charAt(0);
 
             const badgeContainer = document.getElementById("carte-goals");
             const goalsArray = Array.isArray(customer.primary_goal) ? customer.primary_goal : [customer.primary_goal || '未回答'];
             badgeContainer.innerHTML = goalsArray.map(g => `<span class="bg-white border border-stone-200 text-stone-700 text-[11px] font-medium px-2 py-0.5 rounded-full">${g}</span>`).join('');
             
-            // モバイルスクロール対策
+            // 🌟 Aランク④: 過去の履歴（タイムライン）を生成
+            renderHistoryTimeline(customer.line_id);
+
             if (window.innerWidth < 1024) {
                 document.getElementById("carte-panel").scrollIntoView({ behavior: 'smooth' });
             }
             lucide.createIcons();
+        }
+
+        // 🌟 Aランク④タイムライン表示ロジック
+        function renderHistoryTimeline(lineId) {
+            const historyContainer = document.getElementById("carte-history");
+            const userEvents = rawEvents.filter(e => e.line_user_id === lineId);
+
+            if (userEvents.length === 0) {
+                historyContainer.innerHTML = `<p class="text-stone-400 text-center py-2">対応履歴はまだありません。</p>`;
+                return;
+            }
+
+            // 新しいイベント（created_at）順にソート
+            userEvents.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            let html = `<div class="relative border-l-2 border-stone-200 ml-2 pl-4 space-y-3">`;
+            userEvents.forEach(e => {
+                const dateObj = new Date(e.created_at);
+                const displayTimestamp = `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+                
+                let logTitle = "";
+                let logBody = "";
+
+                if (e.memo) {
+                    logTitle = `📝 カルテ追記 / <span class="font-bold">${e.status || 'ステータス不変'}</span>`;
+                    logBody = `<p class="text-stone-700 bg-white p-2 rounded-lg border border-stone-200/50 mt-1 whitespace-pre-wrap leading-relaxed">${e.memo}</p>`;
+                } else if (e.reservation_date) {
+                    logTitle = `📅 フォームより次回予約受付`;
+                    logBody = `<p class="text-stone-600 bg-emerald-50/50 p-1.5 rounded border border-emerald-100 mt-1 font-medium">予約日時: ${e.reservation_date} ${e.reservation_time ? e.reservation_time.substring(0,5) : ''}</p>`;
+                } else {
+                    logTitle = `⚙️ ステータス更新: ${e.status}`;
+                }
+
+                if (e.next_guidance_date) {
+                    logBody += `<p class="text-[10px] text-amber-700 font-bold mt-1">🔔 次回フォロー設定日: ${e.next_guidance_date}</p>`;
+                }
+
+                html += `
+                    <div class="relative">
+                        <span class="absolute -left-[21px] top-1 bg-stone-300 border-2 border-white w-2.5 h-2.5 rounded-full"></span>
+                        <div class="text-[10px] text-stone-400 font-medium">${displayTimestamp}</div>
+                        <div class="text-[11px] font-semibold text-stone-800 mt-0.5">${logTitle}</div>
+                        ${logBody}
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            historyContainer.innerHTML = html;
+        }
+
+        // 🌟 Aランク⑦: LINE連携関数群
+        function openLineChat() {
+            // LINE公式アカウントの公式チャット管理画面トップへ遷移（別タブ）
+            window.open("https://chat.line.me/", "_blank");
+        }
+
+        function copyLineId() {
+            if (!selectedCustomerId) return;
+            const customer = allCustomers.find(c => String(c.id) === String(selectedCustomerId));
+            if (!customer || !customer.line_id) return;
+
+            navigator.clipboard.writeText(customer.line_id).then(() => {
+                alert("LINEユーザーIDをクリップボードにコピーしました！\nLINEチャット画面の検索窓に貼り付けて顧客を特定できます。");
+            }).catch(err => {
+                console.error("コピー失敗", err);
+                alert("コピーに失敗しました。ID: " + customer.line_id);
+            });
         }
 
         function closeCarte() {
@@ -545,7 +667,6 @@
             renderList(filteredCustomers);
         }
 
-        // 4. カルテ内容（メモ・ステータス・次回フォロー日）の保存
         async function saveOwnerMemo() {
             if (!selectedCustomerId) return;
             const selectedCustomer = allCustomers.find(c => String(c.id) === String(selectedCustomerId));
@@ -555,7 +676,7 @@
             
             const memoValue = document.getElementById("carte-memo").value;
             const statusValue = document.getElementById("carte-status").value;
-            const nextDateValue = document.getElementById("carte-next-date").value; // 🌟 入力値の取得
+            const nextDateValue = document.getElementById("carte-next-date").value;
 
             btn.disabled = true;
             btn.innerText = "変更を保存中...";
@@ -567,16 +688,15 @@
                     body: JSON.stringify({
                         lineUserId: selectedCustomer.line_id,
                         customerName: customerName,
-                        memoContent: memoValue,
+                        memoContent: memoValue, // 空欄でもステータス変更ログとして保存可能
                         status: statusValue,
-                        nextGuidanceDate: nextDateValue || null // 🌟 Workerへ送る
+                        nextGuidanceDate: nextDateValue || null
                     })
                 });
 
                 if (response.ok) {
-                    alert("カルテの内容を正常に更新しました！");
-                    if (window.innerWidth < 1024) closeCarte();
-                    fetchCustomers(); // 再読込してアラートや一覧をリフレッシュ
+                    alert("カルテの履歴を更新しました！");
+                    fetchCustomers(); // 全データを再取得してリフレッシュ
                 } else {
                     alert("保存エラー: " + await response.text());
                 }
@@ -588,7 +708,6 @@
             }
         }
 
-        // 店舗設定関数群
         function generateTimeOptions() {
             const selects = [document.getElementById("open-time"), document.getElementById("close-time")];
             let options = "";
