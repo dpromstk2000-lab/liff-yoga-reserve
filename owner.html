@@ -249,8 +249,8 @@ allCustomers = customers.map(customer => {
         e.line_user_id === customer.line_id &&
         e.reservation_date
 );
-    console.log(customer);
-　　　console.log(event);
+    console.log(JSON.stringify(customer, null, 2));
+　　console.log(JSON.stringify(event, null, 2));
 
     return {
         ...customer,
