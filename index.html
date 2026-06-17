@@ -22,6 +22,46 @@
 
     <main class="max-w-md mx-auto p-4 space-y-6">
 
+        <!-- 既存顧客用：現在の予約表示 -->
+        <section id="current-reservation-section" class="hidden space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-5 space-y-4">
+                <div>
+                    <p class="text-xs font-bold text-emerald-700 mb-1">現在のご予約</p>
+                    <h2 class="text-lg font-black text-stone-900" id="current-reservation-date">-</h2>
+                    <p class="text-lg font-black text-stone-900" id="current-reservation-time">-</p>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3">
+                    <button type="button" onclick="startChangeReservation()" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-sm">
+                        この予約を変更する
+                    </button>
+
+                    <button type="button" onclick="startAdditionalReservation()" class="w-full bg-white border border-emerald-600 text-emerald-700 font-bold py-3 rounded-xl">
+                        別の日程で追加予約する
+                    </button>
+                </div>
+
+                <p class="text-xs text-stone-400 leading-relaxed">
+                    予約内容を変更したい場合は「この予約を変更する」から日時を選び直してください。
+                </p>
+            </div>
+        </section>
+
+        <!-- 最新予約がない既存顧客用 -->
+        <section id="no-current-reservation-section" class="hidden space-y-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-stone-100 p-5 space-y-4">
+                <div>
+                    <p class="text-xs font-bold text-stone-500 mb-1">現在のご予約</p>
+                    <h2 class="text-lg font-black text-stone-900">現在受付中の予約はありません</h2>
+                    <p class="text-sm text-stone-500 mt-2">下のボタンから次回予約をお取りください。</p>
+                </div>
+
+                <button type="button" onclick="startAdditionalReservation()" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-sm">
+                    次回予約をする
+                </button>
+            </div>
+        </section>
+
         <form id="booking-form" onsubmit="confirmReservation(event)" class="space-y-6">
 
             <div id="survey-section" class="space-y-6">
@@ -207,6 +247,7 @@
         let isChangeMode = false;
         let isSubmitting = false;
         let existingCustomerData = null;
+        let latestReservation = null;
         let selectedDate = "";
         let dateDisplayCount = 28;
         let lastSubmittedReservation = null;
@@ -220,8 +261,10 @@
         const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
         function normalizeTime(value, fallback = "10:00") {
-            if (typeof value !== "string" || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) return fallback;
-            return value;
+            if (typeof value !== "string") return fallback;
+            const compact = value.substring(0, 5);
+            if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(compact)) return fallback;
+            return compact;
         }
 
         function timeToMinutes(time) {
@@ -269,6 +312,12 @@
             const day = String(d.getDate()).padStart(2, "0");
 
             return `${year}-${month}-${day}`;
+        }
+
+        function getOffsetFromToday(dateStr) {
+            const target = new Date(`${dateStr}T00:00:00`);
+            const today = new Date(`${getLocalDateString(0)}T00:00:00`);
+            return Math.round((target.getTime() - today.getTime()) / 86400000);
         }
 
         function getWeekday(dateStr) {
@@ -320,7 +369,9 @@
         }
 
         function validateSlotValue(dateValue, timeValue) {
-            if (!dateValue || !timeValue) {
+            const normalizedTime = normalizeTime(timeValue, null);
+
+            if (!dateValue || !normalizedTime) {
                 return { ok: false, message: "日付と時間を選択してください。" };
             }
 
@@ -329,7 +380,7 @@
                 return { ok: false, message: `${weekday}曜日は定休日です。別の日付を選んでください。` };
             }
 
-            const selectedMinutes = timeToMinutes(timeValue);
+            const selectedMinutes = timeToMinutes(normalizedTime);
             const openMinutes = timeToMinutes(shopSettings.open_time);
             const closeMinutes = timeToMinutes(shopSettings.close_time);
 
@@ -337,7 +388,7 @@
                 return { ok: false, message: "時間の形式が正しくありません。" };
             }
 
-            if (!["00", "30"].includes(String(timeValue).slice(-2))) {
+            if (!["00", "30"].includes(String(normalizedTime).slice(-2))) {
                 return { ok: false, message: "時間は30分単位で選択してください。" };
             }
 
@@ -373,6 +424,19 @@
             `;
         }
 
+        function ensureDateVisible(dateStr) {
+            const offset = getOffsetFromToday(dateStr);
+            if (offset < 0) return;
+
+            if (offset >= dateDisplayCount) {
+                dateDisplayCount = Math.ceil((offset + 1) / 28) * 28;
+            }
+
+            if (dateDisplayCount >= 168) {
+                document.getElementById("show-more-dates-btn").classList.add("hidden");
+            }
+        }
+
         function renderDateButtons() {
             const grid = document.getElementById("date-grid");
             let html = "";
@@ -406,7 +470,7 @@
         function showMoreDates() {
             dateDisplayCount += 28;
 
-            if (dateDisplayCount >= 84) {
+            if (dateDisplayCount >= 168) {
                 document.getElementById("show-more-dates-btn").classList.add("hidden");
             }
 
@@ -415,7 +479,7 @@
 
         function generateTimeOptions() {
             const select = document.getElementById("booking_time");
-            const previousValue = select.value;
+            const previousValue = normalizeTime(select.value, "");
 
             const openMinutes = timeToMinutes(shopSettings.open_time);
             const closeMinutes = timeToMinutes(shopSettings.close_time);
@@ -453,11 +517,38 @@
             document.getElementById("booking_date").value = dateStr;
             document.getElementById("weekday-label").innerText = `（${weekdays[getWeekday(dateStr)]}曜日）`;
             document.getElementById("date-message").innerText = `${formatDateButtonLabel(dateStr)}を選択中です。`;
-            document.getElementById("booking_time").value = "";
 
             generateTimeOptions();
             renderDateButtons();
             validateSelectedSlot();
+        }
+
+        function clearSelectedSlot() {
+            selectedDate = "";
+            document.getElementById("booking_date").value = "";
+            document.getElementById("booking_time").value = "";
+            document.getElementById("weekday-label").innerText = "";
+            document.getElementById("date-message").innerText = "定休日は赤色で表示され、選択できません。";
+            document.getElementById("time-message").innerText = "時間はダッシュボードの営業時間に合わせて自動更新されます。";
+            renderDateButtons();
+            generateTimeOptions();
+        }
+
+        function prefillReservation(dateStr, timeStr) {
+            const normalizedTime = normalizeTime(timeStr, "");
+
+            if (!dateStr) return;
+
+            ensureDateVisible(dateStr);
+            renderDateButtons();
+            selectDate(dateStr);
+
+            setTimeout(() => {
+                if (normalizedTime) {
+                    document.getElementById("booking_time").value = normalizedTime;
+                    validateSelectedSlot();
+                }
+            }, 0);
         }
 
         function validateSelectedSlot() {
@@ -481,7 +572,7 @@
                 return false;
             }
 
-            timeMessage.innerText = `${dateValue} ${timeValue} で受付できます。`;
+            timeMessage.innerText = `${dateValue} ${normalizeTime(timeValue, timeValue)} で受付できます。`;
             return true;
         }
 
@@ -525,18 +616,101 @@
                         existingCustomerData = customer;
 
                         document.getElementById("survey-section").classList.add("hidden");
-                        document.getElementById("header-subtitle").innerText = "次回のご予約フォーム";
+                        document.getElementById("booking-form").classList.add("hidden");
+                        document.getElementById("header-subtitle").innerText = "現在のご予約";
+
+                        await fetchLatestReservation(userId);
+
+                        if (latestReservation && latestReservation.reservation_date) {
+                            renderCurrentReservation(latestReservation);
+                        } else {
+                            document.getElementById("no-current-reservation-section").classList.remove("hidden");
+                        }
+
                         setSubmitButtonLabel();
+                        return;
                     }
                 }
+
+                document.getElementById("booking-form").classList.remove("hidden");
+                document.getElementById("survey-section").classList.remove("hidden");
+                document.getElementById("current-reservation-section").classList.add("hidden");
+                document.getElementById("no-current-reservation-section").classList.add("hidden");
+
             } catch (error) {
                 console.error("顧客照会エラー:", error);
             }
         }
 
+        async function fetchLatestReservation(userId) {
+            try {
+                const today = getLocalDateString(0);
+                const response = await fetch(`${WORKER_URL}?action=get_latest_reservation&line_user_id=${encodeURIComponent(userId)}&today=${encodeURIComponent(today)}`, {
+                    cache: "no-store"
+                });
+
+                if (!response.ok) throw new Error(await response.text());
+
+                latestReservation = await response.json();
+                return latestReservation;
+            } catch (error) {
+                console.error("最新予約の取得エラー:", error);
+                latestReservation = null;
+                return null;
+            }
+        }
+
+        function renderCurrentReservation(reservation) {
+            document.getElementById("current-reservation-section").classList.remove("hidden");
+            document.getElementById("no-current-reservation-section").classList.add("hidden");
+
+            document.getElementById("current-reservation-date").innerText =
+                formatCompleteDate(reservation.reservation_date);
+
+            document.getElementById("current-reservation-time").innerText =
+                `${normalizeTime(reservation.reservation_time, reservation.reservation_time)} 開始`;
+        }
+
+        function startChangeReservation() {
+            isChangeMode = true;
+
+            document.getElementById("current-reservation-section").classList.add("hidden");
+            document.getElementById("no-current-reservation-section").classList.add("hidden");
+            document.getElementById("complete-section").classList.add("hidden");
+            document.getElementById("confirm-section").classList.add("hidden");
+            document.getElementById("booking-form").classList.remove("hidden");
+            document.getElementById("survey-section").classList.add("hidden");
+
+            document.getElementById("header-subtitle").innerText = "予約変更フォーム";
+            setSubmitButtonLabel();
+
+            if (latestReservation?.reservation_date) {
+                prefillReservation(latestReservation.reservation_date, latestReservation.reservation_time);
+            }
+
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function startAdditionalReservation() {
+            isChangeMode = false;
+
+            document.getElementById("current-reservation-section").classList.add("hidden");
+            document.getElementById("no-current-reservation-section").classList.add("hidden");
+            document.getElementById("complete-section").classList.add("hidden");
+            document.getElementById("confirm-section").classList.add("hidden");
+            document.getElementById("booking-form").classList.remove("hidden");
+            document.getElementById("survey-section").classList.add("hidden");
+
+            document.getElementById("header-subtitle").innerText = "次回のご予約フォーム";
+            setSubmitButtonLabel();
+            clearSelectedSlot();
+
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
         function buildPayload() {
             const bookingDate = document.getElementById("booking_date").value;
-            const bookingTime = document.getElementById("booking_time").value;
+            const bookingTime = normalizeTime(document.getElementById("booking_time").value, "");
 
             const payload = {
                 line_user_id: lineUserId,
@@ -577,20 +751,18 @@
         function confirmReservation(event) {
             event.preventDefault();
 
-            const bookingDate = document.getElementById("booking_date").value;
-            const bookingTime = document.getElementById("booking_time").value;
+            const payload = buildPayload();
 
-            const slotValidation = validateSlotValue(bookingDate, bookingTime);
+            const slotValidation = validateSlotValue(payload.booking_date, payload.booking_time);
             if (!slotValidation.ok) {
                 alert(slotValidation.message);
                 return;
             }
 
-            const payload = buildPayload();
             if (!validateSurveyIfNeeded(payload)) return;
 
-            document.getElementById("confirm-reservation-date").innerText = formatCompleteDate(bookingDate);
-            document.getElementById("confirm-reservation-time").innerText = `${bookingTime} 開始`;
+            document.getElementById("confirm-reservation-date").innerText = formatCompleteDate(payload.booking_date);
+            document.getElementById("confirm-reservation-time").innerText = `${payload.booking_time} 開始`;
 
             const customerLabel = isExisting
                 ? `${payload.name || "お客様"} 様`
@@ -598,7 +770,7 @@
 
             document.getElementById("confirm-customer-box").innerHTML = `
                 <p><span class="font-bold">お客様：</span>${customerLabel}</p>
-                <p><span class="font-bold">受付種別：</span>${isChangeMode ? "予約変更" : isExisting ? "次回予約" : "新規予約"}</p>
+                <p><span class="font-bold">受付種別：</span>${isChangeMode ? "予約変更" : isExisting ? "追加・次回予約" : "新規予約"}</p>
             `;
 
             document.getElementById("booking-form").classList.add("hidden");
@@ -619,9 +791,6 @@
             if (isSubmitting) return;
 
             const btn = document.getElementById("confirm-submit-btn");
-            const bookingDate = document.getElementById("booking_date").value;
-            const bookingTime = document.getElementById("booking_time").value;
-
             const payload = buildPayload();
 
             isSubmitting = true;
@@ -631,7 +800,7 @@
             try {
                 await loadShopSettings();
 
-                const latestValidation = validateSlotValue(bookingDate, bookingTime);
+                const latestValidation = validateSlotValue(payload.booking_date, payload.booking_time);
                 if (!latestValidation.ok) {
                     alert("店舗設定が更新されました。日時を選び直してください。\n" + latestValidation.message);
                     backToFormFromConfirm();
@@ -657,7 +826,6 @@
                 }
 
                 isExisting = true;
-                isChangeMode = false;
 
                 existingCustomerData = {
                     name: payload.name,
@@ -667,10 +835,15 @@
                     target_pace: payload.target_pace
                 };
 
-                document.getElementById("survey-section").classList.add("hidden");
-                document.getElementById("header-subtitle").innerText = "次回のご予約フォーム";
+                latestReservation = {
+                    reservation_date: payload.booking_date,
+                    reservation_time: payload.booking_time
+                };
 
-                showCompleteScreen(bookingDate, bookingTime, payload.is_change);
+                document.getElementById("survey-section").classList.add("hidden");
+                document.getElementById("header-subtitle").innerText = "現在のご予約";
+
+                showCompleteScreen(payload.booking_date, payload.booking_time, payload.is_change);
 
             } catch (error) {
                 console.error(error);
@@ -695,6 +868,8 @@
 
             document.getElementById("booking-form").classList.add("hidden");
             document.getElementById("confirm-section").classList.add("hidden");
+            document.getElementById("current-reservation-section").classList.add("hidden");
+            document.getElementById("no-current-reservation-section").classList.add("hidden");
             document.getElementById("complete-section").classList.remove("hidden");
 
             document.getElementById("complete-title").innerText = wasChange
@@ -704,21 +879,20 @@
             document.getElementById("complete-reservation-date").innerText = formatCompleteDate(bookingDate);
             document.getElementById("complete-reservation-time").innerText = `${bookingTime} 開始`;
 
+            isChangeMode = false;
+
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
         function editReservationFromComplete() {
-            isChangeMode = true;
+            if (lastSubmittedReservation) {
+                latestReservation = {
+                    reservation_date: lastSubmittedReservation.booking_date,
+                    reservation_time: lastSubmittedReservation.booking_time
+                };
+            }
 
-            document.getElementById("complete-section").classList.add("hidden");
-            document.getElementById("confirm-section").classList.add("hidden");
-            document.getElementById("booking-form").classList.remove("hidden");
-            document.getElementById("survey-section").classList.add("hidden");
-
-            document.getElementById("header-subtitle").innerText = "予約変更フォーム";
-            setSubmitButtonLabel();
-
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            startChangeReservation();
         }
 
         function closeLiffWindow() {
