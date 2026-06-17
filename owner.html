@@ -252,6 +252,12 @@ allCustomers = customers.map(customer => {
     console.log(JSON.stringify(customer, null, 2));
 　　console.log(JSON.stringify(events, null, 2));
 
+    const customerEvents = events.filter(
+    e => e.line_user_id === customer.line_id
+);
+
+console.log(JSON.stringify(customerEvents, null, 2));
+
     return {
         ...customer,
 
