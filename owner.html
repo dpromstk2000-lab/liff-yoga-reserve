@@ -276,7 +276,7 @@ console.log(JSON.stringify(customerEvents, null, 2));
             ? `${event.reservation_date} ${event.reservation_time}`
             : null,
 
-        owner_memo: event?.memo
+        owner_memo: latestMemo?.memo || ""
     };
 });
                 
