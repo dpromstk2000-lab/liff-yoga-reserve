@@ -352,8 +352,10 @@
     let allCustomers = [];
     let filteredCustomers = [];
     let rawEvents = [];
-    let selectedCustomerId = null;
-    let selectedSearchCustomerId = null;
+
+    let selectedCustomerKey = null;
+    let selectedSearchCustomerKey = null;
+
     let currentDayFilter = 'today';
     let currentStatusFilter = 'all';
 
@@ -383,6 +385,14 @@
             }
         });
     });
+
+    function getCustomerKey(customer) {
+        return String(customer?.id || customer?.line_id || "");
+    }
+
+    function findCustomerByKey(key) {
+        return allCustomers.find(c => getCustomerKey(c) === String(key));
+    }
 
     function escapeHtml(value) {
         return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -511,6 +521,7 @@
 
                 return {
                     ...customer,
+                    customer_key: String(customer.id || customer.line_id || ""),
                     reservation_date: reservationEvent?.reservation_date || "",
                     reservation_time: reservationEvent?.reservation_time || "",
                     visit_date: reservationEvent ? `${reservationEvent.reservation_date} ${reservationEvent.reservation_time || ""}` : null,
@@ -571,7 +582,8 @@
         let html = "";
 
         customers.forEach(c => {
-            const isSelected = String(selectedCustomerId) === String(c.id);
+            const key = getCustomerKey(c);
+            const isSelected = String(selectedCustomerKey) === String(key);
 
             let dateStr = "日時未定";
             let timeStr = "時間未定";
@@ -599,7 +611,7 @@
             }
 
             html += `
-                <div data-customer-id="${escapeHtml(c.id)}" onclick="selectCustomer(this.dataset.customerId)" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
+                <div data-customer-key="${escapeHtml(key)}" onclick="selectCustomer(this.dataset.customerKey)" class="p-3 sm:p-4 flex items-center justify-between hover:bg-stone-50 cursor-pointer transition border-l-4 ${isSelected ? 'border-emerald-700 bg-emerald-50/30' : 'border-transparent'}">
                     <div class="flex items-center space-x-4 min-w-0 flex-1">
                         <div class="text-xs font-bold text-stone-600 tracking-tight whitespace-nowrap min-w-[50px] bg-stone-100 py-1 px-2 rounded text-center">
                             ${escapeHtml(timeStr)}
@@ -664,7 +676,7 @@
         if (followCustomers.length > 0) {
             followContainer.classList.remove("hidden");
             followList.innerHTML = followCustomers.map(c => `
-                <button data-customer-id="${escapeHtml(c.id)}" onclick="selectCustomer(this.dataset.customerId)" class="bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer">
+                <button data-customer-key="${escapeHtml(getCustomerKey(c))}" onclick="selectCustomer(this.dataset.customerKey)" class="bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer">
                     <span class="w-2 h-2 bg-amber-500 rounded-full animate-ping"></span>
                     <span>${escapeHtml(c.name || '匿名')} 様</span>
                 </button>
@@ -689,7 +701,7 @@
     }
 
     function shiftDayFilter(direction) {
-        selectedSearchCustomerId = null;
+        selectedSearchCustomerKey = null;
         clearSearchFieldOnly();
 
         const filters = ['today', 'tomorrow', 'all'];
@@ -824,8 +836,8 @@
             return `
                 <button
                     type="button"
-                    data-customer-id="${escapeHtml(customer.id)}"
-                    onclick="chooseSearchCandidate(this.dataset.customerId)"
+                    data-customer-key="${escapeHtml(getCustomerKey(customer))}"
+                    onclick="chooseSearchCandidate(this.dataset.customerKey)"
                     class="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-stone-100 last:border-b-0 transition"
                 >
                     <div class="flex items-center justify-between gap-2">
@@ -855,11 +867,14 @@
         box.classList.add("hidden");
     }
 
-    function chooseSearchCandidate(customerId) {
-        const customer = allCustomers.find(c => String(c.id) === String(customerId));
-        if (!customer) return;
+    function chooseSearchCandidate(customerKey) {
+        const customer = findCustomerByKey(customerKey);
+        if (!customer) {
+            console.warn("検索候補の顧客が見つかりません:", customerKey);
+            return;
+        }
 
-        selectedSearchCustomerId = String(customerId);
+        selectedSearchCustomerKey = getCustomerKey(customer);
 
         const input = document.getElementById("search-input");
         input.value = customer.name || customer.phone || "";
@@ -874,7 +889,7 @@
         updateStatusButtonUI("all");
 
         applyCurrentFilters();
-        selectCustomer(customerId);
+        selectCustomer(selectedSearchCustomerKey);
     }
 
     function handleSearchKeydown(event) {
@@ -884,12 +899,12 @@
 
         if (matches.length > 0) {
             event.preventDefault();
-            chooseSearchCandidate(matches[0].id);
+            chooseSearchCandidate(getCustomerKey(matches[0]));
         }
     }
 
     function filterByStatus(status) {
-        selectedSearchCustomerId = null;
+        selectedSearchCustomerKey = null;
         currentStatusFilter = status;
 
         updateStatusButtonUI(status);
@@ -901,9 +916,9 @@
         const todayStr = getLocalDateString(0);
         const tomorrowStr = getLocalDateString(1);
 
-        if (selectedSearchCustomerId) {
+        if (selectedSearchCustomerKey) {
             document.getElementById("list-title").innerText = "選択中のお客様";
-            filteredCustomers = allCustomers.filter(c => String(c.id) === String(selectedSearchCustomerId));
+            filteredCustomers = allCustomers.filter(c => getCustomerKey(c) === String(selectedSearchCustomerKey));
             renderList(filteredCustomers);
             return;
         }
@@ -942,7 +957,7 @@
     }
 
     function filterByDay(type) {
-        selectedSearchCustomerId = null;
+        selectedSearchCustomerKey = null;
         currentDayFilter = type;
 
         clearSearchFieldOnly();
@@ -951,7 +966,7 @@
     }
 
     function filterPending() {
-        selectedSearchCustomerId = null;
+        selectedSearchCustomerKey = null;
         clearSearchFieldOnly();
 
         document.getElementById("list-title").innerText = "レッスンメモ未記入の一覧";
@@ -960,7 +975,7 @@
     }
 
     function handleSearch() {
-        selectedSearchCustomerId = null;
+        selectedSearchCustomerKey = null;
 
         const query = document.getElementById("search-input").value.trim();
         const clearBtn = document.getElementById("search-clear-btn");
@@ -990,21 +1005,21 @@
     }
 
     function clearSearch() {
-        selectedSearchCustomerId = null;
+        selectedSearchCustomerKey = null;
         clearSearchFieldOnly();
         applyCurrentFilters();
     }
 
-    function selectCustomer(id) {
-        const customer = allCustomers.find(c => String(c.id) === String(id));
+    function selectCustomer(customerKey) {
+        const customer = findCustomerByKey(customerKey);
 
         if (!customer) {
-            console.warn("顧客が見つかりません:", id);
+            console.warn("顧客が見つかりません:", customerKey, allCustomers);
             alert("顧客データが見つかりませんでした。更新ボタンを押して再度お試しください。");
             return;
         }
 
-        selectedCustomerId = id;
+        selectedCustomerKey = getCustomerKey(customer);
 
         const cartePanel = document.getElementById("carte-panel");
         const carteEmpty = document.getElementById("carte-empty");
@@ -1097,9 +1112,9 @@
     }
 
     function copyLineId() {
-        if (!selectedCustomerId) return;
+        if (!selectedCustomerKey) return;
 
-        const customer = allCustomers.find(c => String(c.id) === String(selectedCustomerId));
+        const customer = findCustomerByKey(selectedCustomerKey);
         if (!customer || !customer.line_id) return;
 
         navigator.clipboard.writeText(customer.line_id).then(() => {
@@ -1111,14 +1126,14 @@
 
     function closeCarte() {
         document.getElementById("carte-panel").classList.add("hidden");
-        selectedCustomerId = null;
+        selectedCustomerKey = null;
         renderList(filteredCustomers);
     }
 
     async function saveOwnerMemo() {
-        if (!selectedCustomerId) return;
+        if (!selectedCustomerKey) return;
 
-        const selectedCustomer = allCustomers.find(c => String(c.id) === String(selectedCustomerId));
+        const selectedCustomer = findCustomerByKey(selectedCustomerKey);
         if (!selectedCustomer) return;
 
         const btn = document.getElementById("save-memo-btn");
@@ -1127,6 +1142,8 @@
         const memoValue = document.getElementById("carte-memo").value;
         const statusValue = document.getElementById("carte-status").value;
         const nextDateValue = document.getElementById("carte-next-date").value;
+
+        const keepKey = selectedCustomerKey;
 
         btn.disabled = true;
         btn.innerText = "変更を保存中...";
@@ -1148,8 +1165,8 @@
                 alert("カルテの履歴を更新しました！");
                 await fetchCustomers();
 
-                const updated = allCustomers.find(c => String(c.id) === String(selectedCustomerId));
-                if (updated) selectCustomer(updated.id);
+                const updated = findCustomerByKey(keepKey);
+                if (updated) selectCustomer(getCustomerKey(updated));
             } else {
                 alert("保存エラー: " + await response.text());
             }
