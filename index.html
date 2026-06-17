@@ -21,7 +21,7 @@
 
     <main class="max-w-md mx-auto p-4 space-y-6">
         <form id="booking-form" onsubmit="submitForm(event)" class="space-y-6">
-            
+
             <div id="survey-section" class="space-y-6">
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
                     <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">Q1. 基本情報</h2>
@@ -78,37 +78,38 @@
 
             <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
                 <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">ご希望の日時選択</h2>
-                <div class="space-y-4">
+
+                <div id="shop-settings-banner" class="mb-4 text-xs rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800 px-3 py-2 leading-relaxed">
+                    営業時間と定休日を確認中です...
+                </div>
+
+                <div class="space-y-5">
                     <div>
-                        <label class="block text-xs font-bold text-stone-600 mb-1">
-                            ご希望の日付 <span class="text-red-500">*</span> <span id="weekday-label" class="text-emerald-700 font-bold ml-1"></span>
+                        <label class="block text-xs font-bold text-stone-600 mb-2">
+                            ご希望の日付 <span class="text-red-500">*</span>
+                            <span id="weekday-label" class="text-emerald-700 font-bold ml-1"></span>
                         </label>
-                        <input type="date" id="booking_date" onchange="updateWeekday()" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+
+                        <input type="hidden" id="booking_date" required>
+                        <div id="date-grid" class="grid grid-cols-3 gap-2"></div>
+
+                        <button type="button" onclick="showMoreDates()" id="show-more-dates-btn" class="mt-3 w-full text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg py-2 transition">
+                            さらに日付を表示
+                        </button>
+
+                        <p id="date-message" class="text-xs text-stone-500 mt-2 leading-relaxed">
+                            定休日は赤色で表示され、選択できません。
+                        </p>
                     </div>
+
                     <div>
                         <label class="block text-xs font-bold text-stone-600 mb-1">ご希望の時間（30分単位） <span class="text-red-500">*</span></label>
-                        <select id="booking_time" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white" required>
-                            <option value="">時間を選択してください</option>
-                            <option value="10:00">10:00</option>
-                            <option value="10:30">10:30</option>
-                            <option value="11:00">11:00</option>
-                            <option value="11:30">11:30</option>
-                            <option value="12:00">12:00</option>
-                            <option value="12:30">12:30</option>
-                            <option value="13:00">13:00</option>
-                            <option value="13:30">13:30</option>
-                            <option value="14:00">14:00</option>
-                            <option value="14:30">14:30</option>
-                            <option value="15:00">15:00</option>
-                            <option value="15:30">15:30</option>
-                            <option value="16:00">16:00</option>
-                            <option value="16:30">16:30</option>
-                            <option value="17:00">17:00</option>
-                            <option value="17:30">17:30</option>
-                            <option value="18:00">18:00</option>
-                            <option value="18:30">18:30</option>
-                            <option value="19:00">19:00</option>
+                        <select id="booking_time" onchange="validateSelectedSlot()" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white" required disabled>
+                            <option value="">先に日付を選択してください</option>
                         </select>
+                        <p id="time-message" class="text-xs text-stone-500 mt-2 leading-relaxed">
+                            時間はダッシュボードの営業時間に合わせて自動更新されます。
+                        </p>
                     </div>
                 </div>
             </div>
@@ -122,60 +123,261 @@
     </main>
 
     <script>
-        // 🛠️ あなたのCloudflare WorkersのURLに書き換えてください
-        const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev"; 
-        // 🛠️ LINEデベロッパーセンターのLIFF IDを入力してください
-        const LIFF_ID = "2010377734-4tHMhUx6"; 
+        const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
+        const LIFF_ID = "2010377734-4tHMhUx6";
 
         let lineUserId = "";
         let isExisting = false;
         let existingCustomerData = null;
+        let selectedDate = "";
+        let dateDisplayCount = 28;
 
-        // 日付選択時に自動で曜日を計算して表示する関数
-        function updateWeekday() {
-            const dateInput = document.getElementById("booking_date").value;
-            const label = document.getElementById("weekday-label");
-            if (dateInput) {
-                const date = new Date(dateInput);
-                const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-                const dayName = weekdays[date.getDay()];
-                label.innerText = `（${dayName}曜日）`;
-            } else {
-                label.innerText = "";
-            }
+        let shopSettings = {
+            open_time: "10:00",
+            close_time: "19:00",
+            holidays: []
+        };
+
+        const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+        function normalizeTime(value, fallback = "10:00") {
+            if (typeof value !== "string" || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) return fallback;
+            return value;
         }
 
-        // LIFF初期化
+        function timeToMinutes(time) {
+            const normalized = normalizeTime(time, null);
+            if (!normalized) return null;
+            const [h, m] = normalized.split(":").map(Number);
+            return h * 60 + m;
+        }
+
+        function minutesToTime(minutes) {
+            const h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+        }
+
+        function normalizeHolidays(value) {
+            if (!Array.isArray(value)) return [];
+            return [...new Set(value.map(Number).filter(d => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+        }
+
+        function normalizeShopSettings(data = {}) {
+            const openTime = normalizeTime(data.open_time, "10:00");
+            const closeTime = normalizeTime(data.close_time, "19:00");
+            return {
+                open_time: timeToMinutes(openTime) < timeToMinutes(closeTime) ? openTime : "10:00",
+                close_time: timeToMinutes(openTime) < timeToMinutes(closeTime) ? closeTime : "19:00",
+                holidays: normalizeHolidays(data.holidays)
+            };
+        }
+
+        function formatHolidayNames(holidays) {
+            const normalized = normalizeHolidays(holidays);
+            return normalized.length ? normalized.map(day => `${weekdays[day]}曜`).join("・") : "なし";
+        }
+
+        function getLocalDateString(offset = 0) {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + offset);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, "0");
+            const day = String(d.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function getWeekday(dateStr) {
+            const match = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) return null;
+            const year = Number(match[1]);
+            const month = Number(match[2]);
+            const day = Number(match[3]);
+            return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+        }
+
+        function formatDateButtonLabel(dateStr) {
+            const match = dateStr.match(/^\d{4}-(\d{2})-(\d{2})$/);
+            if (!match) return dateStr;
+            const month = Number(match[1]);
+            const day = Number(match[2]);
+            const weekday = getWeekday(dateStr);
+            return `${month}/${day}(${weekdays[weekday]})`;
+        }
+
+        function isHoliday(dateStr) {
+            const weekday = getWeekday(dateStr);
+            return weekday !== null && shopSettings.holidays.includes(weekday);
+        }
+
+        async function loadShopSettings() {
+            try {
+                const response = await fetch(`${WORKER_URL}?action=get_settings`);
+                if (!response.ok) throw new Error(await response.text());
+                const data = await response.json();
+                shopSettings = normalizeShopSettings(data);
+            } catch (error) {
+                console.error("店舗設定の取得エラー:", error);
+                shopSettings = normalizeShopSettings(shopSettings);
+            }
+
+            renderShopSettingsBanner();
+            renderDateButtons();
+            generateTimeOptions();
+        }
+
+        function renderShopSettingsBanner() {
+            const banner = document.getElementById("shop-settings-banner");
+            banner.innerHTML = `
+                <span class="font-bold">現在の受付時間：</span>${shopSettings.open_time}〜${shopSettings.close_time}<br>
+                <span class="font-bold">定休日：</span>${formatHolidayNames(shopSettings.holidays)}
+            `;
+        }
+
+        function renderDateButtons() {
+            const grid = document.getElementById("date-grid");
+            let html = "";
+
+            for (let i = 0; i < dateDisplayCount; i++) {
+                const dateStr = getLocalDateString(i);
+                const closed = isHoliday(dateStr);
+                const selected = selectedDate === dateStr;
+
+                const baseClass = "rounded-xl border px-2 py-3 text-center text-xs font-bold transition";
+                const enabledClass = selected
+                    ? "bg-emerald-700 text-white border-emerald-700 shadow-md"
+                    : "bg-white text-stone-700 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50";
+                const disabledClass = "bg-rose-50 text-rose-400 border-rose-100 cursor-not-allowed opacity-70";
+
+                html += `
+                    <button type="button"
+                        ${closed ? "disabled" : `onclick="selectDate('${dateStr}')"`} 
+                        class="${baseClass} ${closed ? disabledClass : enabledClass}">
+                        <span class="block">${formatDateButtonLabel(dateStr)}</span>
+                        <span class="block text-[10px] mt-1 ${closed ? "text-rose-500" : selected ? "text-emerald-50" : "text-stone-400"}">
+                            ${closed ? "定休日" : "予約可"}
+                        </span>
+                    </button>
+                `;
+            }
+
+            grid.innerHTML = html;
+        }
+
+        function showMoreDates() {
+            dateDisplayCount += 28;
+            if (dateDisplayCount >= 84) {
+                document.getElementById("show-more-dates-btn").classList.add("hidden");
+            }
+            renderDateButtons();
+        }
+
+        function generateTimeOptions() {
+            const select = document.getElementById("booking_time");
+            const openMinutes = timeToMinutes(shopSettings.open_time);
+            const closeMinutes = timeToMinutes(shopSettings.close_time);
+
+            if (openMinutes === null || closeMinutes === null || openMinutes >= closeMinutes) {
+                select.innerHTML = `<option value="">受付時間を取得できませんでした</option>`;
+                select.disabled = true;
+                return;
+            }
+
+            let options = `<option value="">時間を選択してください</option>`;
+            for (let minutes = openMinutes; minutes <= closeMinutes; minutes += 30) {
+                const value = minutesToTime(minutes);
+                options += `<option value="${value}">${value}</option>`;
+            }
+
+            select.innerHTML = options;
+            select.disabled = !selectedDate;
+        }
+
+        function selectDate(dateStr) {
+            if (isHoliday(dateStr)) {
+                const weekday = weekdays[getWeekday(dateStr)];
+                alert(`${weekday}曜日は定休日のため選択できません。`);
+                return;
+            }
+
+            selectedDate = dateStr;
+            document.getElementById("booking_date").value = dateStr;
+            document.getElementById("weekday-label").innerText = `（${weekdays[getWeekday(dateStr)]}曜日）`;
+            document.getElementById("date-message").innerText = `${formatDateButtonLabel(dateStr)}を選択中です。`;
+            document.getElementById("booking_time").value = "";
+            generateTimeOptions();
+            renderDateButtons();
+            validateSelectedSlot();
+        }
+
+        function validateSelectedSlot() {
+            const dateValue = document.getElementById("booking_date").value;
+            const timeValue = document.getElementById("booking_time").value;
+            const timeMessage = document.getElementById("time-message");
+            const submitBtn = document.getElementById("submit-btn");
+
+            if (!dateValue) {
+                timeMessage.innerText = "先に日付を選択してください。";
+                submitBtn.disabled = false;
+                return false;
+            }
+
+            if (isHoliday(dateValue)) {
+                timeMessage.innerText = "選択した日は定休日です。別の日付を選んでください。";
+                submitBtn.disabled = true;
+                return false;
+            }
+
+            if (!timeValue) {
+                timeMessage.innerText = `営業時間 ${shopSettings.open_time}〜${shopSettings.close_time} の中から時間を選択してください。`;
+                submitBtn.disabled = false;
+                return false;
+            }
+
+            const minutes = timeToMinutes(timeValue);
+            if (minutes < timeToMinutes(shopSettings.open_time) || minutes > timeToMinutes(shopSettings.close_time)) {
+                timeMessage.innerText = `営業時間外です。${shopSettings.open_time}〜${shopSettings.close_time} から選択してください。`;
+                submitBtn.disabled = true;
+                return false;
+            }
+
+            timeMessage.innerText = `${dateValue} ${timeValue} で受付できます。`;
+            submitBtn.disabled = false;
+            return true;
+        }
+
         async function initLiff() {
             try {
+                await loadShopSettings();
+
                 await liff.init({ liffId: LIFF_ID });
                 if (!liff.isLoggedIn()) {
                     liff.login();
                     return;
                 }
+
                 const profile = await liff.getProfile();
                 lineUserId = profile.userId;
-                
-                // 既存顧客かどうかをWorkers経由でSupabaseに確認
+
                 await checkExistingCustomer(lineUserId);
             } catch (error) {
                 console.error("LIFF初期化エラー:", error);
-                alert("LINE情報の取得に失敗しました。");
+                alert("LINE情報または店舗設定の取得に失敗しました。再度開き直してください。");
             } finally {
                 document.getElementById("loading").classList.add("hidden");
             }
         }
 
-        // 既存顧客チェック
         async function checkExistingCustomer(userId) {
             try {
-                const response = await fetch(`${WORKER_URL}?action=get_customer&line_user_id=${userId}`);
+                const response = await fetch(`${WORKER_URL}?action=get_customer&line_user_id=${encodeURIComponent(userId)}`);
                 if (response.ok) {
                     const customer = await response.json();
                     if (customer) {
                         isExisting = true;
                         existingCustomerData = customer;
-                        // 2回目以降のリピート客ならアンケートを隠す
+
                         document.getElementById("survey-section").classList.add("hidden");
                         document.getElementById("header-subtitle").innerText = "次回のご予約フォーム";
                         document.getElementById("submit-btn").innerText = "次回予約を確定する";
@@ -186,11 +388,10 @@
             }
         }
 
-        // フォーム送信処理
         async function submitForm(event) {
             event.preventDefault();
             const btn = document.getElementById("submit-btn");
-            
+
             const booking_date = document.getElementById("booking_date").value;
             const booking_time = document.getElementById("booking_time").value;
 
@@ -199,15 +400,19 @@
                 return;
             }
 
-            // 送信データの組み立て
+            if (!validateSelectedSlot()) {
+                alert("定休日または営業時間外が選択されています。日時を選び直してください。");
+                return;
+            }
+
             let payload = {
                 line_user_id: lineUserId,
                 booking_date: booking_date,
-                booking_time: booking_time
+                booking_time: booking_time,
+                is_existing: isExisting
             };
 
             if (!isExisting) {
-                // 初回客の場合のみ、フォームの入力値を取得
                 payload.name = document.getElementById("name").value.trim();
                 payload.phone = document.getElementById("phone").value.trim();
                 payload.yoga_experience = document.getElementById("yoga_experience").value;
@@ -219,30 +424,45 @@
                     return;
                 }
             } else {
-                // リピート客の場合、前回のデータを引き継いで上書き保存する
-                payload.name = existingCustomerData.name;
-                payload.phone = existingCustomerData.phone;
-                payload.yoga_experience = existingCustomerData.yoga_experience;
-                payload.primary_goal = existingCustomerData.primary_goal;
-                payload.target_pace = existingCustomerData.target_pace;
+                payload.name = existingCustomerData.name || "";
+                payload.phone = existingCustomerData.phone || "";
+                payload.yoga_experience = existingCustomerData.yoga_experience || "";
+                payload.primary_goal = existingCustomerData.primary_goal || "";
+                payload.target_pace = existingCustomerData.target_pace || "";
             }
 
             btn.disabled = true;
             btn.innerText = "送信中...";
 
             try {
+                await loadShopSettings();
+
+                if (
+                    isHoliday(booking_date) ||
+                    timeToMinutes(booking_time) < timeToMinutes(shopSettings.open_time) ||
+                    timeToMinutes(booking_time) > timeToMinutes(shopSettings.close_time)
+                ) {
+                    alert("店舗設定が更新されました。選択日時を確認し直してください。");
+                    btn.disabled = false;
+                    btn.innerText = isExisting ? "次回予約を確定する" : "予約を確定する";
+                    return;
+                }
+
                 const response = await fetch(WORKER_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
 
+                const result = await response.json().catch(() => ({}));
+
                 if (response.ok) {
                     alert(isExisting ? "次回のご予約を受け付けました！" : "ご予約とアンケートの送信が完了しました！");
-                    liff.closeWindow();
+                    if (typeof liff !== "undefined" && liff.isInClient()) {
+                        liff.closeWindow();
+                    }
                 } else {
-                    const errText = await response.text();
-                    alert("システムエラーが発生しました。詳細: " + errText);
+                    alert("システムエラーが発生しました。詳細: " + (result.error || "予約を保存できませんでした。"));
                     btn.disabled = false;
                     btn.innerText = isExisting ? "次回予約を確定する" : "予約を確定する";
                 }
