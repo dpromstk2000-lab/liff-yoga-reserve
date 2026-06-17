@@ -10,905 +10,960 @@
 
 <body class="bg-stone-50 text-stone-800 font-sans antialiased pb-20">
 
-    <div id="loading" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mb-4"></div>
-        <p class="text-stone-500 text-sm font-medium">お客様の情報を確認中...</p>
-    </div>
+<div id="loading" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mb-4"></div>
+    <p class="text-stone-500 text-sm font-medium">お客様の情報を確認中...</p>
+</div>
 
-    <header class="bg-emerald-800 text-white text-center py-4 shadow-md sticky top-0 z-40">
-        <h1 class="text-lg font-bold tracking-wider">Private Yoga Studio</h1>
-        <p class="text-xs text-emerald-200 mt-1" id="header-subtitle">ご予約・事前カウンセリング</p>
-    </header>
+<header class="bg-emerald-800 text-white text-center py-4 shadow-md sticky top-0 z-40">
+    <h1 class="text-lg font-bold tracking-wider">Private Yoga Studio</h1>
+    <p class="text-xs text-emerald-200 mt-1" id="header-subtitle">ご予約・事前カウンセリング</p>
+</header>
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
+<main class="max-w-md mx-auto p-4 space-y-6">
 
-        <section id="current-reservation-section" class="hidden space-y-4">
-            <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-5 space-y-4">
-                <div>
-                    <p class="text-xs font-bold text-emerald-700 mb-1">現在のご予約</p>
-                    <h2 class="text-lg font-black text-stone-900" id="current-reservation-date">-</h2>
-                    <p class="text-lg font-black text-stone-900" id="current-reservation-time">-</p>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3">
-                    <button type="button" onclick="startChangeReservation()" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-sm">
-                        この予約を変更する
-                    </button>
-
-                    <button type="button" onclick="startAdditionalReservation()" class="w-full bg-white border border-emerald-600 text-emerald-700 font-bold py-3 rounded-xl">
-                        別の日程で追加予約する
-                    </button>
-                </div>
-
-                <p class="text-xs text-stone-400 leading-relaxed">
-                    予約内容を変更したい場合は「この予約を変更する」から日時を選び直してください。
-                </p>
+    <section id="current-reservation-section" class="hidden space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-5 space-y-4">
+            <div>
+                <p class="text-xs font-bold text-emerald-700 mb-1">現在のご予約</p>
+                <p class="text-sm text-stone-500">有効な予約は最大2件までです。</p>
             </div>
-        </section>
 
-        <section id="no-current-reservation-section" class="hidden space-y-4">
-            <div class="bg-white rounded-2xl shadow-sm border border-stone-100 p-5 space-y-4">
-                <div>
-                    <p class="text-xs font-bold text-stone-500 mb-1">現在のご予約</p>
-                    <h2 class="text-lg font-black text-stone-900">現在受付中の予約はありません</h2>
-                    <p class="text-sm text-stone-500 mt-2">下のボタンから次回予約をお取りください。</p>
-                </div>
+            <div id="current-reservation-list" class="space-y-3"></div>
 
-                <button type="button" onclick="startAdditionalReservation()" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-sm">
-                    次回予約をする
-                </button>
+            <button
+                type="button"
+                id="add-reservation-btn"
+                onclick="startAdditionalReservation()"
+                class="w-full bg-white border border-emerald-600 text-emerald-700 font-bold py-3 rounded-xl"
+            >
+                別の日程で追加予約する
+            </button>
+
+            <p id="reservation-limit-message" class="text-xs text-stone-400 leading-relaxed">
+                予約内容を変更したい場合は、各予約の「この予約を変更する」から日時を選び直してください。
+            </p>
+        </div>
+    </section>
+
+    <section id="no-current-reservation-section" class="hidden space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-stone-100 p-5 space-y-4">
+            <div>
+                <p class="text-xs font-bold text-stone-500 mb-1">現在のご予約</p>
+                <h2 class="text-lg font-black text-stone-900">現在受付中の予約はありません</h2>
+                <p class="text-sm text-stone-500 mt-2">下のボタンから次回予約をお取りください。</p>
             </div>
-        </section>
 
-        <form id="booking-form" onsubmit="confirmReservation(event)" class="space-y-6">
+            <button type="button" onclick="startAdditionalReservation()" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-sm">
+                次回予約をする
+            </button>
+        </div>
+    </section>
 
-            <div id="survey-section" class="space-y-6">
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
-                    <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">Q1. 基本情報</h2>
+    <form id="booking-form" onsubmit="confirmReservation(event)" class="space-y-6">
 
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs font-bold text-stone-600 mb-1">お名前 <span class="text-red-500">*</span></label>
-                            <input type="text" id="name" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="ヨガ 太郎">
-                        </div>
+        <div id="survey-section" class="space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
+                <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">Q1. 基本情報</h2>
 
-                        <div>
-                            <label class="block text-xs font-bold text-stone-600 mb-1">お電話番号 <span class="text-red-500">*</span></label>
-                            <input type="tel" id="phone" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="09012345678">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-stone-600 mb-1">ヨガのご経験 <span class="text-red-500">*</span></label>
-                            <select id="yoga_experience" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
-                                <option value="">選択してください</option>
-                                <option value="初めて">初めて</option>
-                                <option value="数回程度">数回程度</option>
-                                <option value="定期的に通っていた">定期的に通っていた</option>
-                            </select>
-                        </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-stone-600 mb-1">お名前 <span class="text-red-500">*</span></label>
+                        <input type="text" id="name" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="ヨガ 太郎">
                     </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
-                    <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">Q2. 本日の目的・お悩み</h2>
 
                     <div>
-                        <label class="block text-xs font-bold text-stone-600 mb-2">最も解決したいお悩みは何ですか？ <span class="text-red-500">*</span></label>
-                        <select id="primary_goal" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
-                            <option value="">選択してください</option>
-                            <option value="肩こり・腰痛などの身体不調改善">肩こり・腰痛などの身体の不調を改善したい</option>
-                            <option value="ダイエット・ボディライン引き締め">ダイエット・ボディラインを引き締めたい</option>
-                            <option value="運動不足解消・体力作り">運動不足を解消して体力をつけたい</option>
-                            <option value="ストレス解消・リラックス">ストレスを解消してリラックスしたい</option>
-                            <option value="マンツーマン希望">大人数のスタジオが苦手（マンツーマン希望）</option>
-                        </select>
+                        <label class="block text-xs font-bold text-stone-600 mb-1">お電話番号 <span class="text-red-500">*</span></label>
+                        <input type="tel" id="phone" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="09012345678">
                     </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
-                    <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">Q3. 今後の理想のペース</h2>
 
                     <div>
-                        <label class="block text-xs font-bold text-stone-600 mb-2">もし今後通われるとしたら、どのペースが理想に近いですか？ <span class="text-red-500">*</span></label>
-                        <select id="target_pace" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <label class="block text-xs font-bold text-stone-600 mb-1">ヨガのご経験 <span class="text-red-500">*</span></label>
+                        <select id="yoga_experience" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
                             <option value="">選択してください</option>
-                            <option value="週に1回程度">週に1回程度</option>
-                            <option value="2週に1回程度">2週に1回程度</option>
-                            <option value="月に1回程度">月に1回程度</option>
-                            <option value="都度自分のペースで">都度自分のペースで考えてみたい</option>
+                            <option value="初めて">初めて</option>
+                            <option value="数回程度">数回程度</option>
+                            <option value="定期的に通っていた">定期的に通っていた</option>
                         </select>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
-                <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">ご希望の日時選択</h2>
+                <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">Q2. 本日の目的・お悩み</h2>
 
-                <div id="shop-settings-banner" class="mb-4 text-xs rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800 px-3 py-2 leading-relaxed">
-                    営業時間と定休日を確認中です...
-                </div>
-
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-bold text-stone-600 mb-2">
-                            ご希望の日付 <span class="text-red-500">*</span>
-                            <span id="weekday-label" class="text-emerald-700 font-bold ml-1"></span>
-                        </label>
-
-                        <input type="hidden" id="booking_date" required>
-
-                        <div id="date-grid" class="grid grid-cols-3 gap-2"></div>
-
-                        <button type="button" onclick="showMoreDates()" id="show-more-dates-btn" class="mt-3 w-full text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg py-2 transition">
-                            さらに日付を表示
-                        </button>
-
-                        <p id="date-message" class="text-xs text-stone-500 mt-2 leading-relaxed">
-                            定休日は赤色で表示され、選択できません。
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-stone-600 mb-1">
-                            ご希望の時間（30分単位） <span class="text-red-500">*</span>
-                        </label>
-
-                        <select id="booking_time" onchange="validateSelectedSlot()" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white" required disabled>
-                            <option value="">先に日付を選択してください</option>
-                        </select>
-
-                        <p id="time-message" class="text-xs text-stone-500 mt-2 leading-relaxed">
-                            時間はダッシュボードの営業時間に合わせて自動更新されます。
-                        </p>
-                    </div>
+                <div>
+                    <label class="block text-xs font-bold text-stone-600 mb-2">最も解決したいお悩みは何ですか？ <span class="text-red-500">*</span></label>
+                    <select id="primary_goal" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <option value="">選択してください</option>
+                        <option value="肩こり・腰痛などの身体不調改善">肩こり・腰痛などの身体の不調を改善したい</option>
+                        <option value="ダイエット・ボディライン引き締め">ダイエット・ボディラインを引き締めたい</option>
+                        <option value="運動不足解消・体力作り">運動不足を解消して体力をつけたい</option>
+                        <option value="ストレス解消・リラックス">ストレスを解消してリラックスしたい</option>
+                        <option value="マンツーマン希望">大人数のスタジオが苦手（マンツーマン希望）</option>
+                    </select>
                 </div>
             </div>
 
-            <div class="px-2">
-                <button type="submit" id="submit-btn" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 px-4 rounded-xl shadow-md transition duration-200 tracking-wider">
-                    予約内容を確認する
-                </button>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
+                <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">Q3. 今後の理想のペース</h2>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-600 mb-2">もし今後通われるとしたら、どのペースが理想に近いですか？ <span class="text-red-500">*</span></label>
+                    <select id="target_pace" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <option value="">選択してください</option>
+                        <option value="週に1回程度">週に1回程度</option>
+                        <option value="2週に1回程度">2週に1回程度</option>
+                        <option value="月に1回程度">月に1回程度</option>
+                        <option value="都度自分のペースで">都度自分のペースで考えてみたい</option>
+                    </select>
+                </div>
             </div>
-        </form>
+        </div>
 
-        <section id="confirm-section" class="hidden space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 space-y-5">
-                <div class="text-center">
-                    <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-xl font-black">
-                        ?
-                    </div>
-                    <h2 class="text-xl font-black text-stone-900 mt-4">予約内容の確認</h2>
-                    <p class="text-sm text-stone-500 mt-2">以下の内容で送信してよろしいですか？</p>
-                </div>
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100">
+            <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">ご希望の日時選択</h2>
 
-                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-                    <p class="text-xs font-bold text-emerald-700 mb-1">ご予約内容</p>
-                    <p id="confirm-reservation-date" class="text-lg font-black text-stone-900">-</p>
-                    <p id="confirm-reservation-time" class="text-lg font-black text-stone-900">-</p>
-                </div>
+            <div id="shop-settings-banner" class="mb-4 text-xs rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800 px-3 py-2 leading-relaxed">
+                営業時間と定休日を確認中です...
+            </div>
 
-                <div id="confirm-customer-box" class="bg-stone-50 border border-stone-100 rounded-xl p-4 text-sm text-stone-700 leading-relaxed"></div>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-stone-600 mb-2">
+                        ご希望の日付 <span class="text-red-500">*</span>
+                        <span id="weekday-label" class="text-emerald-700 font-bold ml-1"></span>
+                    </label>
 
-                <div class="space-y-3">
-                    <button type="button" onclick="submitReservation()" id="confirm-submit-btn" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 rounded-xl shadow-md">
-                        この内容で送信する
+                    <input type="hidden" id="booking_date" required>
+                    <div id="date-grid" class="grid grid-cols-3 gap-2"></div>
+
+                    <button type="button" onclick="showMoreDates()" id="show-more-dates-btn" class="mt-3 w-full text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg py-2 transition">
+                        さらに日付を表示
                     </button>
 
-                    <button type="button" onclick="backToFormFromConfirm()" class="w-full bg-white border border-stone-300 text-stone-700 font-bold py-3 rounded-xl">
-                        戻って修正する
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <section id="complete-section" class="hidden space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 text-center space-y-5">
-                <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl font-black">
-                    ✓
+                    <p id="date-message" class="text-xs text-stone-500 mt-2 leading-relaxed">
+                        定休日は赤色で表示され、選択できません。
+                    </p>
                 </div>
 
                 <div>
-                    <h2 id="complete-title" class="text-xl font-black text-emerald-800">ご予約を受け付けました</h2>
-                    <p class="text-sm text-stone-500 mt-2">以下の内容で予約が完了しました。</p>
+                    <label class="block text-xs font-bold text-stone-600 mb-1">
+                        ご希望の時間（30分単位） <span class="text-red-500">*</span>
+                    </label>
+
+                    <select id="booking_time" onchange="validateSelectedSlot()" class="w-full p-3 border border-stone-300 rounded-lg focus:ring-2 focus:ring-emerald-500 bg-white" required disabled>
+                        <option value="">先に日付を選択してください</option>
+                    </select>
+
+                    <p id="time-message" class="text-xs text-stone-500 mt-2 leading-relaxed">
+                        時間はダッシュボードの営業時間に合わせて自動更新されます。
+                    </p>
                 </div>
-
-                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-left">
-                    <p class="text-xs font-bold text-emerald-700 mb-1">あなたの予約</p>
-                    <p id="complete-reservation-date" class="text-lg font-black text-stone-900">-</p>
-                    <p id="complete-reservation-time" class="text-lg font-black text-stone-900">-</p>
-                </div>
-
-                <div class="space-y-3">
-                    <button type="button" onclick="editReservationFromComplete()" class="w-full bg-white border border-emerald-600 text-emerald-700 font-bold py-3 rounded-xl">
-                        予約を変更する
-                    </button>
-
-                    <button type="button" onclick="closeLiffWindow()" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl">
-                        閉じる
-                    </button>
-                </div>
-
-                <p class="text-xs text-stone-400 leading-relaxed">
-                    変更したい場合は「予約を変更する」から再度日時を選択してください。
-                </p>
             </div>
-        </section>
+        </div>
 
-    </main>
+        <div class="px-2">
+            <button type="submit" id="submit-btn" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 px-4 rounded-xl shadow-md transition duration-200 tracking-wider">
+                予約内容を確認する
+            </button>
+        </div>
+    </form>
 
-    <script>
-        const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
-        const LIFF_ID = "2010377734-4tHMhUx6";
+    <section id="confirm-section" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 space-y-5">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-xl font-black">?</div>
+                <h2 class="text-xl font-black text-stone-900 mt-4">予約内容の確認</h2>
+                <p class="text-sm text-stone-500 mt-2">以下の内容で送信してよろしいですか？</p>
+            </div>
 
-        let lineUserId = "";
-        let isExisting = false;
-        let isChangeMode = false;
-        let isSubmitting = false;
-        let existingCustomerData = null;
-        let latestReservation = null;
-        let selectedDate = "";
-        let dateDisplayCount = 28;
-        let lastSubmittedReservation = null;
+            <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                <p class="text-xs font-bold text-emerald-700 mb-1">ご予約内容</p>
+                <p id="confirm-reservation-date" class="text-lg font-black text-stone-900">-</p>
+                <p id="confirm-reservation-time" class="text-lg font-black text-stone-900">-</p>
+            </div>
 
-        let shopSettings = {
-            open_time: "10:00",
-            close_time: "19:00",
-            holidays: []
+            <div id="confirm-customer-box" class="bg-stone-50 border border-stone-100 rounded-xl p-4 text-sm text-stone-700 leading-relaxed"></div>
+
+            <div class="space-y-3">
+                <button type="button" onclick="submitReservation()" id="confirm-submit-btn" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-4 rounded-xl shadow-md">
+                    この内容で送信する
+                </button>
+
+                <button type="button" onclick="backToFormFromConfirm()" class="w-full bg-white border border-stone-300 text-stone-700 font-bold py-3 rounded-xl">
+                    戻って修正する
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section id="complete-section" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6 text-center space-y-5">
+            <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto text-2xl font-black">✓</div>
+
+            <div>
+                <h2 id="complete-title" class="text-xl font-black text-emerald-800">ご予約を受け付けました</h2>
+                <p class="text-sm text-stone-500 mt-2">以下の内容で予約が完了しました。</p>
+            </div>
+
+            <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 text-left">
+                <p class="text-xs font-bold text-emerald-700 mb-1">あなたの予約</p>
+                <p id="complete-reservation-date" class="text-lg font-black text-stone-900">-</p>
+                <p id="complete-reservation-time" class="text-lg font-black text-stone-900">-</p>
+            </div>
+
+            <div class="space-y-3">
+                <button type="button" onclick="editReservationFromComplete()" class="w-full bg-white border border-emerald-600 text-emerald-700 font-bold py-3 rounded-xl">
+                    この予約を変更する
+                </button>
+
+                <button type="button" onclick="showCurrentReservations()" class="w-full bg-white border border-stone-300 text-stone-700 font-bold py-3 rounded-xl">
+                    現在の予約一覧を見る
+                </button>
+
+                <button type="button" onclick="closeLiffWindow()" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<script>
+    const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
+    const LIFF_ID = "2010377734-4tHMhUx6";
+
+    let lineUserId = "";
+    let isExisting = false;
+    let isChangeMode = false;
+    let isSubmitting = false;
+    let existingCustomerData = null;
+    let activeReservations = [];
+    let latestReservation = null;
+    let selectedDate = "";
+    let dateDisplayCount = 28;
+    let lastSubmittedReservation = null;
+
+    let shopSettings = {
+        open_time: "10:00",
+        close_time: "19:00",
+        holidays: []
+    };
+
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+    function normalizeTime(value, fallback = "10:00") {
+        if (typeof value !== "string") return fallback;
+        const compact = value.substring(0, 5);
+        if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(compact)) return fallback;
+        return compact;
+    }
+
+    function timeToMinutes(time) {
+        const normalized = normalizeTime(time, null);
+        if (!normalized) return null;
+        const [h, m] = normalized.split(":").map(Number);
+        return h * 60 + m;
+    }
+
+    function minutesToTime(minutes) {
+        const h = Math.floor(minutes / 60);
+        const m = minutes % 60;
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    }
+
+    function normalizeHolidays(value) {
+        if (!Array.isArray(value)) return [];
+        return [...new Set(value.map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))].sort((a, b) => a - b);
+    }
+
+    function normalizeShopSettings(data = {}) {
+        const openTime = normalizeTime(data.open_time, "10:00");
+        const closeTime = normalizeTime(data.close_time, "19:00");
+        const valid = timeToMinutes(openTime) < timeToMinutes(closeTime);
+
+        return {
+            open_time: valid ? openTime : "10:00",
+            close_time: valid ? closeTime : "19:00",
+            holidays: normalizeHolidays(data.holidays)
+        };
+    }
+
+    function formatHolidayNames(holidays) {
+        const normalized = normalizeHolidays(holidays);
+        return normalized.length ? normalized.map(day => `${weekdays[day]}曜`).join("・") : "なし";
+    }
+
+    function getLocalDateString(offset = 0) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + offset);
+
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+    }
+
+    function getWeekday(dateStr) {
+        const match = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return null;
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const date = new Date(Date.UTC(year, month - 1, day));
+
+        if (
+            date.getUTCFullYear() !== year ||
+            date.getUTCMonth() !== month - 1 ||
+            date.getUTCDate() !== day
+        ) {
+            return null;
+        }
+
+        return date.getUTCDay();
+    }
+
+    function formatDateButtonLabel(dateStr) {
+        const match = String(dateStr || "").match(/^\d{4}-(\d{2})-(\d{2})$/);
+        if (!match) return dateStr;
+
+        const month = Number(match[1]);
+        const day = Number(match[2]);
+        const weekday = getWeekday(dateStr);
+
+        return `${month}/${day}(${weekdays[weekday]})`;
+    }
+
+    function formatCompleteDate(dateStr) {
+        const match = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return dateStr;
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const weekday = getWeekday(dateStr);
+
+        return `${year}年${month}月${day}日(${weekdays[weekday]})`;
+    }
+
+    function isHoliday(dateStr) {
+        const weekday = getWeekday(dateStr);
+        return weekday !== null && shopSettings.holidays.includes(weekday);
+    }
+
+    function validateSlotValue(dateValue, timeValue) {
+        const normalizedTime = normalizeTime(timeValue, null);
+
+        if (!dateValue || !normalizedTime) {
+            return { ok: false, message: "日付と時間を選択してください。" };
+        }
+
+        if (isHoliday(dateValue)) {
+            const weekday = weekdays[getWeekday(dateValue)];
+            return { ok: false, message: `${weekday}曜日は定休日です。別の日付を選んでください。` };
+        }
+
+        const selectedMinutes = timeToMinutes(normalizedTime);
+        const openMinutes = timeToMinutes(shopSettings.open_time);
+        const closeMinutes = timeToMinutes(shopSettings.close_time);
+
+        if (!["00", "30"].includes(String(normalizedTime).slice(-2))) {
+            return { ok: false, message: "時間は30分単位で選択してください。" };
+        }
+
+        if (selectedMinutes < openMinutes || selectedMinutes > closeMinutes) {
+            return { ok: false, message: `営業時間 ${shopSettings.open_time}〜${shopSettings.close_time} の中から選択してください。` };
+        }
+
+        return { ok: true };
+    }
+
+    async function loadShopSettings() {
+        try {
+            const response = await fetch(`${WORKER_URL}?action=get_settings`, { cache: "no-store" });
+            if (!response.ok) throw new Error(await response.text());
+
+            const data = await response.json();
+            shopSettings = normalizeShopSettings(data);
+        } catch (error) {
+            console.error("店舗設定の取得エラー:", error);
+            shopSettings = normalizeShopSettings(shopSettings);
+        }
+
+        renderShopSettingsBanner();
+        renderDateButtons();
+        generateTimeOptions();
+    }
+
+    function renderShopSettingsBanner() {
+        const banner = document.getElementById("shop-settings-banner");
+        banner.innerHTML = `
+            <span class="font-bold">現在の受付時間：</span>${shopSettings.open_time}〜${shopSettings.close_time}<br>
+            <span class="font-bold">定休日：</span>${formatHolidayNames(shopSettings.holidays)}
+        `;
+    }
+
+    function renderDateButtons() {
+        const grid = document.getElementById("date-grid");
+        let html = "";
+
+        for (let i = 0; i < dateDisplayCount; i++) {
+            const dateStr = getLocalDateString(i);
+            const closed = isHoliday(dateStr);
+            const selected = selectedDate === dateStr;
+
+            const baseClass = "rounded-xl border px-2 py-3 text-center text-xs font-bold transition";
+            const enabledClass = selected
+                ? "bg-emerald-700 text-white border-emerald-700 shadow-md"
+                : "bg-white text-stone-700 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50";
+            const disabledClass = "bg-rose-50 text-rose-400 border-rose-100 cursor-not-allowed opacity-70";
+
+            html += `
+                <button type="button"
+                    ${closed ? "disabled" : `onclick="selectDate('${dateStr}')"`} 
+                    class="${baseClass} ${closed ? disabledClass : enabledClass}">
+                    <span class="block">${formatDateButtonLabel(dateStr)}</span>
+                    <span class="block text-[10px] mt-1 ${closed ? "text-rose-500" : selected ? "text-emerald-50" : "text-stone-400"}">
+                        ${closed ? "定休日" : "予約可"}
+                    </span>
+                </button>
+            `;
+        }
+
+        grid.innerHTML = html;
+    }
+
+    function showMoreDates() {
+        dateDisplayCount += 28;
+
+        if (dateDisplayCount >= 168) {
+            document.getElementById("show-more-dates-btn").classList.add("hidden");
+        }
+
+        renderDateButtons();
+    }
+
+    function generateTimeOptions() {
+        const select = document.getElementById("booking_time");
+        const previousValue = normalizeTime(select.value, "");
+
+        const openMinutes = timeToMinutes(shopSettings.open_time);
+        const closeMinutes = timeToMinutes(shopSettings.close_time);
+
+        let options = `<option value="">時間を選択してください</option>`;
+
+        for (let minutes = openMinutes; minutes <= closeMinutes; minutes += 30) {
+            const value = minutesToTime(minutes);
+            options += `<option value="${value}">${value}</option>`;
+        }
+
+        select.innerHTML = options;
+        select.disabled = !selectedDate;
+
+        if (previousValue && validateSlotValue(selectedDate, previousValue).ok) {
+            select.value = previousValue;
+        }
+    }
+
+    function selectDate(dateStr) {
+        if (isHoliday(dateStr)) {
+            const weekday = weekdays[getWeekday(dateStr)];
+            alert(`${weekday}曜日は定休日のため選択できません。`);
+            return;
+        }
+
+        selectedDate = dateStr;
+
+        document.getElementById("booking_date").value = dateStr;
+        document.getElementById("weekday-label").innerText = `（${weekdays[getWeekday(dateStr)]}曜日）`;
+        document.getElementById("date-message").innerText = `${formatDateButtonLabel(dateStr)}を選択中です。`;
+
+        generateTimeOptions();
+        renderDateButtons();
+        validateSelectedSlot();
+    }
+
+    function clearSelectedSlot() {
+        selectedDate = "";
+        document.getElementById("booking_date").value = "";
+        document.getElementById("booking_time").value = "";
+        document.getElementById("weekday-label").innerText = "";
+        document.getElementById("date-message").innerText = "定休日は赤色で表示され、選択できません。";
+        document.getElementById("time-message").innerText = "時間はダッシュボードの営業時間に合わせて自動更新されます。";
+        renderDateButtons();
+        generateTimeOptions();
+    }
+
+    function prefillReservation(dateStr, timeStr) {
+        const normalizedTime = normalizeTime(timeStr, "");
+
+        if (!dateStr) return;
+
+        const offset = Math.max(0, Math.round((new Date(`${dateStr}T00:00:00`) - new Date(`${getLocalDateString(0)}T00:00:00`)) / 86400000));
+
+        if (offset >= dateDisplayCount) {
+            dateDisplayCount = Math.ceil((offset + 1) / 28) * 28;
+        }
+
+        renderDateButtons();
+        selectDate(dateStr);
+
+        setTimeout(() => {
+            if (normalizedTime) {
+                document.getElementById("booking_time").value = normalizedTime;
+                validateSelectedSlot();
+            }
+        }, 0);
+    }
+
+    function validateSelectedSlot() {
+        const dateValue = document.getElementById("booking_date").value;
+        const timeValue = document.getElementById("booking_time").value;
+        const timeMessage = document.getElementById("time-message");
+
+        if (!dateValue) {
+            timeMessage.innerText = "先に日付を選択してください。";
+            return false;
+        }
+
+        if (!timeValue) {
+            timeMessage.innerText = `営業時間 ${shopSettings.open_time}〜${shopSettings.close_time} の中から時間を選択してください。`;
+            return false;
+        }
+
+        const validation = validateSlotValue(dateValue, timeValue);
+        if (!validation.ok) {
+            timeMessage.innerText = validation.message;
+            return false;
+        }
+
+        timeMessage.innerText = `${dateValue} ${normalizeTime(timeValue, timeValue)} で受付できます。`;
+        return true;
+    }
+
+    function setSubmitButtonLabel() {
+        const btn = document.getElementById("submit-btn");
+        btn.innerText = isChangeMode ? "変更内容を確認する" : "予約内容を確認する";
+    }
+
+    async function initLiff() {
+        try {
+            await loadShopSettings();
+
+            await liff.init({ liffId: LIFF_ID });
+
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+
+            const profile = await liff.getProfile();
+            lineUserId = profile.userId;
+
+            await checkExistingCustomer(lineUserId);
+        } catch (error) {
+            console.error("LIFF初期化エラー:", error);
+            alert("LINE情報または店舗設定の取得に失敗しました。再度開き直してください。");
+        } finally {
+            document.getElementById("loading").classList.add("hidden");
+        }
+    }
+
+    async function checkExistingCustomer(userId) {
+        try {
+            const response = await fetch(`${WORKER_URL}?action=get_customer&line_user_id=${encodeURIComponent(userId)}`, { cache: "no-store" });
+
+            if (response.ok) {
+                const customer = await response.json();
+
+                if (customer) {
+                    isExisting = true;
+                    existingCustomerData = customer;
+
+                    document.getElementById("survey-section").classList.add("hidden");
+                    document.getElementById("booking-form").classList.add("hidden");
+                    document.getElementById("header-subtitle").innerText = "現在のご予約";
+
+                    await fetchActiveReservations();
+
+                    if (activeReservations.length > 0) {
+                        renderCurrentReservations();
+                    } else {
+                        document.getElementById("no-current-reservation-section").classList.remove("hidden");
+                    }
+
+                    setSubmitButtonLabel();
+                    return;
+                }
+            }
+
+            document.getElementById("booking-form").classList.remove("hidden");
+            document.getElementById("survey-section").classList.remove("hidden");
+            document.getElementById("current-reservation-section").classList.add("hidden");
+            document.getElementById("no-current-reservation-section").classList.add("hidden");
+
+        } catch (error) {
+            console.error("顧客照会エラー:", error);
+        }
+    }
+
+    async function fetchActiveReservations() {
+        try {
+            const today = getLocalDateString(0);
+            const response = await fetch(`${WORKER_URL}?action=get_active_reservations&line_user_id=${encodeURIComponent(lineUserId)}&today=${encodeURIComponent(today)}`, {
+                cache: "no-store"
+            });
+
+            if (!response.ok) throw new Error(await response.text());
+
+            const data = await response.json();
+            activeReservations = Array.isArray(data) ? data : [];
+            latestReservation = activeReservations[0] || null;
+
+            return activeReservations;
+        } catch (error) {
+            console.error("有効予約の取得エラー:", error);
+            activeReservations = [];
+            latestReservation = null;
+            return [];
+        }
+    }
+
+    function renderCurrentReservations() {
+        document.getElementById("current-reservation-section").classList.remove("hidden");
+        document.getElementById("no-current-reservation-section").classList.add("hidden");
+        document.getElementById("booking-form").classList.add("hidden");
+        document.getElementById("confirm-section").classList.add("hidden");
+        document.getElementById("complete-section").classList.add("hidden");
+        document.getElementById("header-subtitle").innerText = "現在のご予約";
+
+        const list = document.getElementById("current-reservation-list");
+
+        list.innerHTML = activeReservations.map((reservation, index) => `
+            <div class="border border-emerald-100 bg-emerald-50/40 rounded-xl p-4 space-y-3">
+                <div>
+                    <p class="text-[11px] text-emerald-700 font-bold">予約 ${index + 1}</p>
+                    <h2 class="text-lg font-black text-stone-900">${formatCompleteDate(reservation.reservation_date)}</h2>
+                    <p class="text-lg font-black text-stone-900">${normalizeTime(reservation.reservation_time, reservation.reservation_time)} 開始</p>
+                </div>
+
+                <button type="button" onclick="startChangeReservation(${index})" class="w-full bg-emerald-700 text-white font-bold py-3 rounded-xl">
+                    この予約を変更する
+                </button>
+            </div>
+        `).join("");
+
+        const addBtn = document.getElementById("add-reservation-btn");
+        const limitMessage = document.getElementById("reservation-limit-message");
+
+        if (activeReservations.length >= 2) {
+            addBtn.disabled = true;
+            addBtn.className = "w-full bg-stone-100 border border-stone-200 text-stone-400 font-bold py-3 rounded-xl cursor-not-allowed";
+            addBtn.innerText = "追加予約は最大2件までです";
+            limitMessage.innerText = "現在2件の予約があります。追加予約はできません。変更したい場合は各予約の変更ボタンをご利用ください。";
+        } else {
+            addBtn.disabled = false;
+            addBtn.className = "w-full bg-white border border-emerald-600 text-emerald-700 font-bold py-3 rounded-xl";
+            addBtn.innerText = "別の日程で追加予約する";
+            limitMessage.innerText = "予約内容を変更したい場合は、各予約の「この予約を変更する」から日時を選び直してください。";
+        }
+    }
+
+    async function showCurrentReservations() {
+        await fetchActiveReservations();
+
+        if (activeReservations.length > 0) {
+            renderCurrentReservations();
+        } else {
+            document.getElementById("complete-section").classList.add("hidden");
+            document.getElementById("no-current-reservation-section").classList.remove("hidden");
+        }
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function startChangeReservation(index) {
+        const target = activeReservations[index];
+
+        if (!target) {
+            alert("変更する予約が見つかりません。画面を開き直してください。");
+            return;
+        }
+
+        isChangeMode = true;
+        latestReservation = target;
+
+        document.getElementById("current-reservation-section").classList.add("hidden");
+        document.getElementById("no-current-reservation-section").classList.add("hidden");
+        document.getElementById("complete-section").classList.add("hidden");
+        document.getElementById("confirm-section").classList.add("hidden");
+        document.getElementById("booking-form").classList.remove("hidden");
+        document.getElementById("survey-section").classList.add("hidden");
+
+        document.getElementById("header-subtitle").innerText = "予約変更フォーム";
+        setSubmitButtonLabel();
+
+        prefillReservation(target.reservation_date, target.reservation_time);
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function startAdditionalReservation() {
+        if (activeReservations.length >= 2) {
+            alert("予約は最大2件までです。追加予約はできません。");
+            return;
+        }
+
+        isChangeMode = false;
+        latestReservation = null;
+
+        document.getElementById("current-reservation-section").classList.add("hidden");
+        document.getElementById("no-current-reservation-section").classList.add("hidden");
+        document.getElementById("complete-section").classList.add("hidden");
+        document.getElementById("confirm-section").classList.add("hidden");
+        document.getElementById("booking-form").classList.remove("hidden");
+        document.getElementById("survey-section").classList.add("hidden");
+
+        document.getElementById("header-subtitle").innerText = "次回のご予約フォーム";
+        setSubmitButtonLabel();
+        clearSelectedSlot();
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function buildPayload() {
+        const bookingDate = document.getElementById("booking_date").value;
+        const bookingTime = normalizeTime(document.getElementById("booking_time").value, "");
+
+        const payload = {
+            line_user_id: lineUserId,
+            booking_date: bookingDate,
+            booking_time: bookingTime,
+            is_existing: isExisting,
+            is_change: isChangeMode,
+            today: getLocalDateString(0)
         };
 
-        const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-
-        function normalizeTime(value, fallback = "10:00") {
-            if (typeof value !== "string") return fallback;
-            const compact = value.substring(0, 5);
-            if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(compact)) return fallback;
-            return compact;
+        if (isChangeMode && latestReservation) {
+            payload.previous_reservation_date = latestReservation.reservation_date || "";
+            payload.previous_reservation_time = normalizeTime(latestReservation.reservation_time || "", "");
         }
 
-        function timeToMinutes(time) {
-            const normalized = normalizeTime(time, null);
-            if (!normalized) return null;
-            const [h, m] = normalized.split(":").map(Number);
-            return h * 60 + m;
+        if (!isExisting) {
+            payload.name = document.getElementById("name").value.trim();
+            payload.phone = document.getElementById("phone").value.trim();
+            payload.yoga_experience = document.getElementById("yoga_experience").value;
+            payload.primary_goal = document.getElementById("primary_goal").value;
+            payload.target_pace = document.getElementById("target_pace").value;
+        } else {
+            payload.name = existingCustomerData?.name || "";
+            payload.phone = existingCustomerData?.phone || "";
+            payload.yoga_experience = existingCustomerData?.yoga_experience || "";
+            payload.primary_goal = existingCustomerData?.primary_goal || "";
+            payload.target_pace = existingCustomerData?.target_pace || "";
         }
 
-        function minutesToTime(minutes) {
-            const h = Math.floor(minutes / 60);
-            const m = minutes % 60;
-            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+        return payload;
+    }
+
+    function validateSurveyIfNeeded(payload) {
+        if (isExisting) return true;
+
+        if (!payload.name || !payload.phone || !payload.yoga_experience || !payload.primary_goal || !payload.target_pace) {
+            alert("アンケートの必須項目(*)をすべて入力してください。");
+            return false;
         }
 
-        function normalizeHolidays(value) {
-            if (!Array.isArray(value)) return [];
-            return [...new Set(value.map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))].sort((a, b) => a - b);
+        return true;
+    }
+
+    function confirmReservation(event) {
+        event.preventDefault();
+
+        if (!isChangeMode && isExisting && activeReservations.length >= 2) {
+            alert("予約は最大2件までです。追加予約はできません。");
+            return;
         }
 
-        function normalizeShopSettings(data = {}) {
-            const openTime = normalizeTime(data.open_time, "10:00");
-            const closeTime = normalizeTime(data.close_time, "19:00");
-            const valid = timeToMinutes(openTime) < timeToMinutes(closeTime);
+        const payload = buildPayload();
 
-            return {
-                open_time: valid ? openTime : "10:00",
-                close_time: valid ? closeTime : "19:00",
-                holidays: normalizeHolidays(data.holidays)
+        const slotValidation = validateSlotValue(payload.booking_date, payload.booking_time);
+        if (!slotValidation.ok) {
+            alert(slotValidation.message);
+            return;
+        }
+
+        if (!validateSurveyIfNeeded(payload)) return;
+
+        document.getElementById("confirm-reservation-date").innerText = formatCompleteDate(payload.booking_date);
+        document.getElementById("confirm-reservation-time").innerText = `${payload.booking_time} 開始`;
+
+        const customerLabel = isExisting
+            ? `${payload.name || "お客様"} 様`
+            : `${payload.name} 様 / ${payload.phone}`;
+
+        document.getElementById("confirm-customer-box").innerHTML = `
+            <p><span class="font-bold">お客様：</span>${customerLabel}</p>
+            <p><span class="font-bold">受付種別：</span>${isChangeMode ? "予約変更" : isExisting ? "追加・次回予約" : "新規予約"}</p>
+        `;
+
+        document.getElementById("booking-form").classList.add("hidden");
+        document.getElementById("confirm-section").classList.remove("hidden");
+        document.getElementById("complete-section").classList.add("hidden");
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function backToFormFromConfirm() {
+        document.getElementById("confirm-section").classList.add("hidden");
+        document.getElementById("booking-form").classList.remove("hidden");
+        setSubmitButtonLabel();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function submitReservation() {
+        if (isSubmitting) return;
+
+        const btn = document.getElementById("confirm-submit-btn");
+        const payload = buildPayload();
+
+        isSubmitting = true;
+        btn.disabled = true;
+        btn.innerText = "送信中...";
+
+        try {
+            await loadShopSettings();
+
+            const latestValidation = validateSlotValue(payload.booking_date, payload.booking_time);
+            if (!latestValidation.ok) {
+                alert("店舗設定が更新されました。日時を選び直してください。\n" + latestValidation.message);
+                backToFormFromConfirm();
+                return;
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            const response = await fetch(WORKER_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(result.error || "予約を保存できませんでした。");
+            }
+
+            isExisting = true;
+
+            existingCustomerData = {
+                name: payload.name,
+                phone: payload.phone,
+                yoga_experience: payload.yoga_experience,
+                primary_goal: payload.primary_goal,
+                target_pace: payload.target_pace
             };
-        }
 
-        function formatHolidayNames(holidays) {
-            const normalized = normalizeHolidays(holidays);
-            return normalized.length ? normalized.map(day => `${weekdays[day]}曜`).join("・") : "なし";
-        }
+            activeReservations = Array.isArray(result.active_reservations)
+                ? result.active_reservations
+                : [];
 
-        function getLocalDateString(offset = 0) {
-            const d = new Date();
-            d.setHours(0, 0, 0, 0);
-            d.setDate(d.getDate() + offset);
+            lastSubmittedReservation = {
+                reservation_date: payload.booking_date,
+                reservation_time: payload.booking_time
+            };
 
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, "0");
-            const day = String(d.getDate()).padStart(2, "0");
+            latestReservation = lastSubmittedReservation;
 
-            return `${year}-${month}-${day}`;
-        }
+            document.getElementById("survey-section").classList.add("hidden");
+            document.getElementById("header-subtitle").innerText = "現在のご予約";
 
-        function getOffsetFromToday(dateStr) {
-            const target = new Date(`${dateStr}T00:00:00`);
-            const today = new Date(`${getLocalDateString(0)}T00:00:00`);
-            return Math.round((target.getTime() - today.getTime()) / 86400000);
-        }
+            showCompleteScreen(payload.booking_date, payload.booking_time, payload.is_change);
 
-        function getWeekday(dateStr) {
-            const match = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            if (!match) return null;
+        } catch (error) {
+            console.error(error);
 
-            const year = Number(match[1]);
-            const month = Number(match[2]);
-            const day = Number(match[3]);
-            const date = new Date(Date.UTC(year, month - 1, day));
-
-            if (
-                date.getUTCFullYear() !== year ||
-                date.getUTCMonth() !== month - 1 ||
-                date.getUTCDate() !== day
-            ) {
-                return null;
+            if (error.name === "AbortError") {
+                alert("通信がタイムアウトしました。電波状況を確認して、もう一度お試しください。");
+            } else {
+                alert("送信できませんでした。詳細: " + error.message);
             }
+        } finally {
+            isSubmitting = false;
+            btn.disabled = false;
+            btn.innerText = "この内容で送信する";
+        }
+    }
 
-            return date.getUTCDay();
+    function showCompleteScreen(bookingDate, bookingTime, wasChange) {
+        document.getElementById("booking-form").classList.add("hidden");
+        document.getElementById("confirm-section").classList.add("hidden");
+        document.getElementById("current-reservation-section").classList.add("hidden");
+        document.getElementById("no-current-reservation-section").classList.add("hidden");
+        document.getElementById("complete-section").classList.remove("hidden");
+
+        document.getElementById("complete-title").innerText = wasChange
+            ? "ご予約の変更を受け付けました"
+            : "ご予約を受け付けました";
+
+        document.getElementById("complete-reservation-date").innerText = formatCompleteDate(bookingDate);
+        document.getElementById("complete-reservation-time").innerText = `${bookingTime} 開始`;
+
+        isChangeMode = false;
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function editReservationFromComplete() {
+        if (!lastSubmittedReservation) {
+            alert("変更する予約が見つかりません。");
+            return;
         }
 
-        function formatDateButtonLabel(dateStr) {
-            const match = String(dateStr || "").match(/^\d{4}-(\d{2})-(\d{2})$/);
-            if (!match) return dateStr;
-
-            const month = Number(match[1]);
-            const day = Number(match[2]);
-            const weekday = getWeekday(dateStr);
-
-            return `${month}/${day}(${weekdays[weekday]})`;
-        }
-
-        function formatCompleteDate(dateStr) {
-            const match = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            if (!match) return dateStr;
-
-            const year = Number(match[1]);
-            const month = Number(match[2]);
-            const day = Number(match[3]);
-            const weekday = getWeekday(dateStr);
-
-            return `${year}年${month}月${day}日(${weekdays[weekday]})`;
-        }
-
-        function isHoliday(dateStr) {
-            const weekday = getWeekday(dateStr);
-            return weekday !== null && shopSettings.holidays.includes(weekday);
-        }
-
-        function validateSlotValue(dateValue, timeValue) {
-            const normalizedTime = normalizeTime(timeValue, null);
-
-            if (!dateValue || !normalizedTime) {
-                return { ok: false, message: "日付と時間を選択してください。" };
-            }
-
-            if (isHoliday(dateValue)) {
-                const weekday = weekdays[getWeekday(dateValue)];
-                return { ok: false, message: `${weekday}曜日は定休日です。別の日付を選んでください。` };
-            }
-
-            const selectedMinutes = timeToMinutes(normalizedTime);
-            const openMinutes = timeToMinutes(shopSettings.open_time);
-            const closeMinutes = timeToMinutes(shopSettings.close_time);
-
-            if (selectedMinutes === null) {
-                return { ok: false, message: "時間の形式が正しくありません。" };
-            }
-
-            if (!["00", "30"].includes(String(normalizedTime).slice(-2))) {
-                return { ok: false, message: "時間は30分単位で選択してください。" };
-            }
-
-            if (selectedMinutes < openMinutes || selectedMinutes > closeMinutes) {
-                return { ok: false, message: `営業時間 ${shopSettings.open_time}〜${shopSettings.close_time} の中から選択してください。` };
-            }
-
-            return { ok: true };
-        }
-
-        async function loadShopSettings() {
-            try {
-                const response = await fetch(`${WORKER_URL}?action=get_settings`, { cache: "no-store" });
-                if (!response.ok) throw new Error(await response.text());
-
-                const data = await response.json();
-                shopSettings = normalizeShopSettings(data);
-            } catch (error) {
-                console.error("店舗設定の取得エラー:", error);
-                shopSettings = normalizeShopSettings(shopSettings);
-            }
-
-            renderShopSettingsBanner();
-            renderDateButtons();
-            generateTimeOptions();
-        }
-
-        function renderShopSettingsBanner() {
-            const banner = document.getElementById("shop-settings-banner");
-            banner.innerHTML = `
-                <span class="font-bold">現在の受付時間：</span>${shopSettings.open_time}〜${shopSettings.close_time}<br>
-                <span class="font-bold">定休日：</span>${formatHolidayNames(shopSettings.holidays)}
-            `;
-        }
-
-        function ensureDateVisible(dateStr) {
-            const offset = getOffsetFromToday(dateStr);
-            if (offset < 0) return;
-
-            if (offset >= dateDisplayCount) {
-                dateDisplayCount = Math.ceil((offset + 1) / 28) * 28;
-            }
-
-            if (dateDisplayCount >= 168) {
-                document.getElementById("show-more-dates-btn").classList.add("hidden");
-            }
-        }
-
-        function renderDateButtons() {
-            const grid = document.getElementById("date-grid");
-            let html = "";
-
-            for (let i = 0; i < dateDisplayCount; i++) {
-                const dateStr = getLocalDateString(i);
-                const closed = isHoliday(dateStr);
-                const selected = selectedDate === dateStr;
-
-                const baseClass = "rounded-xl border px-2 py-3 text-center text-xs font-bold transition";
-                const enabledClass = selected
-                    ? "bg-emerald-700 text-white border-emerald-700 shadow-md"
-                    : "bg-white text-stone-700 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50";
-                const disabledClass = "bg-rose-50 text-rose-400 border-rose-100 cursor-not-allowed opacity-70";
-
-                html += `
-                    <button type="button"
-                        ${closed ? "disabled" : `onclick="selectDate('${dateStr}')"`} 
-                        class="${baseClass} ${closed ? disabledClass : enabledClass}">
-                        <span class="block">${formatDateButtonLabel(dateStr)}</span>
-                        <span class="block text-[10px] mt-1 ${closed ? "text-rose-500" : selected ? "text-emerald-50" : "text-stone-400"}">
-                            ${closed ? "定休日" : "予約可"}
-                        </span>
-                    </button>
-                `;
-            }
-
-            grid.innerHTML = html;
-        }
-
-        function showMoreDates() {
-            dateDisplayCount += 28;
-
-            if (dateDisplayCount >= 168) {
-                document.getElementById("show-more-dates-btn").classList.add("hidden");
-            }
-
-            renderDateButtons();
-        }
-
-        function generateTimeOptions() {
-            const select = document.getElementById("booking_time");
-            const previousValue = normalizeTime(select.value, "");
-
-            const openMinutes = timeToMinutes(shopSettings.open_time);
-            const closeMinutes = timeToMinutes(shopSettings.close_time);
-
-            if (openMinutes === null || closeMinutes === null || openMinutes >= closeMinutes) {
-                select.innerHTML = `<option value="">受付時間を取得できませんでした</option>`;
-                select.disabled = true;
-                return;
-            }
-
-            let options = `<option value="">時間を選択してください</option>`;
-
-            for (let minutes = openMinutes; minutes <= closeMinutes; minutes += 30) {
-                const value = minutesToTime(minutes);
-                options += `<option value="${value}">${value}</option>`;
-            }
-
-            select.innerHTML = options;
-            select.disabled = !selectedDate;
-
-            if (previousValue && validateSlotValue(selectedDate, previousValue).ok) {
-                select.value = previousValue;
-            }
-        }
-
-        function selectDate(dateStr) {
-            if (isHoliday(dateStr)) {
-                const weekday = weekdays[getWeekday(dateStr)];
-                alert(`${weekday}曜日は定休日のため選択できません。`);
-                return;
-            }
-
-            selectedDate = dateStr;
-
-            document.getElementById("booking_date").value = dateStr;
-            document.getElementById("weekday-label").innerText = `（${weekdays[getWeekday(dateStr)]}曜日）`;
-            document.getElementById("date-message").innerText = `${formatDateButtonLabel(dateStr)}を選択中です。`;
-
-            generateTimeOptions();
-            renderDateButtons();
-            validateSelectedSlot();
-        }
-
-        function clearSelectedSlot() {
-            selectedDate = "";
-            document.getElementById("booking_date").value = "";
-            document.getElementById("booking_time").value = "";
-            document.getElementById("weekday-label").innerText = "";
-            document.getElementById("date-message").innerText = "定休日は赤色で表示され、選択できません。";
-            document.getElementById("time-message").innerText = "時間はダッシュボードの営業時間に合わせて自動更新されます。";
-            renderDateButtons();
-            generateTimeOptions();
-        }
-
-        function prefillReservation(dateStr, timeStr) {
-            const normalizedTime = normalizeTime(timeStr, "");
-
-            if (!dateStr) return;
-
-            ensureDateVisible(dateStr);
-            renderDateButtons();
-            selectDate(dateStr);
-
-            setTimeout(() => {
-                if (normalizedTime) {
-                    document.getElementById("booking_time").value = normalizedTime;
-                    validateSelectedSlot();
-                }
-            }, 0);
-        }
-
-        function validateSelectedSlot() {
-            const dateValue = document.getElementById("booking_date").value;
-            const timeValue = document.getElementById("booking_time").value;
-            const timeMessage = document.getElementById("time-message");
-
-            if (!dateValue) {
-                timeMessage.innerText = "先に日付を選択してください。";
-                return false;
-            }
-
-            if (!timeValue) {
-                timeMessage.innerText = `営業時間 ${shopSettings.open_time}〜${shopSettings.close_time} の中から時間を選択してください。`;
-                return false;
-            }
-
-            const validation = validateSlotValue(dateValue, timeValue);
-            if (!validation.ok) {
-                timeMessage.innerText = validation.message;
-                return false;
-            }
-
-            timeMessage.innerText = `${dateValue} ${normalizeTime(timeValue, timeValue)} で受付できます。`;
-            return true;
-        }
-
-        function setSubmitButtonLabel() {
-            const btn = document.getElementById("submit-btn");
-            btn.innerText = isChangeMode ? "変更内容を確認する" : "予約内容を確認する";
-        }
-
-        async function initLiff() {
-            try {
-                await loadShopSettings();
-
-                await liff.init({ liffId: LIFF_ID });
-
-                if (!liff.isLoggedIn()) {
-                    liff.login();
-                    return;
-                }
-
-                const profile = await liff.getProfile();
-                lineUserId = profile.userId;
-
-                await checkExistingCustomer(lineUserId);
-            } catch (error) {
-                console.error("LIFF初期化エラー:", error);
-                alert("LINE情報または店舗設定の取得に失敗しました。再度開き直してください。");
-            } finally {
-                document.getElementById("loading").classList.add("hidden");
-            }
-        }
-
-        async function checkExistingCustomer(userId) {
-            try {
-                const response = await fetch(`${WORKER_URL}?action=get_customer&line_user_id=${encodeURIComponent(userId)}`, { cache: "no-store" });
-
-                if (response.ok) {
-                    const customer = await response.json();
-
-                    if (customer) {
-                        isExisting = true;
-                        existingCustomerData = customer;
-
-                        document.getElementById("survey-section").classList.add("hidden");
-                        document.getElementById("booking-form").classList.add("hidden");
-                        document.getElementById("header-subtitle").innerText = "現在のご予約";
-
-                        await fetchLatestReservation(userId);
-
-                        if (latestReservation && latestReservation.reservation_date) {
-                            renderCurrentReservation(latestReservation);
-                        } else {
-                            document.getElementById("no-current-reservation-section").classList.remove("hidden");
-                        }
-
-                        setSubmitButtonLabel();
-                        return;
-                    }
-                }
-
-                document.getElementById("booking-form").classList.remove("hidden");
-                document.getElementById("survey-section").classList.remove("hidden");
-                document.getElementById("current-reservation-section").classList.add("hidden");
-                document.getElementById("no-current-reservation-section").classList.add("hidden");
-
-            } catch (error) {
-                console.error("顧客照会エラー:", error);
-            }
-        }
-
-        async function fetchLatestReservation(userId) {
-            try {
-                const today = getLocalDateString(0);
-
-                const response = await fetch(`${WORKER_URL}?action=get_latest_reservation&line_user_id=${encodeURIComponent(userId)}&today=${encodeURIComponent(today)}`, {
-                    cache: "no-store"
-                });
-
-                if (!response.ok) throw new Error(await response.text());
-
-                latestReservation = await response.json();
-                return latestReservation;
-            } catch (error) {
-                console.error("最新予約の取得エラー:", error);
-                latestReservation = null;
-                return null;
-            }
-        }
-
-        function renderCurrentReservation(reservation) {
-            document.getElementById("current-reservation-section").classList.remove("hidden");
-            document.getElementById("no-current-reservation-section").classList.add("hidden");
-
-            document.getElementById("current-reservation-date").innerText =
-                formatCompleteDate(reservation.reservation_date);
-
-            document.getElementById("current-reservation-time").innerText =
-                `${normalizeTime(reservation.reservation_time, reservation.reservation_time)} 開始`;
-        }
-
-        function startChangeReservation() {
+        activeReservations = activeReservations.length
+            ? activeReservations
+            : [lastSubmittedReservation];
+
+        const index = activeReservations.findIndex(r =>
+            r.reservation_date === lastSubmittedReservation.reservation_date &&
+            normalizeTime(r.reservation_time || "", "") === normalizeTime(lastSubmittedReservation.reservation_time || "", "")
+        );
+
+        if (index >= 0) {
+            startChangeReservation(index);
+        } else {
+            latestReservation = lastSubmittedReservation;
             isChangeMode = true;
 
-            document.getElementById("current-reservation-section").classList.add("hidden");
-            document.getElementById("no-current-reservation-section").classList.add("hidden");
             document.getElementById("complete-section").classList.add("hidden");
-            document.getElementById("confirm-section").classList.add("hidden");
             document.getElementById("booking-form").classList.remove("hidden");
             document.getElementById("survey-section").classList.add("hidden");
 
-            document.getElementById("header-subtitle").innerText = "予約変更フォーム";
+            prefillReservation(lastSubmittedReservation.reservation_date, lastSubmittedReservation.reservation_time);
             setSubmitButtonLabel();
-
-            if (latestReservation?.reservation_date) {
-                prefillReservation(latestReservation.reservation_date, latestReservation.reservation_time);
-            }
-
-            window.scrollTo({ top: 0, behavior: "smooth" });
         }
+    }
 
-        function startAdditionalReservation() {
-            isChangeMode = false;
-
-            document.getElementById("current-reservation-section").classList.add("hidden");
-            document.getElementById("no-current-reservation-section").classList.add("hidden");
-            document.getElementById("complete-section").classList.add("hidden");
-            document.getElementById("confirm-section").classList.add("hidden");
-            document.getElementById("booking-form").classList.remove("hidden");
-            document.getElementById("survey-section").classList.add("hidden");
-
-            document.getElementById("header-subtitle").innerText = "次回のご予約フォーム";
-            setSubmitButtonLabel();
-            clearSelectedSlot();
-
-            window.scrollTo({ top: 0, behavior: "smooth" });
+    function closeLiffWindow() {
+        if (typeof liff !== "undefined" && liff.isInClient()) {
+            liff.closeWindow();
+        } else {
+            alert("この画面を閉じてください。");
         }
+    }
 
-        function buildPayload() {
-            const bookingDate = document.getElementById("booking_date").value;
-            const bookingTime = normalizeTime(document.getElementById("booking_time").value, "");
-
-            const payload = {
-                line_user_id: lineUserId,
-                booking_date: bookingDate,
-                booking_time: bookingTime,
-                is_existing: isExisting,
-                is_change: isChangeMode
-            };
-
-            if (isChangeMode && latestReservation) {
-                payload.previous_reservation_date = latestReservation.reservation_date || "";
-                payload.previous_reservation_time = normalizeTime(latestReservation.reservation_time || "", "");
-            }
-
-            if (!isExisting) {
-                payload.name = document.getElementById("name").value.trim();
-                payload.phone = document.getElementById("phone").value.trim();
-                payload.yoga_experience = document.getElementById("yoga_experience").value;
-                payload.primary_goal = document.getElementById("primary_goal").value;
-                payload.target_pace = document.getElementById("target_pace").value;
-            } else {
-                payload.name = existingCustomerData?.name || "";
-                payload.phone = existingCustomerData?.phone || "";
-                payload.yoga_experience = existingCustomerData?.yoga_experience || "";
-                payload.primary_goal = existingCustomerData?.primary_goal || "";
-                payload.target_pace = existingCustomerData?.target_pace || "";
-            }
-
-            return payload;
-        }
-
-        function validateSurveyIfNeeded(payload) {
-            if (isExisting) return true;
-
-            if (!payload.name || !payload.phone || !payload.yoga_experience || !payload.primary_goal || !payload.target_pace) {
-                alert("アンケートの必須項目(*)をすべて入力してください。");
-                return false;
-            }
-
-            return true;
-        }
-
-        function confirmReservation(event) {
-            event.preventDefault();
-
-            const payload = buildPayload();
-
-            const slotValidation = validateSlotValue(payload.booking_date, payload.booking_time);
-            if (!slotValidation.ok) {
-                alert(slotValidation.message);
-                return;
-            }
-
-            if (!validateSurveyIfNeeded(payload)) return;
-
-            document.getElementById("confirm-reservation-date").innerText = formatCompleteDate(payload.booking_date);
-            document.getElementById("confirm-reservation-time").innerText = `${payload.booking_time} 開始`;
-
-            const customerLabel = isExisting
-                ? `${payload.name || "お客様"} 様`
-                : `${payload.name} 様 / ${payload.phone}`;
-
-            document.getElementById("confirm-customer-box").innerHTML = `
-                <p><span class="font-bold">お客様：</span>${customerLabel}</p>
-                <p><span class="font-bold">受付種別：</span>${isChangeMode ? "予約変更" : isExisting ? "追加・次回予約" : "新規予約"}</p>
-            `;
-
-            document.getElementById("booking-form").classList.add("hidden");
-            document.getElementById("confirm-section").classList.remove("hidden");
-            document.getElementById("complete-section").classList.add("hidden");
-
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-
-        function backToFormFromConfirm() {
-            document.getElementById("confirm-section").classList.add("hidden");
-            document.getElementById("booking-form").classList.remove("hidden");
-            setSubmitButtonLabel();
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-
-        async function submitReservation() {
-            if (isSubmitting) return;
-
-            const btn = document.getElementById("confirm-submit-btn");
-            const payload = buildPayload();
-
-            isSubmitting = true;
-            btn.disabled = true;
-            btn.innerText = "送信中...";
-
-            try {
-                await loadShopSettings();
-
-                const latestValidation = validateSlotValue(payload.booking_date, payload.booking_time);
-                if (!latestValidation.ok) {
-                    alert("店舗設定が更新されました。日時を選び直してください。\n" + latestValidation.message);
-                    backToFormFromConfirm();
-                    return;
-                }
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-                const response = await fetch(WORKER_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                const result = await response.json().catch(() => ({}));
-
-                if (!response.ok) {
-                    throw new Error(result.error || "予約を保存できませんでした。");
-                }
-
-                isExisting = true;
-
-                existingCustomerData = {
-                    name: payload.name,
-                    phone: payload.phone,
-                    yoga_experience: payload.yoga_experience,
-                    primary_goal: payload.primary_goal,
-                    target_pace: payload.target_pace
-                };
-
-                latestReservation = {
-                    reservation_date: payload.booking_date,
-                    reservation_time: payload.booking_time
-                };
-
-                document.getElementById("survey-section").classList.add("hidden");
-                document.getElementById("header-subtitle").innerText = "現在のご予約";
-
-                showCompleteScreen(payload.booking_date, payload.booking_time, payload.is_change);
-
-            } catch (error) {
-                console.error(error);
-
-                if (error.name === "AbortError") {
-                    alert("通信がタイムアウトしました。電波状況を確認して、もう一度お試しください。");
-                } else {
-                    alert("送信できませんでした。詳細: " + error.message);
-                }
-            } finally {
-                isSubmitting = false;
-                btn.disabled = false;
-                btn.innerText = "この内容で送信する";
-            }
-        }
-
-        function showCompleteScreen(bookingDate, bookingTime, wasChange) {
-            lastSubmittedReservation = {
-                booking_date: bookingDate,
-                booking_time: bookingTime
-            };
-
-            document.getElementById("booking-form").classList.add("hidden");
-            document.getElementById("confirm-section").classList.add("hidden");
-            document.getElementById("current-reservation-section").classList.add("hidden");
-            document.getElementById("no-current-reservation-section").classList.add("hidden");
-            document.getElementById("complete-section").classList.remove("hidden");
-
-            document.getElementById("complete-title").innerText = wasChange
-                ? "ご予約の変更を受け付けました"
-                : "ご予約を受け付けました";
-
-            document.getElementById("complete-reservation-date").innerText = formatCompleteDate(bookingDate);
-            document.getElementById("complete-reservation-time").innerText = `${bookingTime} 開始`;
-
-            isChangeMode = false;
-
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-
-        function editReservationFromComplete() {
-            if (lastSubmittedReservation) {
-                latestReservation = {
-                    reservation_date: lastSubmittedReservation.booking_date,
-                    reservation_time: lastSubmittedReservation.booking_time
-                };
-            }
-
-            startChangeReservation();
-        }
-
-        function closeLiffWindow() {
-            if (typeof liff !== "undefined" && liff.isInClient()) {
-                liff.closeWindow();
-            } else {
-                alert("この画面を閉じてください。");
-            }
-        }
-
-        window.onload = initLiff;
-    </script>
+    window.onload = initLiff;
+</script>
 
 </body>
 </html>
