@@ -237,9 +237,27 @@
                 
                 const result = await response.json();
 
-　　　　　　　　　console.log(result);
-                
-　　　　　　　　　allCustomers = result.customers || [];
+console.log(result);
+
+const customers = result.customers || [];
+const events = result.events || [];
+
+allCustomers = customers.map(customer => {
+
+    const event = events.find(
+        e => e.line_user_id === customer.line_id
+    );
+
+    return {
+        ...customer,
+
+        visit_date: event
+            ? `${event.reservation_date} ${event.reservation_time}`
+            : null,
+
+        owner_memo: event?.memo || ""
+    };
+});
                 
                 calculateKPIs(allCustomers);
                 updateDayFilterUI();
