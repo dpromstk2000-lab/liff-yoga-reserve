@@ -235,7 +235,9 @@
                 );
                 if (!response.ok) throw new Error("データの取得に失敗しました");
                 
-                allCustomers = await response.json();
+                const result = await response.json();
+
+　　　　　　　　　allCustomers = result.customers || [];
                 
                 calculateKPIs(allCustomers);
                 updateDayFilterUI();
