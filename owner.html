@@ -245,8 +245,10 @@ const events = result.events || [];
 allCustomers = customers.map(customer => {
 
     const event = events.find(
-        e => e.line_user_id === customer.line_id
-    );
+         e =>
+        e.line_user_id === customer.line_id &&
+        e.reservation_date
+);
     console.log(customer);
 　　　console.log(event);
 
