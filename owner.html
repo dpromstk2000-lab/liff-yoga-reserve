@@ -484,9 +484,9 @@ allCustomers = customers.map(customer => {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        id: selectedCustomerId,
-                        customer_name: customerName,
-                        owner_memo: memoValue
+                        lineUserId: selectedCustomer.line_id,
+　　　　　　　　　　　　　customerName: customerName,
+　　　　　　　　　　　　　memoContent: memoValue
                     })
                 });
 
