@@ -22,7 +22,6 @@
 
     <main class="max-w-md mx-auto p-4 space-y-6">
 
-        <!-- 既存顧客用：現在の予約表示 -->
         <section id="current-reservation-section" class="hidden space-y-4">
             <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 p-5 space-y-4">
                 <div>
@@ -47,7 +46,6 @@
             </div>
         </section>
 
-        <!-- 最新予約がない既存顧客用 -->
         <section id="no-current-reservation-section" class="hidden space-y-4">
             <div class="bg-white rounded-2xl shadow-sm border border-stone-100 p-5 space-y-4">
                 <div>
@@ -645,6 +643,7 @@
         async function fetchLatestReservation(userId) {
             try {
                 const today = getLocalDateString(0);
+
                 const response = await fetch(`${WORKER_URL}?action=get_latest_reservation&line_user_id=${encodeURIComponent(userId)}&today=${encodeURIComponent(today)}`, {
                     cache: "no-store"
                 });
@@ -719,6 +718,11 @@
                 is_existing: isExisting,
                 is_change: isChangeMode
             };
+
+            if (isChangeMode && latestReservation) {
+                payload.previous_reservation_date = latestReservation.reservation_date || "";
+                payload.previous_reservation_time = normalizeTime(latestReservation.reservation_time || "", "");
+            }
 
             if (!isExisting) {
                 payload.name = document.getElementById("name").value.trim();
