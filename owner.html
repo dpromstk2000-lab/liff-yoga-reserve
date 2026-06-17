@@ -482,6 +482,8 @@ console.log(JSON.stringify(customerEvents, null, 2));
             document.getElementById("carte-experience").innerText = customer.yoga_experience || '未回答';
             document.getElementById("carte-pace").innerText = customer.target_pace || '未回答';
             document.getElementById("carte-memo").value = customer.owner_memo || '';
+            document.getElementById("carte-status").value =
+   　　　　　 customer.status || "新規予約";
             document.getElementById("carte-avatar").innerText = (customer.name || '匿').charAt(0);
 
             const badgeContainer = document.getElementById("carte-goals");
