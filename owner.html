@@ -9,6 +9,20 @@
     <style>
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #e4e4e7; border-radius: 2px; }
+        .status-btn {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            border: 1px solid #e7e5e4;
+            background: white;
+            color: #57534e;
+            font-weight: 700;
+        }
+        .status-btn.active {
+            background: #047857;
+            color: white;
+            border-color: #047857;
+        }
     </style>
 </head>
 
@@ -172,6 +186,10 @@
                 カルテ内容を保存する
             </button>
 
+            <button onclick="cancelSelectedReservation()" id="cancel-reservation-btn" class="w-full bg-white border border-rose-300 text-rose-700 py-3 rounded-xl font-bold hover:bg-rose-50 transition">
+                この予約をキャンセルする
+            </button>
+
             <div>
                 <p class="text-xs font-bold text-stone-400 mb-2">履歴</p>
                 <div id="carte-history" class="bg-stone-50 rounded-xl p-3 max-h-52 overflow-y-auto text-xs space-y-2"></div>
@@ -239,7 +257,6 @@
     const inactiveStatuses = ["変更前", "変更済", "キャンセル"];
 
     document.addEventListener("DOMContentLoaded", () => {
-        addStyle();
         lucide.createIcons();
         generateTimeOptions();
         fetchCustomers();
@@ -249,27 +266,6 @@
             if (searchBox && !searchBox.contains(event.target)) hideSearchSuggestions();
         });
     });
-
-    function addStyle() {
-        const style = document.createElement("style");
-        style.innerHTML = `
-            .status-btn {
-                font-size: 11px;
-                padding: 4px 10px;
-                border-radius: 9999px;
-                border: 1px solid #e7e5e4;
-                background: white;
-                color: #57534e;
-                font-weight: 700;
-            }
-            .status-btn.active {
-                background: #047857;
-                color: white;
-                border-color: #047857;
-            }
-        `;
-        document.head.appendChild(style);
-    }
 
     function escapeHtml(value) {
         return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -375,7 +371,7 @@
 
     function getLatestStatusEvent(lineId) {
         return getEventsByLineId(lineId)
-            .filter(e => e.status)
+            .filter(e => e.status && !inactiveStatuses.includes(e.status))
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
     }
 
@@ -958,6 +954,8 @@
         const reservation = findReservationByKey(selectedReservationKey);
         if (!reservation) return;
 
+        const keepKey = selectedReservationKey;
+
         const btn = document.getElementById("save-memo-btn");
         btn.disabled = true;
         btn.innerText = "保存中...";
@@ -980,13 +978,81 @@
             alert("カルテを保存しました。");
             await fetchCustomers();
 
-            const updated = findReservationByKey(selectedReservationKey);
+            const updated = findReservationByKey(keepKey);
             if (updated) selectReservation(updated.reservation_key);
         } catch (error) {
             alert("保存エラー: " + error.message);
         } finally {
             btn.disabled = false;
             btn.innerText = "カルテ内容を保存する";
+        }
+    }
+
+    async function cancelSelectedReservation() {
+        if (!selectedReservationKey) {
+            alert("キャンセルする予約が選択されていません。");
+            return;
+        }
+
+        const reservation = findReservationByKey(selectedReservationKey);
+
+        if (!reservation) {
+            alert("予約データが見つかりません。更新して再度お試しください。");
+            return;
+        }
+
+        const reservationLabel = formatDateTimeLabel(
+            reservation.reservation_date,
+            reservation.reservation_time
+        );
+
+        const confirmed = confirm(
+            `${reservation.name || "お客様"} 様の予約をキャンセルします。\n\n` +
+            `対象予約：${reservationLabel}\n\n` +
+            `この予約はスケジュール一覧から非表示になり、履歴にはキャンセルとして残ります。\n\n` +
+            `本当にキャンセルしますか？`
+        );
+
+        if (!confirmed) return;
+
+        const btn = document.getElementById("cancel-reservation-btn");
+        const originalText = btn.innerText;
+
+        btn.disabled = true;
+        btn.innerText = "キャンセル処理中...";
+
+        try {
+            const response = await fetch(`${WORKER_URL}?action=cancel_reservation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    lineUserId: reservation.line_id,
+                    customerName: reservation.name || "",
+                    reservationId: reservation.event_raw?.id || null,
+                    reservationDate: reservation.reservation_date,
+                    reservationTime: reservation.reservation_time
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(result.error || "キャンセル処理に失敗しました。");
+            }
+
+            alert("予約をキャンセルしました。");
+
+            selectedReservationKey = null;
+            closeCarte();
+
+            await fetchCustomers();
+
+        } catch (error) {
+            console.error(error);
+            alert("キャンセルできませんでした。\n" + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = originalText;
         }
     }
 
