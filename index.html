@@ -125,7 +125,7 @@
             <h2 class="text-stone-500 text-xs font-bold uppercase tracking-wider mb-4 border-b pb-2 border-stone-100">ご希望の日時選択</h2>
 
             <div id="shop-settings-banner" class="mb-4 text-xs rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-800 px-3 py-2 leading-relaxed">
-                営業時間と定休日を確認中です...
+                営業時間と休業日を確認中です...
             </div>
 
             <div class="space-y-5">
@@ -143,7 +143,7 @@
                     </button>
 
                     <p id="date-message" class="text-xs text-stone-500 mt-2 leading-relaxed">
-                        定休日は赤色で表示され、選択できません。
+                        定休日・臨時休業日は選択できません。
                     </p>
                 </div>
 
@@ -249,7 +249,8 @@
     let shopSettings = {
         open_time: "10:00",
         close_time: "19:00",
-        holidays: []
+        holidays: [],
+        closed_dates: []
     };
 
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -274,40 +275,6 @@
         return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
     }
 
-    function normalizeHolidays(value) {
-        if (!Array.isArray(value)) return [];
-        return [...new Set(value.map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))].sort((a, b) => a - b);
-    }
-
-    function normalizeShopSettings(data = {}) {
-        const openTime = normalizeTime(data.open_time, "10:00");
-        const closeTime = normalizeTime(data.close_time, "19:00");
-        const valid = timeToMinutes(openTime) < timeToMinutes(closeTime);
-
-        return {
-            open_time: valid ? openTime : "10:00",
-            close_time: valid ? closeTime : "19:00",
-            holidays: normalizeHolidays(data.holidays)
-        };
-    }
-
-    function formatHolidayNames(holidays) {
-        const normalized = normalizeHolidays(holidays);
-        return normalized.length ? normalized.map(day => `${weekdays[day]}曜`).join("・") : "なし";
-    }
-
-    function getLocalDateString(offset = 0) {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() + offset);
-
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-
-        return `${year}-${month}-${day}`;
-    }
-
     function getWeekday(dateStr) {
         const match = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (!match) return null;
@@ -326,6 +293,58 @@
         }
 
         return date.getUTCDay();
+    }
+
+    function isValidDateString(dateStr) {
+        return getWeekday(dateStr) !== null;
+    }
+
+    function normalizeHolidays(value) {
+        if (!Array.isArray(value)) return [];
+        return [...new Set(value.map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))].sort((a, b) => a - b);
+    }
+
+    function normalizeClosedDates(value) {
+        if (!Array.isArray(value)) return [];
+        return [...new Set(value.map(v => String(v || "").trim()).filter(isValidDateString))].sort();
+    }
+
+    function normalizeShopSettings(data = {}) {
+        const openTime = normalizeTime(data.open_time, "10:00");
+        const closeTime = normalizeTime(data.close_time, "19:00");
+        const valid = timeToMinutes(openTime) < timeToMinutes(closeTime);
+
+        return {
+            open_time: valid ? openTime : "10:00",
+            close_time: valid ? closeTime : "19:00",
+            holidays: normalizeHolidays(data.holidays),
+            closed_dates: normalizeClosedDates(data.closed_dates)
+        };
+    }
+
+    function formatHolidayNames(holidays) {
+        const normalized = normalizeHolidays(holidays);
+        return normalized.length ? normalized.map(day => `${weekdays[day]}曜`).join("・") : "なし";
+    }
+
+    function formatClosedDatesSummary(dates) {
+        const normalized = normalizeClosedDates(dates);
+        if (normalized.length === 0) return "なし";
+
+        const first = normalized.slice(0, 3).map(formatDateButtonLabel).join("・");
+        return normalized.length > 3 ? `${first} ほか${normalized.length - 3}日` : first;
+    }
+
+    function getLocalDateString(offset = 0) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + offset);
+
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
     }
 
     function formatDateButtonLabel(dateStr) {
@@ -356,6 +375,16 @@
         return weekday !== null && shopSettings.holidays.includes(weekday);
     }
 
+    function isClosedDate(dateStr) {
+        return shopSettings.closed_dates.includes(dateStr);
+    }
+
+    function getClosedReason(dateStr) {
+        if (isHoliday(dateStr)) return "定休日";
+        if (isClosedDate(dateStr)) return "臨時休業";
+        return "";
+    }
+
     function validateSlotValue(dateValue, timeValue) {
         const normalizedTime = normalizeTime(timeValue, null);
 
@@ -363,9 +392,14 @@
             return { ok: false, message: "日付と時間を選択してください。" };
         }
 
-        if (isHoliday(dateValue)) {
-            const weekday = weekdays[getWeekday(dateValue)];
-            return { ok: false, message: `${weekday}曜日は定休日です。別の日付を選んでください。` };
+        if (dateValue < getLocalDateString(0)) {
+            return { ok: false, message: "過去の日付は予約できません。" };
+        }
+
+        const reason = getClosedReason(dateValue);
+
+        if (reason) {
+            return { ok: false, message: `${formatDateButtonLabel(dateValue)}は${reason}のため予約できません。` };
         }
 
         const selectedMinutes = timeToMinutes(normalizedTime);
@@ -404,7 +438,8 @@
         const banner = document.getElementById("shop-settings-banner");
         banner.innerHTML = `
             <span class="font-bold">現在の受付時間：</span>${shopSettings.open_time}〜${shopSettings.close_time}<br>
-            <span class="font-bold">定休日：</span>${formatHolidayNames(shopSettings.holidays)}
+            <span class="font-bold">定休日：</span>${formatHolidayNames(shopSettings.holidays)}<br>
+            <span class="font-bold">臨時休業日：</span>${formatClosedDatesSummary(shopSettings.closed_dates)}
         `;
     }
 
@@ -414,22 +449,25 @@
 
         for (let i = 0; i < dateDisplayCount; i++) {
             const dateStr = getLocalDateString(i);
-            const closed = isHoliday(dateStr);
+            const reason = getClosedReason(dateStr);
+            const closed = Boolean(reason);
             const selected = selectedDate === dateStr;
 
             const baseClass = "rounded-xl border px-2 py-3 text-center text-xs font-bold transition";
             const enabledClass = selected
                 ? "bg-emerald-700 text-white border-emerald-700 shadow-md"
                 : "bg-white text-stone-700 border-stone-200 hover:border-emerald-500 hover:bg-emerald-50";
-            const disabledClass = "bg-rose-50 text-rose-400 border-rose-100 cursor-not-allowed opacity-70";
+            const disabledClass = reason === "臨時休業"
+                ? "bg-orange-50 text-orange-500 border-orange-100 cursor-not-allowed opacity-80"
+                : "bg-rose-50 text-rose-400 border-rose-100 cursor-not-allowed opacity-70";
 
             html += `
                 <button type="button"
                     ${closed ? "disabled" : `onclick="selectDate('${dateStr}')"`} 
                     class="${baseClass} ${closed ? disabledClass : enabledClass}">
                     <span class="block">${formatDateButtonLabel(dateStr)}</span>
-                    <span class="block text-[10px] mt-1 ${closed ? "text-rose-500" : selected ? "text-emerald-50" : "text-stone-400"}">
-                        ${closed ? "定休日" : "予約可"}
+                    <span class="block text-[10px] mt-1 ${closed ? "" : selected ? "text-emerald-50" : "text-stone-400"}">
+                        ${closed ? reason : "予約可"}
                     </span>
                 </button>
             `;
@@ -471,15 +509,17 @@
     }
 
     function selectDate(dateStr) {
-        if (isHoliday(dateStr)) {
-            const weekday = weekdays[getWeekday(dateStr)];
-            alert(`${weekday}曜日は定休日のため選択できません。`);
+        const reason = getClosedReason(dateStr);
+
+        if (reason) {
+            alert(`${formatDateButtonLabel(dateStr)}は${reason}のため選択できません。`);
             return;
         }
 
         selectedDate = dateStr;
 
         document.getElementById("booking_date").value = dateStr;
+        document.getElementById("booking_time").value = "";
         document.getElementById("weekday-label").innerText = `（${weekdays[getWeekday(dateStr)]}曜日）`;
         document.getElementById("date-message").innerText = `${formatDateButtonLabel(dateStr)}を選択中です。`;
 
@@ -493,7 +533,7 @@
         document.getElementById("booking_date").value = "";
         document.getElementById("booking_time").value = "";
         document.getElementById("weekday-label").innerText = "";
-        document.getElementById("date-message").innerText = "定休日は赤色で表示され、選択できません。";
+        document.getElementById("date-message").innerText = "定休日・臨時休業日は選択できません。";
         document.getElementById("time-message").innerText = "時間はダッシュボードの営業時間に合わせて自動更新されます。";
         renderDateButtons();
         generateTimeOptions();
