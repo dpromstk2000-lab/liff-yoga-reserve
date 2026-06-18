@@ -231,10 +231,10 @@
 </main>
 
 <div id="settings-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto custom-scroll">
         <h2 class="text-lg font-bold border-b pb-3 mb-4">店舗の設定</h2>
 
-        <div id="settings-current-summary" class="bg-emerald-50 text-emerald-900 rounded-lg p-3 text-xs mb-4">
+        <div id="settings-current-summary" class="bg-emerald-50 text-emerald-900 rounded-lg p-3 text-xs mb-4 leading-relaxed">
             現在の設定を読み込み中...
         </div>
 
@@ -245,8 +245,8 @@
             <select id="close-time" class="p-2 border rounded-lg flex-1"></select>
         </div>
 
-        <label class="block text-sm font-bold mb-2">定休日</label>
-        <div class="grid grid-cols-4 gap-2 text-sm mb-4" id="holiday-checkboxes">
+        <label class="block text-sm font-bold mb-2">曜日定休日</label>
+        <div class="grid grid-cols-4 gap-2 text-sm mb-5" id="holiday-checkboxes">
             <label><input type="checkbox" value="1"> 月</label>
             <label><input type="checkbox" value="2"> 火</label>
             <label><input type="checkbox" value="3"> 水</label>
@@ -256,7 +256,24 @@
             <label><input type="checkbox" value="0"> 日</label>
         </div>
 
-        <div class="flex justify-end gap-3">
+        <div class="border-t border-stone-100 pt-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <div>
+                    <label class="block text-sm font-bold">直近3か月の臨時休業日</label>
+                    <p class="text-xs text-stone-500 mt-1">
+                        年末年始・研修・急なお休みなど、日付単位で予約不可にできます。日付を押すと「予約可 ⇄ 臨時休業」が切り替わります。
+                    </p>
+                </div>
+
+                <button onclick="clearClosedDates()" type="button" class="text-xs border border-stone-300 text-stone-600 px-3 py-2 rounded-lg whitespace-nowrap">
+                    全解除
+                </button>
+            </div>
+
+            <div id="closed-dates-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-80 overflow-y-auto custom-scroll border rounded-xl p-3 bg-stone-50"></div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
             <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-lg text-stone-500">キャンセル</button>
             <button onclick="saveSettings()" id="save-settings-btn" class="px-4 py-2 bg-emerald-700 text-white rounded-lg font-bold">保存する</button>
         </div>
@@ -280,7 +297,8 @@
     let shopSettings = {
         open_time: "10:00",
         close_time: "19:00",
-        holidays: []
+        holidays: [],
+        closed_dates: []
     };
 
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -332,9 +350,38 @@
         return h * 60 + m;
     }
 
+    function getWeekday(dateStr) {
+        const match = String(dateStr || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return null;
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const date = new Date(Date.UTC(year, month - 1, day));
+
+        if (
+            date.getUTCFullYear() !== year ||
+            date.getUTCMonth() !== month - 1 ||
+            date.getUTCDate() !== day
+        ) {
+            return null;
+        }
+
+        return date.getUTCDay();
+    }
+
+    function isValidDateString(dateStr) {
+        return getWeekday(dateStr) !== null;
+    }
+
     function normalizeHolidays(value) {
         if (!Array.isArray(value)) return [];
         return [...new Set(value.map(Number).filter(day => Number.isInteger(day) && day >= 0 && day <= 6))].sort((a, b) => a - b);
+    }
+
+    function normalizeClosedDates(value) {
+        if (!Array.isArray(value)) return [];
+        return [...new Set(value.map(v => String(v || "").trim()).filter(isValidDateString))].sort();
     }
 
     function normalizeShopSettings(data = {}) {
@@ -345,7 +392,8 @@
         return {
             open_time: valid ? openTime : "10:00",
             close_time: valid ? closeTime : "19:00",
-            holidays: normalizeHolidays(data.holidays)
+            holidays: normalizeHolidays(data.holidays),
+            closed_dates: normalizeClosedDates(data.closed_dates)
         };
     }
 
@@ -364,6 +412,14 @@
     function formatDateTimeLabel(dateStr, timeStr) {
         if (!dateStr) return "日時データなし";
         return `${formatDateLabel(dateStr)} ${normalizeTime(timeStr, timeStr || "").substring(0, 5)}`;
+    }
+
+    function formatClosedDatesSummary(dates) {
+        const normalized = normalizeClosedDates(dates);
+        if (normalized.length === 0) return "なし";
+
+        const first = normalized.slice(0, 5).map(formatDateLabel).join("・");
+        return normalized.length > 5 ? `${first} ほか${normalized.length - 5}日` : first;
     }
 
     function getLocalDateString(offset) {
@@ -809,6 +865,18 @@
         applyCurrentFilters();
     }
 
+    function applyStatusFilter(list) {
+        if (reservationStatusValues.includes(currentStatusFilter)) {
+            return list.filter(r => r.reservation_status === currentStatusFilter);
+        }
+
+        if (customerStatusValues.includes(currentStatusFilter)) {
+            return list.filter(r => r.customer_status === currentStatusFilter);
+        }
+
+        return list;
+    }
+
     function applyCurrentFilters() {
         const searchInput = document.getElementById("search-input").value.trim();
         const todayStr = getLocalDateString(0);
@@ -853,18 +921,6 @@
         }
 
         renderList(filteredReservations);
-    }
-
-    function applyStatusFilter(list) {
-        if (reservationStatusValues.includes(currentStatusFilter)) {
-            return list.filter(r => r.reservation_status === currentStatusFilter);
-        }
-
-        if (customerStatusValues.includes(currentStatusFilter)) {
-            return list.filter(r => r.customer_status === currentStatusFilter);
-        }
-
-        return list;
     }
 
     function filterByDay(type) {
@@ -1152,6 +1208,7 @@
         document.getElementById("settings-modal").classList.remove("hidden");
         generateTimeOptions();
         await loadShopSettings(true);
+        renderClosedDatesCalendar();
     }
 
     function closeSettingsModal() {
@@ -1160,7 +1217,10 @@
 
     function renderSettingsSummary() {
         document.getElementById("settings-current-summary").innerHTML =
-            `<b>現在の設定：</b> 営業時間 ${escapeHtml(shopSettings.open_time)}〜${escapeHtml(shopSettings.close_time)} / 定休日 ${escapeHtml(formatHolidayNames(shopSettings.holidays))}`;
+            `<b>現在の設定：</b><br>` +
+            `営業時間：${escapeHtml(shopSettings.open_time)}〜${escapeHtml(shopSettings.close_time)}<br>` +
+            `曜日定休日：${escapeHtml(formatHolidayNames(shopSettings.holidays))}<br>` +
+            `臨時休業日：${escapeHtml(formatClosedDatesSummary(shopSettings.closed_dates))}`;
     }
 
     async function loadShopSettings(applyToModal = true) {
@@ -1184,6 +1244,59 @@
         }
 
         renderSettingsSummary();
+        renderClosedDatesCalendar();
+    }
+
+    function renderClosedDatesCalendar() {
+        const grid = document.getElementById("closed-dates-grid");
+        if (!grid) return;
+
+        const closedDates = new Set(normalizeClosedDates(shopSettings.closed_dates));
+        let html = "";
+
+        for (let i = 0; i < 93; i++) {
+            const dateStr = getLocalDateString(i);
+            const selected = closedDates.has(dateStr);
+
+            html += `
+                <button
+                    type="button"
+                    onclick="toggleClosedDate('${dateStr}')"
+                    class="rounded-lg border px-2 py-2 text-xs font-bold text-center transition ${
+                        selected
+                            ? "bg-orange-100 border-orange-300 text-orange-800"
+                            : "bg-white border-stone-200 text-stone-600 hover:border-emerald-400 hover:bg-emerald-50"
+                    }"
+                >
+                    <span class="block">${escapeHtml(formatDateLabel(dateStr))}</span>
+                    <span class="block text-[10px] mt-1">${selected ? "臨時休業" : "予約可"}</span>
+                </button>
+            `;
+        }
+
+        grid.innerHTML = html;
+        renderSettingsSummary();
+    }
+
+    function toggleClosedDate(dateStr) {
+        const set = new Set(normalizeClosedDates(shopSettings.closed_dates));
+
+        if (set.has(dateStr)) {
+            set.delete(dateStr);
+        } else {
+            set.add(dateStr);
+        }
+
+        shopSettings.closed_dates = Array.from(set).sort();
+        renderClosedDatesCalendar();
+    }
+
+    function clearClosedDates() {
+        const confirmed = confirm("臨時休業日の設定をすべて解除しますか？\n保存するまでは反映されません。");
+        if (!confirmed) return;
+
+        shopSettings.closed_dates = [];
+        renderClosedDatesCalendar();
     }
 
     async function saveSettings() {
@@ -1198,6 +1311,8 @@
         const holidays = Array.from(document.querySelectorAll('#holiday-checkboxes input[type="checkbox"]:checked'))
             .map(cb => Number(cb.value));
 
+        const closedDates = normalizeClosedDates(shopSettings.closed_dates);
+
         const btn = document.getElementById("save-settings-btn");
         btn.disabled = true;
         btn.innerText = "保存中...";
@@ -1209,7 +1324,8 @@
                 body: JSON.stringify({
                     open_time: openTime,
                     close_time: closeTime,
-                    holidays
+                    holidays,
+                    closed_dates: closedDates
                 })
             });
 
@@ -1222,10 +1338,17 @@
             shopSettings = normalizeShopSettings(result.settings || {
                 open_time: openTime,
                 close_time: closeTime,
-                holidays
+                holidays,
+                closed_dates: closedDates
             });
 
-            alert(`店舗設定を保存しました。\n営業時間：${shopSettings.open_time}〜${shopSettings.close_time}\n定休日：${formatHolidayNames(shopSettings.holidays)}`);
+            alert(
+                `店舗設定を保存しました。\n` +
+                `営業時間：${shopSettings.open_time}〜${shopSettings.close_time}\n` +
+                `曜日定休日：${formatHolidayNames(shopSettings.holidays)}\n` +
+                `臨時休業日：${formatClosedDatesSummary(shopSettings.closed_dates)}`
+            );
+
             closeSettingsModal();
         } catch (error) {
             alert("保存失敗: " + error.message);
