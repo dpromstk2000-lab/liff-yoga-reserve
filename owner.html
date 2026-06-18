@@ -72,7 +72,7 @@
     <div class="bg-stone-900 text-white rounded-xl p-4">
         <p class="text-xs text-stone-400 font-bold mb-3">経営KPI</p>
         <div class="grid grid-cols-4 gap-2 text-center">
-            <div><p class="text-[10px] text-stone-400">予約</p><p class="font-black" id="kpi-funnel-reserve">-</p></div>
+            <div><p class="text-[10px] text-stone-400">有効予約</p><p class="font-black" id="kpi-funnel-reserve">-</p></div>
             <div><p class="text-[10px] text-stone-400">来店</p><p class="font-black text-amber-300" id="kpi-funnel-visit">-</p></div>
             <div><p class="text-[10px] text-stone-400">入会</p><p class="font-black text-emerald-300" id="kpi-funnel-join">-</p></div>
             <div><p class="text-[10px] text-stone-400">入会率</p><p class="font-black text-emerald-300" id="kpi-funnel-rate">-%</p></div>
@@ -101,15 +101,28 @@
                 <div id="search-suggestions" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border rounded-xl shadow-lg z-50 max-h-64 overflow-y-auto"></div>
             </div>
 
-            <div class="flex flex-wrap gap-1.5">
-                <button onclick="filterByStatus('all')" id="btn-status-all" class="status-btn active">すべて</button>
-                <button onclick="filterByStatus('新規予約')" id="btn-status-new" class="status-btn">新規予約</button>
-                <button onclick="filterByStatus('次回予約')" id="btn-status-repeat" class="status-btn">次回予約</button>
-                <button onclick="filterByStatus('予約変更')" id="btn-status-change" class="status-btn">予約変更</button>
-                <button onclick="filterByStatus('来店済')" id="btn-status-visited" class="status-btn">来店済</button>
-                <button onclick="filterByStatus('入会')" id="btn-status-joined" class="status-btn">入会</button>
-                <button onclick="filterByStatus('継続中')" id="btn-status-active" class="status-btn">継続中</button>
-                <button onclick="filterByStatus('キャンセル')" id="btn-status-cancel" class="status-btn">キャンセル</button>
+            <div class="space-y-2">
+                <div>
+                    <p class="text-[10px] text-stone-400 font-bold mb-1">予約ステータスで絞り込み</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="filterByStatus('all')" id="btn-status-all" class="status-btn active">すべて</button>
+                        <button onclick="filterByStatus('新規予約')" id="btn-status-new" class="status-btn">新規予約</button>
+                        <button onclick="filterByStatus('次回予約')" id="btn-status-repeat" class="status-btn">次回予約</button>
+                        <button onclick="filterByStatus('予約変更')" id="btn-status-change" class="status-btn">予約変更</button>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-[10px] text-stone-400 font-bold mb-1">顧客ステータスで絞り込み</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="filterByStatus('初回来店前')" id="btn-customer-first" class="status-btn">初回来店前</button>
+                        <button onclick="filterByStatus('来店済')" id="btn-customer-visited" class="status-btn">来店済</button>
+                        <button onclick="filterByStatus('入会')" id="btn-customer-joined" class="status-btn">入会</button>
+                        <button onclick="filterByStatus('継続中')" id="btn-customer-active" class="status-btn">継続中</button>
+                        <button onclick="filterByStatus('休眠')" id="btn-customer-sleep" class="status-btn">休眠</button>
+                        <button onclick="filterByStatus('対応終了')" id="btn-customer-closed" class="status-btn">対応終了</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -135,12 +148,27 @@
             <div class="border-b pb-3">
                 <h3 class="text-lg font-black" id="carte-name">-</h3>
                 <p class="text-xs text-stone-500" id="carte-phone">-</p>
+
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <button onclick="copyCustomerName()" class="w-full bg-stone-100 text-stone-700 py-2 rounded-xl text-xs font-bold hover:bg-stone-200 transition">
+                        名前コピー
+                    </button>
+
+                    <button onclick="openLineChat()" class="w-full bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition">
+                        LINE管理画面を開く
+                    </button>
+                </div>
             </div>
 
             <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
                 <p class="text-xs font-bold text-emerald-700">この予約</p>
                 <p class="font-black text-emerald-900" id="carte-date">-</p>
                 <p class="text-xs text-emerald-800 font-bold" id="carte-reservation-status">-</p>
+            </div>
+
+            <div class="bg-stone-50 border border-stone-200 rounded-xl p-3">
+                <p class="text-xs font-bold text-stone-500">現在の顧客ステータス</p>
+                <p class="font-black text-stone-900 mt-1" id="carte-customer-status-label">-</p>
             </div>
 
             <div>
@@ -160,16 +188,18 @@
             </div>
 
             <div>
-                <label class="text-xs font-bold text-stone-500">顧客ステータス</label>
+                <label class="text-xs font-bold text-stone-500">顧客ステータスを更新</label>
                 <select id="carte-status" class="w-full p-2 border rounded-lg text-sm">
-                    <option value="新規予約">新規予約</option>
-                    <option value="次回予約">次回予約</option>
-                    <option value="予約変更">予約変更</option>
+                    <option value="初回来店前">初回来店前</option>
                     <option value="来店済">来店済</option>
                     <option value="入会">入会</option>
                     <option value="継続中">継続中</option>
-                    <option value="キャンセル">キャンセル</option>
+                    <option value="休眠">休眠</option>
+                    <option value="対応終了">対応終了</option>
                 </select>
+                <p class="text-[11px] text-stone-400 mt-1">
+                    ここはお客様本人の状態です。予約ステータスとは別に残ります。
+                </p>
             </div>
 
             <div>
@@ -254,7 +284,10 @@
     };
 
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-    const inactiveStatuses = ["変更前", "変更済", "キャンセル"];
+
+    const inactiveReservationStatuses = ["変更前", "変更済", "キャンセル"];
+    const reservationStatusValues = ["新規予約", "次回予約", "予約変更"];
+    const customerStatusValues = ["初回来店前", "来店済", "入会", "継続中", "休眠", "対応終了"];
 
     document.addEventListener("DOMContentLoaded", () => {
         lucide.createIcons();
@@ -369,9 +402,11 @@
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
     }
 
-    function getLatestStatusEvent(lineId) {
+    function getLatestCustomerStatusEvent(lineId) {
         return getEventsByLineId(lineId)
-            .filter(e => e.status && !inactiveStatuses.includes(e.status))
+            .filter(e => {
+                return !e.reservation_date && customerStatusValues.includes(e.status);
+            })
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0] || null;
     }
 
@@ -392,7 +427,7 @@
 
             if (!lineId) return;
 
-            if (inactiveStatuses.includes(status)) {
+            if (inactiveReservationStatuses.includes(status)) {
                 supersededKeys.add(reservation.reservation_key);
                 return;
             }
@@ -401,7 +436,7 @@
                 const hasExplicitPrevious = sorted.some(prev =>
                     prev.line_id === lineId &&
                     prev !== reservation &&
-                    inactiveStatuses.includes(prev.reservation_status) &&
+                    inactiveReservationStatuses.includes(prev.reservation_status) &&
                     new Date(prev.event_created_at || 0) <= new Date(reservation.event_created_at || 0)
                 );
 
@@ -423,7 +458,7 @@
         const supersededKeys = getSupersededReservationKeys();
 
         return allReservations.filter(reservation => {
-            if (inactiveStatuses.includes(reservation.reservation_status)) return false;
+            if (inactiveReservationStatuses.includes(reservation.reservation_status)) return false;
             if (supersededKeys.has(reservation.reservation_key)) return false;
             return true;
         });
@@ -465,7 +500,7 @@
         allReservations = reservationEvents.map((event, index) => {
             const customer = getCustomerByLineId(event.line_user_id);
             const latestMemo = getLatestMemoEvent(event.line_user_id);
-            const latestStatus = getLatestStatusEvent(event.line_user_id);
+            const latestCustomerStatus = getLatestCustomerStatusEvent(event.line_user_id);
             const latestNextDate = getLatestNextDateEvent(event.line_user_id);
             const reservationTime = normalizeTime(event.reservation_time || "", "");
 
@@ -485,10 +520,9 @@
 
                 reservation_date: event.reservation_date || "",
                 reservation_time: reservationTime,
-                visit_date: event.reservation_date ? `${event.reservation_date} ${reservationTime}` : null,
 
                 reservation_status: event.status || "新規予約",
-                customer_latest_status: latestStatus?.status || event.status || "新規予約",
+                customer_status: latestCustomerStatus?.status || "初回来店前",
 
                 owner_memo: latestMemo?.memo || "",
                 next_guidance_date: latestNextDate?.next_guidance_date || null
@@ -500,32 +534,42 @@
         customerSummaries = rawCustomers.map(customer => {
             const lineId = customer.line_id;
             const latestMemo = getLatestMemoEvent(lineId);
-            const latestStatus = getLatestStatusEvent(lineId);
+            const latestCustomerStatus = getLatestCustomerStatusEvent(lineId);
             const latestNextDate = getLatestNextDateEvent(lineId);
 
             return {
                 ...customer,
                 line_id: lineId,
-                latest_status: latestStatus?.status || "新規予約",
+                customer_status: latestCustomerStatus?.status || "初回来店前",
                 owner_memo: latestMemo?.memo || "",
                 next_guidance_date: latestNextDate?.next_guidance_date || null
             };
         });
     }
 
-    function getStatusBadge(status) {
+    function getReservationStatusBadge(status) {
         const map = {
             "新規予約": "bg-amber-100 text-amber-800",
             "次回予約": "bg-indigo-100 text-indigo-800",
             "予約変更": "bg-cyan-100 text-cyan-800",
-            "来店済": "bg-blue-100 text-blue-800",
-            "入会": "bg-emerald-100 text-emerald-800",
-            "継続中": "bg-purple-100 text-purple-800",
             "キャンセル": "bg-rose-100 text-rose-800",
             "変更前": "bg-stone-200 text-stone-500"
         };
 
         return `<span class="text-[10px] ${map[status] || 'bg-stone-100 text-stone-600'} px-2 py-0.5 rounded-full font-bold whitespace-nowrap">${escapeHtml(status || '新規予約')}</span>`;
+    }
+
+    function getCustomerStatusBadge(status) {
+        const map = {
+            "初回来店前": "bg-stone-100 text-stone-700",
+            "来店済": "bg-blue-100 text-blue-800",
+            "入会": "bg-emerald-100 text-emerald-800",
+            "継続中": "bg-purple-100 text-purple-800",
+            "休眠": "bg-orange-100 text-orange-800",
+            "対応終了": "bg-zinc-200 text-zinc-600"
+        };
+
+        return `<span class="text-[10px] ${map[status] || 'bg-stone-100 text-stone-600'} px-2 py-0.5 rounded-full font-bold whitespace-nowrap">${escapeHtml(status || '初回来店前')}</span>`;
     }
 
     function renderList(reservations) {
@@ -567,9 +611,12 @@
                         <div class="min-w-0">
                             <p class="font-black truncate">${escapeHtml(r.name || '匿名ユーザー')}</p>
                             <p class="text-xs text-stone-400 truncate">${escapeHtml(r.phone || '')}</p>
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                ${getCustomerStatusBadge(r.customer_status)}
+                            </div>
                         </div>
                     </div>
-                    ${getStatusBadge(r.reservation_status)}
+                    ${getReservationStatusBadge(r.reservation_status)}
                 </div>
             `;
         });
@@ -599,8 +646,8 @@
         document.getElementById("kpi-pending").innerText =
             `${activeReservations.filter(r => !r.owner_memo || !r.owner_memo.trim()).length} 件`;
 
-        const visitTotal = customerSummaries.filter(c => ["来店済", "入会", "継続中"].includes(c.latest_status)).length;
-        const joinTotal = customerSummaries.filter(c => ["入会", "継続中"].includes(c.latest_status)).length;
+        const visitTotal = customerSummaries.filter(c => ["来店済", "入会", "継続中"].includes(c.customer_status)).length;
+        const joinTotal = customerSummaries.filter(c => ["入会", "継続中"].includes(c.customer_status)).length;
         const joinRate = visitTotal > 0 ? Math.round((joinTotal / visitTotal) * 100) : 0;
 
         document.getElementById("kpi-funnel-reserve").innerText = `${activeReservations.length} 件`;
@@ -640,10 +687,12 @@
             "新規予約": "btn-status-new",
             "次回予約": "btn-status-repeat",
             "予約変更": "btn-status-change",
-            "来店済": "btn-status-visited",
-            "入会": "btn-status-joined",
-            "継続中": "btn-status-active",
-            "キャンセル": "btn-status-cancel"
+            "初回来店前": "btn-customer-first",
+            "来店済": "btn-customer-visited",
+            "入会": "btn-customer-joined",
+            "継続中": "btn-customer-active",
+            "休眠": "btn-customer-sleep",
+            "対応終了": "btn-customer-closed"
         };
 
         const target = document.getElementById(map[status]);
@@ -662,7 +711,7 @@
             reservation.reservation_date,
             reservation.reservation_time,
             reservation.reservation_status,
-            reservation.customer_latest_status,
+            reservation.customer_status,
             goals
         ].join(" "));
     }
@@ -780,10 +829,7 @@
             filteredReservations = activeReservations.filter(r => getReservationSearchText(r).includes(keyword));
 
             if (currentStatusFilter !== "all") {
-                filteredReservations = filteredReservations.filter(r =>
-                    r.reservation_status === currentStatusFilter ||
-                    r.customer_latest_status === currentStatusFilter
-                );
+                filteredReservations = applyStatusFilter(filteredReservations);
             }
 
             renderList(filteredReservations);
@@ -803,13 +849,22 @@
         }
 
         if (currentStatusFilter !== "all") {
-            filteredReservations = filteredReservations.filter(r =>
-                r.reservation_status === currentStatusFilter ||
-                r.customer_latest_status === currentStatusFilter
-            );
+            filteredReservations = applyStatusFilter(filteredReservations);
         }
 
         renderList(filteredReservations);
+    }
+
+    function applyStatusFilter(list) {
+        if (reservationStatusValues.includes(currentStatusFilter)) {
+            return list.filter(r => r.reservation_status === currentStatusFilter);
+        }
+
+        if (customerStatusValues.includes(currentStatusFilter)) {
+            return list.filter(r => r.customer_status === currentStatusFilter);
+        }
+
+        return list;
     }
 
     function filterByDay(type) {
@@ -880,12 +935,13 @@
         document.getElementById("carte-name").innerText = `${reservation.name || "未入力"} 様`;
         document.getElementById("carte-phone").innerText = reservation.phone || "未入力";
         document.getElementById("carte-date").innerText = formatDateTimeLabel(reservation.reservation_date, reservation.reservation_time);
-        document.getElementById("carte-reservation-status").innerText = `予約種別：${reservation.reservation_status || "-"}`;
+        document.getElementById("carte-reservation-status").innerText = `予約ステータス：${reservation.reservation_status || "-"}`;
+        document.getElementById("carte-customer-status-label").innerHTML = getCustomerStatusBadge(reservation.customer_status);
 
         document.getElementById("carte-experience").innerText = reservation.yoga_experience || "未回答";
         document.getElementById("carte-pace").innerText = reservation.target_pace || "未回答";
         document.getElementById("carte-memo").value = "";
-        document.getElementById("carte-status").value = reservation.customer_latest_status || reservation.reservation_status || "新規予約";
+        document.getElementById("carte-status").value = reservation.customer_status || "初回来店前";
         document.getElementById("carte-next-date").value = reservation.next_guidance_date || "";
 
         const goals = Array.isArray(reservation.primary_goal)
@@ -927,7 +983,7 @@
                 return `
                     <div class="border-b pb-2">
                         <p class="text-stone-400">${created}</p>
-                        <p class="font-bold">📅 ${escapeHtml(e.status || "")}</p>
+                        <p class="font-bold">📅 予約：${escapeHtml(e.status || "")}</p>
                         <p>${escapeHtml(formatDateTimeLabel(e.reservation_date, e.reservation_time))}</p>
                     </div>
                 `;
@@ -936,10 +992,31 @@
             return `
                 <div class="border-b pb-2">
                     <p class="text-stone-400">${created}</p>
-                    <p>${escapeHtml(e.status || "")}</p>
+                    <p class="font-bold">顧客ステータス：${escapeHtml(e.status || "")}</p>
                 </div>
             `;
         }).join("");
+    }
+
+    function copyCustomerName() {
+        if (!selectedReservationKey) return;
+
+        const reservation = findReservationByKey(selectedReservationKey);
+
+        if (!reservation || !reservation.name) {
+            alert("お客様名が見つかりません。");
+            return;
+        }
+
+        navigator.clipboard.writeText(reservation.name).then(() => {
+            alert(`${reservation.name} 様の名前をコピーしました。\nLINE管理画面のチャット検索に貼り付けてください。`);
+        }).catch(() => {
+            alert("コピーできませんでした。\n名前: " + reservation.name);
+        });
+    }
+
+    function openLineChat() {
+        window.open("https://manager.line.biz/", "_blank");
     }
 
     function closeCarte() {
@@ -1156,10 +1233,6 @@
             btn.disabled = false;
             btn.innerText = "保存する";
         }
-    }
-
-    function openLineChat() {
-        window.open("https://manager.line.biz/", "_blank");
     }
 </script>
 
