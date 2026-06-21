@@ -343,9 +343,10 @@
     const reservationStatusValues = ["新規予約", "次回予約", "予約変更"];
     const customerStatusValues = ["初回来店前", "来店済", "入会", "継続中", "休眠", "対応終了"];
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
         lucide.createIcons();
         generateTimeOptions();
+        await loadShopSettings(false);
         fetchCustomers();
 
         document.addEventListener("click", event => {
@@ -467,6 +468,28 @@
         const day = String(d.getDate()).padStart(2, '0');
 
         return `${year}-${month}-${day}`;
+    }
+
+    function isBusinessDate(dateStr) {
+        if (!isValidDateString(dateStr)) return false;
+
+        const weekday = getWeekday(dateStr);
+        const holidays = normalizeHolidays(shopSettings.holidays);
+        const closedDates = normalizeClosedDates(shopSettings.closed_dates);
+
+        if (holidays.includes(weekday)) return false;
+        if (closedDates.includes(dateStr)) return false;
+
+        return true;
+    }
+
+    function getNextBusinessDateString() {
+        for (let offset = 1; offset <= 93; offset++) {
+            const dateStr = getLocalDateString(offset);
+            if (isBusinessDate(dateStr)) return dateStr;
+        }
+
+        return getLocalDateString(1);
     }
 
     function getReservationKey(event, index = 0) {
@@ -722,15 +745,15 @@
         document.getElementById("kpi-total").innerText = `${activeReservations.length} 件`;
 
         const todayStr = getLocalDateString(0);
-        const tomorrowStr = getLocalDateString(1);
+        const nextBusinessDateStr = getNextBusinessDateString();
 
         const todayCount = activeReservations.filter(r => r.reservation_date === todayStr).length;
-        const tomorrowCount = activeReservations.filter(r => r.reservation_date === tomorrowStr).length;
+        const nextBusinessCount = activeReservations.filter(r => r.reservation_date === nextBusinessDateStr).length;
 
         if (currentDayFilter === "today") {
             document.getElementById("kpi-day-count").innerText = `${todayCount} 件`;
-        } else if (currentDayFilter === "tomorrow") {
-            document.getElementById("kpi-day-count").innerText = `${tomorrowCount} 件`;
+        } else if (currentDayFilter === "nextBusiness") {
+            document.getElementById("kpi-day-count").innerText = `${nextBusinessCount} 件`;
         } else {
             document.getElementById("kpi-day-count").innerText = `全 ${activeReservations.length} 件`;
         }
@@ -752,7 +775,7 @@
         selectedSearchReservationKey = null;
         clearSearchFieldOnly();
 
-        const filters = ["today", "tomorrow", "all"];
+        const filters = ["today", "nextBusiness", "all"];
         let index = filters.indexOf(currentDayFilter);
         index = (index + direction + filters.length) % filters.length;
 
@@ -764,9 +787,13 @@
     function updateDayFilterUI() {
         const title = document.getElementById("day-filter-title");
 
-        if (currentDayFilter === "today") title.innerText = "本日予約";
-        else if (currentDayFilter === "tomorrow") title.innerText = "明日予約";
-        else title.innerText = "全日程表示";
+        if (currentDayFilter === "today") {
+            title.innerText = "本日予約";
+        } else if (currentDayFilter === "nextBusiness") {
+            title.innerText = "次の営業日予約";
+        } else {
+            title.innerText = "全日程表示";
+        }
 
         calculateKPIs();
     }
@@ -916,7 +943,7 @@
     function applyCurrentFilters() {
         const searchInput = document.getElementById("search-input").value.trim();
         const todayStr = getLocalDateString(0);
-        const tomorrowStr = getLocalDateString(1);
+        const nextBusinessDateStr = getNextBusinessDateString();
         const activeReservations = getActiveReservations();
 
         if (selectedSearchReservationKey) {
@@ -944,9 +971,9 @@
         if (currentDayFilter === "today") {
             document.getElementById("list-title").innerText = "本日のスケジュール一覧";
             filteredReservations = activeReservations.filter(r => r.reservation_date === todayStr);
-        } else if (currentDayFilter === "tomorrow") {
-            document.getElementById("list-title").innerText = "明日のスケジュール一覧";
-            filteredReservations = activeReservations.filter(r => r.reservation_date === tomorrowStr);
+        } else if (currentDayFilter === "nextBusiness") {
+            document.getElementById("list-title").innerText = `次の営業日（${formatDateLabel(nextBusinessDateStr)}）のスケジュール一覧`;
+            filteredReservations = activeReservations.filter(r => r.reservation_date === nextBusinessDateStr);
         } else {
             document.getElementById("list-title").innerText = "スケジュール一覧（有効予約のみ）";
             filteredReservations = [...activeReservations];
@@ -1386,6 +1413,8 @@
             );
 
             closeSettingsModal();
+            updateDayFilterUI();
+            applyCurrentFilters();
         } catch (error) {
             alert("保存失敗: " + error.message);
         } finally {
