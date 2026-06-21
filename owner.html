@@ -238,6 +238,41 @@
             現在の設定を読み込み中...
         </div>
 
+        <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 mb-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-sm font-black text-amber-900">営業前DEMO準備</p>
+                    <p class="text-xs text-amber-800 mt-1 leading-relaxed">
+                        営業前に押すと、ヨガDEMOの顧客・予約・カルテ履歴を今日基準で作り直します。<br>
+                        直近3か月の臨時休業日・定休日もDEMO用に整えます。
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 mt-3">
+                <button
+                    onclick="resetYogaDemoData()"
+                    id="yoga-demo-reset-btn"
+                    type="button"
+                    class="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-black shadow-sm transition"
+                >
+                    営業前DEMOを準備する
+                </button>
+
+                <button
+                    onclick="fetchCustomers()"
+                    type="button"
+                    class="px-4 py-2.5 bg-white hover:bg-stone-50 text-amber-800 border border-amber-200 rounded-xl text-sm font-bold transition"
+                >
+                    一覧を更新
+                </button>
+            </div>
+
+            <p id="yoga-demo-reset-message" class="text-[11px] text-amber-900 mt-3 leading-relaxed">
+                パスワードは Cloudflare の YOGA_DEMO_RESET_SECRET と同じ値です。
+            </p>
+        </div>
+
         <label class="block text-sm font-bold mb-2">営業時間</label>
         <div class="flex items-center gap-2 mb-4">
             <select id="open-time" class="p-2 border rounded-lg flex-1"></select>
@@ -282,6 +317,7 @@
 
 <script>
     const WORKER_URL = 'https://yoga-liff-webhook.dpromstk2000.workers.dev';
+    const YOGA_DEMO_RESET_WORKER_URL = 'https://yoga-demo-reset.dpromstk2000.workers.dev';
 
     let rawCustomers = [];
     let rawEvents = [];
@@ -1357,6 +1393,107 @@
             btn.innerText = "保存する";
         }
     }
+
+    function setYogaDemoResetMessage(message, type = "") {
+        const box = document.getElementById("yoga-demo-reset-message");
+        if (!box) return;
+
+        box.className = "text-[11px] mt-3 leading-relaxed";
+
+        if (type === "success") {
+            box.classList.add("text-emerald-800");
+        } else if (type === "error") {
+            box.classList.add("text-rose-700");
+        } else {
+            box.classList.add("text-amber-900");
+        }
+
+        box.textContent = message || "";
+    }
+
+    async function resetYogaDemoData() {
+        const confirmed = confirm(
+            "プライベートヨガの営業前DEMOデータを作り直しますか？
+
+" +
+            "・顧客、予約、カルテ履歴を今日基準で作り直します
+" +
+            "・営業前にテストした予約もリセットされます
+" +
+            "・ヨガ専用のDEMOデータだけを対象にします"
+        );
+
+        if (!confirmed) return;
+
+        const password = prompt("DEMO準備パスワードを入力してください");
+        if (password === null) return;
+
+        const btn = document.getElementById("yoga-demo-reset-btn");
+        const originalText = btn ? btn.innerText : "営業前DEMOを準備する";
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = "DEMO準備中...";
+        }
+
+        setYogaDemoResetMessage("DEMOデータを準備しています...", "");
+
+        try {
+            const response = await fetch(YOGA_DEMO_RESET_WORKER_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-yoga-demo-reset-secret": password.trim()
+                },
+                body: JSON.stringify({})
+            });
+
+            const result = await response.json().catch(() => null);
+
+            if (!response.ok || !result || result.ok === false) {
+                const detail = result?.error || result?.message || result?.detail || "不明なエラー";
+                throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+            }
+
+            const rpcResult = result.result || {};
+            const summary = [
+                "営業前DEMOデータを準備しました。",
+                rpcResult.customers != null ? `顧客：${rpcResult.customers}件` : "",
+                rpcResult.events != null ? `イベント：${rpcResult.events}件` : "",
+                rpcResult.today_reservations != null ? `本日の予約：${rpcResult.today_reservations}件` : "",
+                rpcResult.followups != null ? `フォロー予定：${rpcResult.followups}件` : ""
+            ].filter(Boolean).join(" / ");
+
+            setYogaDemoResetMessage(summary, "success");
+
+            selectedReservationKey = null;
+            selectedSearchReservationKey = null;
+            currentDayFilter = "today";
+            currentStatusFilter = "all";
+            updateStatusButtonUI("all");
+            clearSearchFieldOnly();
+
+            await loadShopSettings(true);
+            await fetchCustomers();
+
+            alert("プライベートヨガの営業前DEMOデータを準備しました。");
+
+        } catch (error) {
+            console.error(error);
+            setYogaDemoResetMessage(
+                "DEMO準備に失敗しました。" + (error.message ? " " + error.message : ""),
+                "error"
+            );
+            alert("DEMO準備に失敗しました。
+" + error.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+    }
+
 </script>
 
 </body>
