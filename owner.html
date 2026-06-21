@@ -35,7 +35,7 @@
         </div>
         <div>
             <h1 class="text-base sm:text-xl font-bold tracking-wide">Private Yoga Studio</h1>
-            <p class="text-[10px] sm:text-xs text-emerald-200/80">予約イベント別 管理ダッシュボード</p>
+            <p class="text-[10px] sm:text-xs text-emerald-200/80">予約イベント別 管理ダッシュボード / STEP YOGA-10-7〜10-8</p>
         </div>
     </div>
 
@@ -89,7 +89,7 @@
                     本日のフォロー対象・次にやること
                 </h2>
                 <p class="text-xs text-amber-800 mt-1 leading-relaxed">
-                    体験後フォロー、メモ未記入、次回フォロー予定日、休眠のお客様を自動でまとめます。LINEで送る文面もコピーできます。
+                    体験後フォロー、メモ未記入、次回フォロー予定日、休眠のお客様を自動でまとめます。LINE文面コピー後、対応済み記録や3日後・7日後・14日後の再フォロー設定もできます。
                 </p>
             </div>
             <div class="flex gap-2 items-center">
@@ -385,6 +385,61 @@
 
 </main>
 
+<div id="followup-message-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scroll">
+        <div class="p-4 border-b border-stone-100 flex items-start justify-between gap-3 bg-emerald-50">
+            <div>
+                <h2 class="text-base font-black text-emerald-900" id="followup-message-title">LINE文面を確認・編集</h2>
+                <p class="text-xs text-emerald-800 mt-1 leading-relaxed">
+                    コピーする前に文面を確認できます。必要に応じてこの場で直してからコピーしてください。勝手にLINE送信はされません。
+                </p>
+            </div>
+            <button type="button" onclick="closeFollowupMessageModal()" class="text-stone-500 hover:text-stone-800 text-xl leading-none px-2">×</button>
+        </div>
+
+        <div class="p-4 space-y-4">
+            <div id="followup-message-context" class="bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-600 leading-relaxed">
+                対象のお客様情報を表示します。
+            </div>
+
+            <div>
+                <label class="block text-xs font-black text-stone-600 mb-2">LINEに貼り付ける文面</label>
+                <textarea
+                    id="followup-message-editor"
+                    rows="10"
+                    class="w-full p-3 border border-emerald-200 rounded-xl text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    placeholder="ここにLINE文面が表示されます。"
+                ></textarea>
+                <p class="text-[11px] text-stone-400 mt-1">
+                    文面は編集できます。コピー後、LINE公式チャットでお客様名を検索して貼り付けてください。
+                </p>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p class="text-xs font-black text-amber-900 mb-2">文面タイプを切り替え</p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="applyFollowupMessageVariant('default')" class="text-xs bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg font-bold">自動生成</button>
+                    <button type="button" onclick="applyFollowupMessageVariant('short')" class="text-xs bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg font-bold">短め</button>
+                    <button type="button" onclick="applyFollowupMessageVariant('polite')" class="text-xs bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg font-bold">丁寧</button>
+                    <button type="button" onclick="applyFollowupMessageVariant('booking')" class="text-xs bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg font-bold">予約案内</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-stone-100 flex flex-col sm:flex-row justify-end gap-2 bg-stone-50">
+            <button type="button" onclick="closeFollowupMessageModal()" class="px-4 py-2 rounded-lg bg-white border border-stone-300 text-stone-600 text-sm font-bold hover:bg-stone-100">
+                閉じる
+            </button>
+            <button type="button" onclick="copyEditedFollowupMessage()" class="px-4 py-2 rounded-lg bg-emerald-700 text-white text-sm font-black hover:bg-emerald-800">
+                この文面をコピーする
+            </button>
+            <button type="button" onclick="copyEditedFollowupMessageAndOpenLine()" class="px-4 py-2 rounded-lg bg-stone-900 text-white text-sm font-black hover:bg-stone-800">
+                コピーしてLINE管理画面を開く
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="settings-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto custom-scroll">
         <h2 class="text-lg font-bold border-b pb-3 mb-4">店舗の設定</h2>
@@ -480,6 +535,7 @@
     let filteredReservations = [];
     let customerSummaries = [];
     let followupActionsCache = [];
+    let selectedFollowupMessageIndex = null;
 
     let selectedReservationKey = null;
     let selectedSearchReservationKey = null;
@@ -971,6 +1027,38 @@
         return goals.length ? goals.join("・") : "目的未入力";
     }
 
+    function getEventDateString(value) {
+        if (!value) return null;
+        const d = new Date(value);
+        if (Number.isNaN(d.getTime())) return null;
+
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    }
+
+    function getLatestFollowupHandledDate(lineId) {
+        const handled = getEventsByLineId(lineId)
+            .filter(event => String(event.memo || "").includes("【フォロー対応済み】"))
+            .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+
+        return handled ? getEventDateString(handled.created_at) : null;
+    }
+
+    function isHandledOnOrAfter(lineId, baseDateStr) {
+        const handledDate = getLatestFollowupHandledDate(lineId);
+        if (!handledDate || !baseDateStr) return false;
+        return handledDate >= baseDateStr;
+    }
+
+    function isHandledRecently(lineId, days = 7) {
+        const handledDate = getLatestFollowupHandledDate(lineId);
+        if (!handledDate) return false;
+        const diff = getDaysBetween(handledDate, getLocalDateString(0));
+        return diff !== null && diff <= 0 && Math.abs(diff) <= days;
+    }
+
     function addUniqueFollowupAction(actions, action) {
         const key = `${action.type}__${action.lineId || action.name || ""}`;
         if (actions.some(item => item.uniqueKey === key)) return;
@@ -989,8 +1077,9 @@
             const customerStatus = customer.customer_status || "初回来店前";
             const hasFuture = hasFutureActiveReservation(lineId, today);
             const goalText = getGoalsText(customer.primary_goal);
+            const handledToday = isHandledRecently(lineId, 0);
 
-            if (customer.next_guidance_date && customer.next_guidance_date <= today && customerStatus !== "対応終了") {
+            if (customer.next_guidance_date && customer.next_guidance_date <= today && customerStatus !== "対応終了" && !isHandledOnOrAfter(lineId, customer.next_guidance_date)) {
                 const delayDays = getDaysBetween(customer.next_guidance_date, today);
                 addUniqueFollowupAction(actions, {
                     type: "guidance",
@@ -1009,7 +1098,7 @@
                 });
             }
 
-            if (customerStatus === "来店済" && !hasFuture && latestReservationDate) {
+            if (customerStatus === "来店済" && !hasFuture && latestReservationDate && !isHandledOnOrAfter(lineId, latestReservationDate)) {
                 const daysAfterVisit = getDaysBetween(latestReservationDate, today);
                 if (daysAfterVisit !== null && daysAfterVisit >= 1 && daysAfterVisit <= 14) {
                     addUniqueFollowupAction(actions, {
@@ -1028,7 +1117,7 @@
                 }
             }
 
-            if (["入会", "継続中"].includes(customerStatus) && !hasFuture && latestReservationDate) {
+            if (["入会", "継続中"].includes(customerStatus) && !hasFuture && latestReservationDate && !isHandledOnOrAfter(lineId, latestReservationDate)) {
                 const daysAfterVisit = getDaysBetween(latestReservationDate, today);
                 if (daysAfterVisit !== null && daysAfterVisit >= 7) {
                     addUniqueFollowupAction(actions, {
@@ -1047,7 +1136,7 @@
                 }
             }
 
-            if (customerStatus === "休眠") {
+            if (customerStatus === "休眠" && !isHandledRecently(lineId, 14)) {
                 addUniqueFollowupAction(actions, {
                     type: "sleeping",
                     priority: 5,
@@ -1065,7 +1154,7 @@
         });
 
         activeReservations.forEach(reservation => {
-            if (reservation.reservation_date === today && (!reservation.owner_memo || !reservation.owner_memo.trim())) {
+            if (reservation.reservation_date === today && (!reservation.owner_memo || !reservation.owner_memo.trim()) && !isHandledRecently(reservation.line_id, 0)) {
                 addUniqueFollowupAction(actions, {
                     type: "memo_missing",
                     priority: 4,
@@ -1117,14 +1206,26 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2 mt-3">
-                    <button type="button" data-index="${index}" onclick="copyFollowupMessage(Number(this.dataset.index))" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg font-black">
-                        LINE文面コピー
+                    <button type="button" data-index="${index}" onclick="openFollowupMessageModal(Number(this.dataset.index))" class="text-xs bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg font-black">
+                        文面を確認・編集
                     </button>
                     <button type="button" data-index="${index}" onclick="copyFollowupName(Number(this.dataset.index))" class="text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 px-3 py-2 rounded-lg font-bold">
                         名前コピー
                     </button>
                     <button type="button" data-index="${index}" onclick="openFollowupTarget(Number(this.dataset.index))" class="text-xs bg-white hover:bg-stone-50 text-stone-700 border border-stone-300 px-3 py-2 rounded-lg font-bold">
                         詳細を見る
+                    </button>
+                    <button type="button" data-index="${index}" onclick="markFollowupDone(Number(this.dataset.index))" class="text-xs bg-blue-700 hover:bg-blue-800 text-white px-3 py-2 rounded-lg font-black">
+                        対応済み
+                    </button>
+                    <button type="button" data-index="${index}" onclick="setFollowupLater(Number(this.dataset.index), 3)" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg font-bold">
+                        3日後
+                    </button>
+                    <button type="button" data-index="${index}" onclick="setFollowupLater(Number(this.dataset.index), 7)" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg font-bold">
+                        7日後
+                    </button>
+                    <button type="button" data-index="${index}" onclick="setFollowupLater(Number(this.dataset.index), 14)" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg font-bold">
+                        14日後
                     </button>
                 </div>
             </div>
@@ -1169,6 +1270,116 @@
         copyTextToClipboard(buildFollowupMessage(action), "LINE文面をコピーしました。LINE公式チャットに貼り付けて使えます。");
     }
 
+    function buildFollowupMessageVariant(action, variant = "default") {
+        const name = action?.name || "お客様";
+        const goal = action?.goalText && action.goalText !== "目的未入力" ? action.goalText : "";
+        const goalLine = goal ? `
+前回の目的：${goal}` : "";
+
+        if (variant === "short") {
+            if (action?.type === "sleeping") {
+                return `${name}様
+お久しぶりです。最近のお身体の調子はいかがでしょうか？
+無理なく再開できる内容でご案内できますので、気になることがあればお気軽にご相談ください。`;
+            }
+            return `${name}様
+いつもありがとうございます。
+その後、お身体の調子はいかがでしょうか？
+次回の日程や内容について、よろしければお気軽にご相談ください。`;
+        }
+
+        if (variant === "polite") {
+            return `${name}様
+いつもありがとうございます。
+その後、お身体の調子はいかがでしょうか？${goalLine}
+前回の内容や今のお身体の状態に合わせて、無理のないレッスン内容でご案内できます。
+ご都合のよい日や気になることがございましたら、お気軽にご連絡ください。`;
+        }
+
+        if (variant === "booking") {
+            return `${name}様
+いつもありがとうございます。
+次回レッスンのご予約について、ご都合はいかがでしょうか？${goalLine}
+お身体の状態に合わせて内容を調整できますので、無理のない日程でご相談ください。`;
+        }
+
+        return buildFollowupMessage(action);
+    }
+
+    function openFollowupMessageModal(index) {
+        const action = followupActionsCache[index];
+        if (!action) return;
+
+        selectedFollowupMessageIndex = index;
+
+        const modal = document.getElementById("followup-message-modal");
+        const title = document.getElementById("followup-message-title");
+        const context = document.getElementById("followup-message-context");
+        const editor = document.getElementById("followup-message-editor");
+
+        if (title) {
+            title.textContent = `${action.name || "お客様"} 様へのLINE文面`;
+        }
+
+        if (context) {
+            context.innerHTML = [
+                `<b>対象：</b>${escapeHtml(action.name || "お客様")} 様`,
+                `<b>フォロー種別：</b>${escapeHtml(action.badge || "フォロー")}`,
+                `<b>顧客ステータス：</b>${escapeHtml(action.status || "-")}`,
+                `<b>目的：</b>${escapeHtml(action.goalText || "-")}`,
+                `<b>理由：</b>${escapeHtml(action.reason || "-")}`
+            ].join("<br>");
+        }
+
+        if (editor) {
+            editor.value = buildFollowupMessageVariant(action, "default");
+        }
+
+        if (modal) modal.classList.remove("hidden");
+    }
+
+    function closeFollowupMessageModal() {
+        const modal = document.getElementById("followup-message-modal");
+        if (modal) modal.classList.add("hidden");
+        selectedFollowupMessageIndex = null;
+    }
+
+    function applyFollowupMessageVariant(variant) {
+        if (selectedFollowupMessageIndex === null) return;
+        const action = followupActionsCache[selectedFollowupMessageIndex];
+        const editor = document.getElementById("followup-message-editor");
+        if (!action || !editor) return;
+
+        const currentText = editor.value.trim();
+        const defaultText = buildFollowupMessageVariant(action, "default").trim();
+
+        if (currentText && currentText !== defaultText) {
+            const ok = confirm("現在の編集内容を文面タイプで上書きしますか？");
+            if (!ok) return;
+        }
+
+        editor.value = buildFollowupMessageVariant(action, variant);
+        editor.focus();
+    }
+
+    async function copyEditedFollowupMessage() {
+        const editor = document.getElementById("followup-message-editor");
+        if (!editor) return;
+
+        const text = editor.value.trim();
+        if (!text) {
+            alert("コピーする文面が空です。");
+            return;
+        }
+
+        await copyTextToClipboard(text, "表示中のLINE文面をコピーしました。必要に応じてLINE公式チャットへ貼り付けて送信してください。");
+    }
+
+    async function copyEditedFollowupMessageAndOpenLine() {
+        await copyEditedFollowupMessage();
+        openLineChat();
+    }
+
     function copyFollowupName(index) {
         const action = followupActionsCache[index];
         if (!action) return;
@@ -1197,6 +1408,95 @@
         } else {
             alert("予約詳細がないフォロー対象です。名前検索で候補を表示しました。");
         }
+    }
+
+    async function saveFollowupAction(action, memoContent, nextGuidanceDate, successMessage) {
+        if (!action || !action.lineId) {
+            alert("対象のお客様情報が見つかりません。");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${WORKER_URL}?action=update_memo`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    lineUserId: action.lineId,
+                    customerName: action.name || "",
+                    memoContent,
+                    status: customerStatusValues.includes(action.status) ? action.status : "初回来店前",
+                    nextGuidanceDate
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(result.error || "フォロー記録の保存に失敗しました。");
+            }
+
+            await fetchCustomers();
+            alert(successMessage || "フォロー記録を保存しました。");
+
+        } catch (error) {
+            console.error(error);
+            alert("保存できませんでした。\n" + error.message);
+        }
+    }
+
+    async function markFollowupDone(index) {
+        const action = followupActionsCache[index];
+        if (!action) return;
+
+        const confirmed = confirm(
+            `${action.name || "お客様"} 様のフォローを対応済みにしますか？\n\n` +
+            "LINE送信・電話連絡などが終わった後に押してください。"
+        );
+
+        if (!confirmed) return;
+
+        const memoContent = [
+            `【フォロー対応済み】${formatDateLabel(getLocalDateString(0))}`,
+            `対象：${action.badge || "フォロー"}`,
+            `理由：${action.reason || ""}`,
+            "",
+            "送信用文面：",
+            buildFollowupMessage(action)
+        ].join("\n");
+
+        await saveFollowupAction(
+            action,
+            memoContent,
+            null,
+            `${action.name || "お客様"} 様を対応済みにしました。`
+        );
+    }
+
+    async function setFollowupLater(index, days) {
+        const action = followupActionsCache[index];
+        if (!action) return;
+
+        const nextDate = getLocalDateString(days);
+        const confirmed = confirm(
+            `${action.name || "お客様"} 様の再フォロー日を ${formatDateLabel(nextDate)} に設定しますか？`
+        );
+
+        if (!confirmed) return;
+
+        const memoContent = [
+            `【再フォロー設定】${formatDateLabel(nextDate)}`,
+            `対象：${action.badge || "フォロー"}`,
+            `理由：${action.reason || ""}`,
+            "",
+            "次回この日に再度フォロー対象として表示されます。"
+        ].join("\n");
+
+        await saveFollowupAction(
+            action,
+            memoContent,
+            nextDate,
+            `${formatDateLabel(nextDate)} に再フォローを設定しました。`
+        );
     }
 
     function shiftDayFilter(direction) {
@@ -1707,7 +2007,7 @@
         dateInput.max = max;
 
         if (!dateInput.value) {
-            const selectedDate = currentDayFilter === "nextBusiness" ? getNextBusinessDateString() : today;
+            const selectedDate = currentDayFilter === "next" ? getNextBusinessDateString() : today;
             dateInput.value = selectedDate;
         }
 
