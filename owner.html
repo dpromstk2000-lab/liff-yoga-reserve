@@ -391,7 +391,7 @@
             <div>
                 <h2 class="text-base font-black text-emerald-900" id="followup-message-title">LINE文面を確認・編集</h2>
                 <p class="text-xs text-emerald-800 mt-1 leading-relaxed">
-                    コピーする前に文面を確認できます。必要に応じてこの場で直してからコピーしてください。勝手にLINE送信はされません。
+                    コピーする前に文面を確認できます。必要に応じてこの場で直してからコピーしてください。対応済みにすると、編集後の文面がカルテ履歴に残ります。
                 </p>
             </div>
             <button type="button" onclick="closeFollowupMessageModal()" class="text-stone-500 hover:text-stone-800 text-xl leading-none px-2">×</button>
@@ -411,7 +411,7 @@
                     placeholder="ここにLINE文面が表示されます。"
                 ></textarea>
                 <p class="text-[11px] text-stone-400 mt-1">
-                    文面は編集できます。コピー後、LINE公式チャットでお客様名を検索して貼り付けてください。
+                    文面は編集できます。コピーした文面、またはこの画面で最後に編集した文面を、対応済み記録に残せます。
                 </p>
             </div>
 
@@ -435,6 +435,9 @@
             </button>
             <button type="button" onclick="copyEditedFollowupMessageAndOpenLine()" class="px-4 py-2 rounded-lg bg-stone-900 text-white text-sm font-black hover:bg-stone-800">
                 コピーしてLINE管理画面を開く
+            </button>
+            <button type="button" onclick="markCurrentFollowupDoneFromModal()" class="px-4 py-2 rounded-lg bg-blue-700 text-white text-sm font-black hover:bg-blue-800">
+                送信後、この文面で対応済みに記録
             </button>
         </div>
     </div>
@@ -536,6 +539,8 @@
     let customerSummaries = [];
     let followupActionsCache = [];
     let selectedFollowupMessageIndex = null;
+    const FOLLOWUP_MESSAGE_DRAFT_STORAGE_KEY = "yoga_followup_message_drafts_v1";
+    let followupMessageDraftCache = loadFollowupMessageDraftCache();
 
     let selectedReservationKey = null;
     let selectedSearchReservationKey = null;
@@ -1306,6 +1311,67 @@
         return buildFollowupMessage(action);
     }
 
+    function loadFollowupMessageDraftCache() {
+        try {
+            const raw = localStorage.getItem(FOLLOWUP_MESSAGE_DRAFT_STORAGE_KEY);
+            const parsed = raw ? JSON.parse(raw) : {};
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function persistFollowupMessageDraftCache() {
+        try {
+            localStorage.setItem(FOLLOWUP_MESSAGE_DRAFT_STORAGE_KEY, JSON.stringify(followupMessageDraftCache || {}));
+        } catch (error) {
+            console.warn("フォロー文面の一時保存に失敗しました。", error);
+        }
+    }
+
+    function getFollowupActionKey(action) {
+        if (!action) return "";
+        return [
+            action.lineId || action.name || "unknown",
+            action.type || "followup",
+            action.reservationKey || "",
+            action.badge || ""
+        ].join("__");
+    }
+
+    function getStoredFollowupMessage(action) {
+        const key = getFollowupActionKey(action);
+        if (!key) return "";
+        return action?.editedFollowupMessage || followupMessageDraftCache[key] || "";
+    }
+
+    function storeFollowupMessageDraft(action, text) {
+        if (!action) return;
+        const trimmedText = String(text || "").trim();
+        if (!trimmedText) return;
+
+        const key = getFollowupActionKey(action);
+        if (!key) return;
+
+        action.editedFollowupMessage = trimmedText;
+        followupMessageDraftCache[key] = trimmedText;
+        persistFollowupMessageDraftCache();
+    }
+
+    function getFollowupMessageForRecord(index, fallbackAction) {
+        const action = fallbackAction || followupActionsCache[index];
+        if (!action) return "";
+
+        const editor = document.getElementById("followup-message-editor");
+        if (selectedFollowupMessageIndex === index && editor && editor.value.trim()) {
+            const text = editor.value.trim();
+            storeFollowupMessageDraft(action, text);
+            return text;
+        }
+
+        return getStoredFollowupMessage(action) || buildFollowupMessageVariant(action, "default");
+    }
+
     function openFollowupMessageModal(index) {
         const action = followupActionsCache[index];
         if (!action) return;
@@ -1332,7 +1398,7 @@
         }
 
         if (editor) {
-            editor.value = buildFollowupMessageVariant(action, "default");
+            editor.value = getStoredFollowupMessage(action) || buildFollowupMessageVariant(action, "default");
         }
 
         if (modal) modal.classList.remove("hidden");
@@ -1364,20 +1430,46 @@
 
     async function copyEditedFollowupMessage() {
         const editor = document.getElementById("followup-message-editor");
-        if (!editor) return;
+        if (!editor) return false;
 
         const text = editor.value.trim();
         if (!text) {
             alert("コピーする文面が空です。");
-            return;
+            return false;
         }
 
-        await copyTextToClipboard(text, "表示中のLINE文面をコピーしました。必要に応じてLINE公式チャットへ貼り付けて送信してください。");
+        if (selectedFollowupMessageIndex !== null) {
+            const action = followupActionsCache[selectedFollowupMessageIndex];
+            storeFollowupMessageDraft(action, text);
+        }
+
+        await copyTextToClipboard(text, "表示中のLINE文面をコピーしました。対応済みにすると、この編集後の文面がカルテ履歴に残ります。");
+        return true;
     }
 
     async function copyEditedFollowupMessageAndOpenLine() {
-        await copyEditedFollowupMessage();
-        openLineChat();
+        const copied = await copyEditedFollowupMessage();
+        if (copied) openLineChat();
+    }
+
+    async function markCurrentFollowupDoneFromModal() {
+        if (selectedFollowupMessageIndex === null) {
+            alert("対象のお客様情報が見つかりません。");
+            return;
+        }
+
+        const editor = document.getElementById("followup-message-editor");
+        const text = editor ? editor.value.trim() : "";
+
+        if (!text) {
+            alert("対応済み記録に残す文面が空です。");
+            return;
+        }
+
+        const action = followupActionsCache[selectedFollowupMessageIndex];
+        storeFollowupMessageDraft(action, text);
+        await markFollowupDone(selectedFollowupMessageIndex, text);
+        closeFollowupMessageModal();
     }
 
     function copyFollowupName(index) {
@@ -1444,31 +1536,38 @@
         }
     }
 
-    async function markFollowupDone(index) {
+    async function markFollowupDone(index, messageOverride = "") {
         const action = followupActionsCache[index];
         if (!action) return;
 
+        const sentMessage = String(messageOverride || getFollowupMessageForRecord(index, action) || "").trim();
+
         const confirmed = confirm(
             `${action.name || "お客様"} 様のフォローを対応済みにしますか？\n\n` +
-            "LINE送信・電話連絡などが終わった後に押してください。"
+            "LINE送信・電話連絡などが終わった後に押してください。\n" +
+            "対応済みにすると、画面で編集した文面がカルテ履歴に残ります。"
         );
 
         if (!confirmed) return;
+
+        if (sentMessage) {
+            storeFollowupMessageDraft(action, sentMessage);
+        }
 
         const memoContent = [
             `【フォロー対応済み】${formatDateLabel(getLocalDateString(0))}`,
             `対象：${action.badge || "フォロー"}`,
             `理由：${action.reason || ""}`,
             "",
-            "送信用文面：",
-            buildFollowupMessage(action)
+            "送信・案内した文面：",
+            sentMessage || buildFollowupMessage(action)
         ].join("\n");
 
         await saveFollowupAction(
             action,
             memoContent,
             null,
-            `${action.name || "お客様"} 様を対応済みにしました。`
+            `${action.name || "お客様"} 様を対応済みにしました。編集後の文面もカルテ履歴に保存しました。`
         );
     }
 
