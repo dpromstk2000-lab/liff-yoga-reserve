@@ -88,9 +88,21 @@
       <div class="w-14 h-14 mx-auto rounded-2xl bg-stone-100 flex items-center justify-center text-2xl">🧘</div>
       <div>
         <h2 class="text-lg font-black text-stone-900">会員情報がまだありません</h2>
-        <p class="text-sm text-stone-500 mt-2 leading-relaxed">先に予約フォームからお名前・電話番号・目的を登録すると、このページに現在予約や次回案内が表示されます。</p>
+        <p class="text-sm text-stone-500 mt-2 leading-relaxed">LINEだけで会員情報が見つからない場合は、デモ確認用として電話番号でも検索できます。</p>
       </div>
-      <button type="button" onclick="goReservationPage()" class="w-full bg-emerald-700 text-white font-black py-3 rounded-2xl">
+
+      <div class="text-left bg-emerald-50 border border-emerald-100 rounded-2xl p-4 space-y-3">
+        <label class="block">
+          <span class="text-xs font-bold text-emerald-800">デモ確認用 電話番号</span>
+          <input id="demo-phone-not-found" type="tel" inputmode="tel" placeholder="例：09011112222" class="mt-2 w-full rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600" />
+        </label>
+        <button type="button" onclick="searchByPhoneDemoFromNotFound()" class="w-full bg-emerald-700 text-white font-black py-3 rounded-2xl shadow-lg shadow-emerald-900/10">
+          電話番号で会員ページを確認する
+        </button>
+        <p class="text-[11px] leading-relaxed text-emerald-800">※デモ確認用です。本番ではLINE本人確認を優先します。</p>
+      </div>
+
+      <button type="button" onclick="goReservationPage()" class="w-full bg-white border border-stone-300 text-stone-700 font-bold py-3 rounded-2xl">
         予約フォームへ進む
       </button>
     </section>
@@ -444,6 +456,19 @@
     }
     demoPhone = phone;
     lineUserId = "";
+    await loadMember();
+  }
+
+  async function searchByPhoneDemoFromNotFound() {
+    const input = $("demo-phone-not-found");
+    const phone = clean(input ? input.value : "");
+    if (!phone) {
+      alert("電話番号を入力してください。");
+      return;
+    }
+    demoPhone = phone;
+    lineUserId = "";
+    setConnectionBadge("デモ電話確認中", "amber");
     await loadMember();
   }
 
