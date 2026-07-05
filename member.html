@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DPRO YOGA LINE 会員ページ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(16, 185, 129, 0.14), transparent 34%),
+        linear-gradient(180deg, #f8faf7 0%, #f5f2ec 100%);
+      color: #1c1917;
+    }
+    .glass {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 60px rgba(68, 64, 60, 0.10);
+    }
+    .safe-bottom {
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+    .day-card.selected,
+    .time-card.selected {
+      border-color: #047857;
+      background: #ecfdf5;
+      color: #065f46;
+    }
+    .hidden-force {
+      display: none !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen safe-bottom">
+  <main class="max-w-md mx-auto px-4 py-5 space-y-4">
+
+    <header class="glass rounded-3xl p-5 border border-white/70">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p id="shop-label" class="text-xs font-black tracking-[0.25em] text-emerald-700 uppercase">DPRO YOGA LINE</p>
+          <h1 class="text-2xl font-black text-stone-900 mt-1">ヨガ会員ページ</h1>
+          <p id="header-subtitle" class="text-sm text-stone-500 mt-2 leading-relaxed">現在の予約・変更・キャンセル・次回案内を確認できます。</p>
+        </div>
+        <div class="w-12 h-12 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-xl shadow-lg">Y</div>
+      </div>
+      <div id="connection-badge" class="mt-4 inline-flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-full bg-stone-100 text-stone-600">
+        <span class="w-2 h-2 rounded-full bg-stone-400"></span>
+        読み込み中
+      </div>
+    </header>
+
+    <section id="system-message" class="hidden rounded-2xl p-4 text-sm font-bold border"></section>
+
+    <section id="loading-section" class="glass rounded-3xl p-6 border border-white/70 text-center">
+      <div class="mx-auto w-12 h-12 rounded-full border-4 border-emerald-100 border-t-emerald-700 animate-spin"></div>
+      <p class="mt-4 text-sm font-bold text-stone-700">会員情報を確認しています</p>
+      <p class="mt-1 text-xs text-stone-500">LINEまたはデモ確認情報を読み込み中です。</p>
+    </section>
+
+    <section id="auth-section" class="hidden glass rounded-3xl p-5 border border-white/70 space-y-4">
+      <div>
+        <h2 class="text-lg font-black text-stone-900">会員ページを開く</h2>
+        <p class="text-sm text-stone-500 mt-2 leading-relaxed">本番ではLINE公式アカウントのメニューから開くと、自動で会員情報を確認できます。デモ確認では電話番号でも検索できます。</p>
+      </div>
+
+      <div class="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-xs text-amber-800 leading-relaxed">
+        <p class="font-black mb-1">本番安全ルール</p>
+        <p>電話番号だけで会員ページを表示する運用は本番では避けます。LINE IDで本人確認できる導線を優先します。</p>
+      </div>
+
+      <label class="block">
+        <span class="text-xs font-bold text-stone-600">デモ確認用 電話番号</span>
+        <input id="demo-phone" type="tel" inputmode="tel" placeholder="例：09012345678" class="mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-emerald-600" />
+      </label>
+
+      <button type="button" onclick="searchByPhoneDemo()" class="w-full bg-emerald-700 text-white font-black py-3 rounded-2xl shadow-lg shadow-emerald-900/10">
+        電話番号でデモ確認する
+      </button>
+
+      <button type="button" onclick="goReservationPage()" class="w-full bg-white border border-stone-300 text-stone-700 font-bold py-3 rounded-2xl">
+        新しく予約する
+      </button>
+    </section>
+
+    <section id="not-found-section" class="hidden glass rounded-3xl p-6 border border-white/70 text-center space-y-4">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-stone-100 flex items-center justify-center text-2xl">🧘</div>
+      <div>
+        <h2 class="text-lg font-black text-stone-900">会員情報がまだありません</h2>
+        <p class="text-sm text-stone-500 mt-2 leading-relaxed">先に予約フォームからお名前・電話番号・目的を登録すると、このページに現在予約や次回案内が表示されます。</p>
+      </div>
+      <button type="button" onclick="goReservationPage()" class="w-full bg-emerald-700 text-white font-black py-3 rounded-2xl">
+        予約フォームへ進む
+      </button>
+    </section>
+
+    <section id="member-section" class="hidden space-y-4">
+
+      <section class="glass rounded-3xl p-5 border border-white/70">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-black text-emerald-700 tracking-[0.16em]">MEMBER</p>
+            <h2 id="member-name" class="text-2xl font-black text-stone-900 mt-1">-</h2>
+            <p id="member-sub" class="text-sm text-stone-500 mt-1">会員情報</p>
+          </div>
+          <button type="button" onclick="reloadMember()" class="shrink-0 bg-white border border-stone-200 px-3 py-2 rounded-xl text-xs font-bold text-stone-600">
+            更新
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mt-5">
+          <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
+            <p class="text-xs font-bold text-emerald-700">現在予約</p>
+            <p id="reservation-count" class="text-2xl font-black text-emerald-900 mt-1">0件</p>
+          </div>
+          <div class="bg-stone-50 rounded-2xl p-4 border border-stone-100">
+            <p class="text-xs font-bold text-stone-600">フォロー案内</p>
+            <p id="followup-count" class="text-2xl font-black text-stone-900 mt-1">0件</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass rounded-3xl p-5 border border-white/70 space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-black text-stone-900">現在の予約</h2>
+            <p class="text-xs text-stone-500 mt-1">予約の確認・変更・キャンセルができます。</p>
+          </div>
+          <button type="button" onclick="goReservationPage()" class="bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-black">
+            追加予約
+          </button>
+        </div>
+        <div id="reservation-list" class="space-y-3"></div>
+      </section>
+
+      <section id="change-section" class="hidden glass rounded-3xl p-5 border border-emerald-100 space-y-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-black text-emerald-700 tracking-[0.16em]">CHANGE</p>
+            <h2 class="text-lg font-black text-stone-900 mt-1">予約変更</h2>
+            <p id="change-target-label" class="text-xs text-stone-500 mt-1">変更する予約を選択してください。</p>
+          </div>
+          <button type="button" onclick="closeChangePanel()" class="bg-white border border-stone-200 px-3 py-2 rounded-xl text-xs font-bold text-stone-600">閉じる</button>
+        </div>
+
+        <div>
+          <p class="text-xs font-bold text-stone-600 mb-2">レッスンメニュー</p>
+          <div id="change-service-list" class="space-y-2"></div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-bold text-stone-600">変更後の日付</p>
+            <button type="button" onclick="loadMoreChangeDays()" class="text-xs font-bold text-emerald-700">さらに表示</button>
+          </div>
+          <div id="change-day-list" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <div>
+          <p class="text-xs font-bold text-stone-600 mb-2">変更後の時間</p>
+          <div id="change-time-list" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <label class="block">
+          <span class="text-xs font-bold text-stone-600">変更理由・希望</span>
+          <textarea id="change-reason" rows="3" placeholder="例：仕事の都合で別日に変更したいです。" class="mt-2 w-full rounded-2xl border border-stone-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"></textarea>
+        </label>
+
+        <button type="button" id="change-submit-button" onclick="submitChangeReservation()" class="w-full bg-emerald-700 text-white font-black py-3 rounded-2xl shadow-lg shadow-emerald-900/10 disabled:opacity-50 disabled:cursor-not-allowed">
+          この内容で変更する
+        </button>
+      </section>
+
+      <section class="glass rounded-3xl p-5 border border-white/70 space-y-4">
+        <div>
+          <h2 class="text-lg font-black text-stone-900">登録情報</h2>
+          <p class="text-xs text-stone-500 mt-1">次回レッスンやフォローの参考になる情報です。</p>
+        </div>
+        <div id="profile-grid" class="space-y-3"></div>
+      </section>
+
+      <section class="glass rounded-3xl p-5 border border-white/70 space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-black text-stone-900">次回案内・フォロー</h2>
+            <p class="text-xs text-stone-500 mt-1">体験後や次回予約のおすすめ案内を表示します。</p>
+          </div>
+        </div>
+        <div id="followup-list" class="space-y-3"></div>
+      </section>
+
+      <section class="glass rounded-3xl p-5 border border-white/70 space-y-4">
+        <button type="button" onclick="toggleHistory()" class="w-full flex items-center justify-between gap-3 text-left">
+          <div>
+            <h2 class="text-lg font-black text-stone-900">最近の履歴</h2>
+            <p class="text-xs text-stone-500 mt-1">予約・キャンセル・カルテ更新など</p>
+          </div>
+          <span id="history-toggle-label" class="text-xs font-bold text-emerald-700">開く</span>
+        </button>
+        <div id="history-list" class="hidden space-y-2"></div>
+      </section>
+
+      <section class="glass rounded-3xl p-5 border border-white/70 space-y-3">
+        <h2 class="text-lg font-black text-stone-900">LINE相談</h2>
+        <p class="text-sm text-stone-500 leading-relaxed">予約変更の相談、体調面の不安、持ち物の確認などはLINEで気軽にご相談ください。</p>
+        <button type="button" onclick="copyConsultMessage()" class="w-full bg-white border border-emerald-600 text-emerald-700 font-black py-3 rounded-2xl">
+          相談文面をコピーする
+        </button>
+      </section>
+    </section>
+  </main>
+
+<script>
+  const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
+  const LIFF_ID = "2010377734-4tHMhUx6";
+  const SHOP_CODE = "yoga_demo";
+
+  let lineUserId = "";
+  let lineDisplayName = "";
+  let demoPhone = "";
+  let shopSettings = null;
+  let memberData = null;
+  let services = [];
+  let selectedChangeReservation = null;
+  let selectedChangeServiceCode = "";
+  let selectedChangeDate = "";
+  let selectedChangeTime = "";
+  let changeDayDisplayCount = 28;
+  let changeAvailableDays = [];
+  let changeAvailableTimes = [];
+  let isSubmittingChange = false;
+
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function clean(value) {
+    return String(value || "").trim();
+  }
+
+  function normalizeTime(value, fallback = "") {
+    if (typeof value !== "string") return fallback;
+    const compact = value.substring(0, 5);
+    if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(compact)) return fallback;
+    return compact;
+  }
+
+  function getLocalDateString(offsetDays = 0) {
+    const now = new Date();
+    now.setDate(now.getDate() + offsetDays);
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function isValidDateString(value) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+  }
+
+  function getWeekday(dateStr) {
+    if (!isValidDateString(dateStr)) return null;
+    const [y, m, d] = dateStr.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  }
+
+  function formatDate(dateStr) {
+    if (!isValidDateString(dateStr)) return dateStr || "-";
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const weekday = weekdays[getWeekday(dateStr)] || "";
+    return `${y}年${m}月${d}日（${weekday}）`;
+  }
+
+  function formatShortDate(dateStr) {
+    if (!isValidDateString(dateStr)) return dateStr || "-";
+    const [, m, d] = dateStr.split("-").map(Number);
+    const weekday = weekdays[getWeekday(dateStr)] || "";
+    return `${m}/${d}（${weekday}）`;
+  }
+
+  function formatPrice(value) {
+    const n = Number(value || 0);
+    if (!n) return "料金表示なし";
+    return `${n.toLocaleString()}円`;
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function normalizeGoal(value) {
+    if (Array.isArray(value)) return value.filter(Boolean).join("、");
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean).join("、");
+      } catch (_) {}
+      return value;
+    }
+    return "";
+  }
+
+  function showSection(id) {
+    ["loading-section", "auth-section", "not-found-section", "member-section"].forEach(sectionId => {
+      $(sectionId)?.classList.add("hidden");
+    });
+    $(id)?.classList.remove("hidden");
+  }
+
+  function showMessage(message, type = "info") {
+    const el = $("system-message");
+    if (!el) return;
+    const styles = {
+      info: "bg-emerald-50 text-emerald-800 border-emerald-100",
+      warn: "bg-amber-50 text-amber-800 border-amber-100",
+      error: "bg-red-50 text-red-800 border-red-100"
+    };
+    el.className = `rounded-2xl p-4 text-sm font-bold border ${styles[type] || styles.info}`;
+    el.textContent = message;
+    el.classList.remove("hidden");
+  }
+
+  function hideMessage() {
+    $("system-message")?.classList.add("hidden");
+  }
+
+  function setConnectionBadge(text, color = "stone") {
+    const el = $("connection-badge");
+    if (!el) return;
+    const colorClass = color === "green"
+      ? "bg-emerald-50 text-emerald-700"
+      : color === "amber"
+        ? "bg-amber-50 text-amber-700"
+        : "bg-stone-100 text-stone-600";
+    const dotClass = color === "green" ? "bg-emerald-500" : color === "amber" ? "bg-amber-500" : "bg-stone-400";
+    el.className = `mt-4 inline-flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-full ${colorClass}`;
+    el.innerHTML = `<span class="w-2 h-2 rounded-full ${dotClass}"></span>${escapeHtml(text)}`;
+  }
+
+  function buildApiUrl(path, params = {}) {
+    const url = new URL(path.startsWith("http") ? path : `${WORKER_URL}${path}`);
+    if (!url.searchParams.has("shop_code")) url.searchParams.set("shop_code", SHOP_CODE);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, value);
+    });
+    return url.toString();
+  }
+
+  async function apiGet(path, params = {}) {
+    const response = await fetch(buildApiUrl(path, params));
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.error || data.message || "APIの取得に失敗しました。");
+    return data;
+  }
+
+  async function apiPost(path, payload = {}) {
+    const response = await fetch(buildApiUrl(path), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop_code: SHOP_CODE, ...payload })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) throw new Error(data.error || data.message || "APIの保存に失敗しました。");
+    return data;
+  }
+
+  async function loadStatus() {
+    try {
+      const data = await apiGet("/api/public/status");
+      shopSettings = data;
+      $("shop-label").textContent = data.service_name || "DPRO YOGA LINE";
+      $("header-subtitle").textContent = `${data.shop_name || "DPRO YOGA"} の会員ページです。現在予約・変更・キャンセル・次回案内を確認できます。`;
+    } catch (error) {
+      console.warn(error);
+      shopSettings = {
+        shop_name: "DPRO YOGA",
+        service_name: "DPRO YOGA LINE",
+        open_time: "10:00",
+        close_time: "19:00"
+      };
+    }
+  }
+
+  async function loadServices() {
+    try {
+      const data = await apiGet("/api/public/services");
+      services = Array.isArray(data.services) ? data.services : [];
+    } catch (error) {
+      console.warn(error);
+      services = [];
+    }
+  }
+
+  async function initLiff() {
+    showSection("loading-section");
+    hideMessage();
+    await loadStatus();
+    await loadServices();
+
+    const params = new URLSearchParams(location.search);
+    lineUserId = clean(params.get("line_user_id") || params.get("line_id") || "");
+    lineDisplayName = clean(params.get("line_display_name") || params.get("display_name") || "");
+    demoPhone = clean(params.get("phone") || "");
+
+    if (!lineUserId && typeof liff !== "undefined" && LIFF_ID && !LIFF_ID.includes("YOUR")) {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          lineUserId = profile.userId || "";
+          lineDisplayName = profile.displayName || "";
+          setConnectionBadge("LINE連携済み", "green");
+        } else if (liff.isInClient()) {
+          liff.login();
+          return;
+        }
+      } catch (error) {
+        console.warn("LIFF初期化エラー", error);
+      }
+    }
+
+    if (lineUserId || demoPhone) {
+      await loadMember();
+      return;
+    }
+
+    setConnectionBadge("デモ確認", "amber");
+    showSection("auth-section");
+  }
+
+  async function searchByPhoneDemo() {
+    const phone = clean($("demo-phone").value);
+    if (!phone) {
+      alert("電話番号を入力してください。");
+      return;
+    }
+    demoPhone = phone;
+    lineUserId = "";
+    await loadMember();
+  }
+
+  async function loadMember() {
+    hideMessage();
+    showSection("loading-section");
+    try {
+      const params = lineUserId
+        ? { line_user_id: lineUserId, line_id: lineUserId }
+        : { phone: demoPhone, demo: "1", allow_phone: "1" };
+
+      const data = await apiGet("/api/public/customer", params);
+      memberData = data;
+
+      if (!data.found) {
+        setConnectionBadge(lineUserId ? "LINE連携中・未登録" : "デモ検索・未登録", "amber");
+        showSection("not-found-section");
+        return;
+      }
+
+      const customer = data.customer || {};
+      if (!lineUserId && customer.line_id) lineUserId = customer.line_id;
+      if (!demoPhone && customer.phone) demoPhone = customer.phone;
+
+      setConnectionBadge(data.auth_method === "line_user_id" ? "LINE本人確認済み" : "デモ電話確認", data.auth_method === "line_user_id" ? "green" : "amber");
+      renderMember(data);
+      showSection("member-section");
+    } catch (error) {
+      console.error(error);
+      showMessage(error.message || "会員情報を読み込めませんでした。", "error");
+      showSection("auth-section");
+    }
+  }
+
+  async function reloadMember() {
+    await loadMember();
+    showMessage("会員情報を更新しました。", "info");
+  }
+
+  function renderMember(data) {
+    const customer = data.customer || {};
+    const reservations = Array.isArray(data.reservations) ? data.reservations : [];
+    const followups = Array.isArray(data.followups) ? data.followups : [];
+
+    $("member-name").textContent = customer.name || customer.customer_name || lineDisplayName || "お客様";
+    $("member-sub").textContent = customer.phone ? `電話番号：${customer.phone}` : "LINE会員";
+    $("reservation-count").textContent = `${reservations.length}件`;
+    $("followup-count").textContent = `${followups.filter(f => !isHandledFollowup(f)).length}件`;
+
+    renderReservations(reservations);
+    renderProfile(customer);
+    renderFollowups(followups);
+    renderHistory(Array.isArray(data.history) ? data.history : []);
+  }
+
+  function isHandledFollowup(row) {
+    return ["handled", "done", "closed", "対応済み"].includes(String(row.status || ""));
+  }
+
+  function renderReservations(reservations) {
+    const container = $("reservation-list");
+    if (!reservations.length) {
+      container.innerHTML = `
+        <div class="bg-stone-50 border border-stone-100 rounded-2xl p-5 text-center">
+          <p class="text-sm font-black text-stone-800">現在の予約はありません</p>
+          <p class="text-xs text-stone-500 mt-2">次回予約は予約フォームからお取りください。</p>
+          <button type="button" onclick="goReservationPage()" class="mt-4 bg-emerald-700 text-white px-5 py-3 rounded-2xl text-sm font-black">予約する</button>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = reservations.map((row, index) => {
+      const time = normalizeTime(row.reservation_time || "", "");
+      const serviceName = row.service_name || "ヨガレッスン";
+      const minutes = row.service_minutes ? `${row.service_minutes}分` : "";
+      const price = row.service_price !== undefined && row.service_price !== null ? formatPrice(row.service_price) : "";
+      return `
+        <div class="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-black text-emerald-700">予約 ${index + 1}</p>
+              <p class="text-lg font-black text-stone-900 mt-1">${escapeHtml(formatDate(row.reservation_date))}</p>
+              <p class="text-lg font-black text-stone-900">${escapeHtml(time)} 開始</p>
+            </div>
+            <span class="shrink-0 text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-2 rounded-full">${escapeHtml(row.status || "予約")}</span>
+          </div>
+          <div class="mt-3 bg-stone-50 rounded-xl p-3 text-xs text-stone-600 leading-relaxed">
+            <p class="font-bold text-stone-800">${escapeHtml(serviceName)}</p>
+            <p>${escapeHtml([minutes, price].filter(Boolean).join(" / ") || "詳細はスタジオにご確認ください")}</p>
+            ${row.request_note ? `<p class="mt-2 whitespace-pre-wrap">${escapeHtml(row.request_note)}</p>` : ""}
+          </div>
+          <div class="grid grid-cols-2 gap-2 mt-4">
+            <button type="button" onclick="openChangePanel(${index})" class="bg-white border border-emerald-600 text-emerald-700 font-black py-3 rounded-xl text-sm">変更する</button>
+            <button type="button" onclick="cancelReservationFromMember(${index})" class="bg-white border border-red-200 text-red-700 font-black py-3 rounded-xl text-sm">キャンセル</button>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  function renderProfile(customer) {
+    const goal = normalizeGoal(customer.primary_goal);
+    const items = [
+      ["お名前", customer.name || customer.customer_name || "-"],
+      ["電話番号", customer.phone || "-"],
+      ["ヨガ経験", customer.yoga_experience || "未登録"],
+      ["目的", goal || "未登録"],
+      ["通うペース", customer.target_pace || "未登録"],
+      ["メモ", customer.memo || "未登録"]
+    ];
+
+    $("profile-grid").innerHTML = items.map(([label, value]) => `
+      <div class="bg-stone-50 border border-stone-100 rounded-2xl p-4">
+        <p class="text-xs font-bold text-stone-500">${escapeHtml(label)}</p>
+        <p class="text-sm font-bold text-stone-900 mt-1 whitespace-pre-wrap">${escapeHtml(value)}</p>
+      </div>`).join("");
+  }
+
+  function renderFollowups(followups) {
+    const container = $("followup-list");
+    const openRows = followups.filter(row => !isHandledFollowup(row));
+
+    if (!openRows.length) {
+      container.innerHTML = `
+        <div class="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm text-stone-600 leading-relaxed">
+          現在表示できる次回案内はありません。体験後や回数券期限前の案内がある場合、ここに表示されます。
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = openRows.map((row, index) => {
+      const message = buildFollowupMessage(row);
+      return `
+        <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-black text-emerald-700">${escapeHtml(row.followup_type || "followup")}</p>
+              <p class="text-base font-black text-stone-900 mt-1">${escapeHtml(row.title || "次回案内")}</p>
+            </div>
+            <span class="text-xs font-bold bg-white text-emerald-700 px-3 py-2 rounded-full">${escapeHtml(row.due_date ? formatShortDate(row.due_date) : "日付なし")}</span>
+          </div>
+          ${row.memo ? `<p class="text-sm text-stone-600 leading-relaxed mt-3 whitespace-pre-wrap">${escapeHtml(row.memo)}</p>` : ""}
+          <div class="mt-3 bg-white rounded-xl p-3 text-xs text-stone-600 whitespace-pre-wrap leading-relaxed">${escapeHtml(message)}</div>
+          <button type="button" onclick="copyFollowupMessage(${index})" class="mt-3 w-full bg-emerald-700 text-white font-black py-3 rounded-xl text-sm">案内文面をコピー</button>
+        </div>`;
+    }).join("");
+  }
+
+  function renderHistory(history) {
+    const container = $("history-list");
+    if (!history.length) {
+      container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm text-stone-500">履歴はまだありません。</div>`;
+      return;
+    }
+
+    container.innerHTML = history.slice(0, 12).map(row => `
+      <div class="bg-stone-50 border border-stone-100 rounded-2xl p-3">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-xs font-black text-stone-700">${escapeHtml(row.status || "履歴")}</p>
+          <p class="text-[11px] text-stone-400">${escapeHtml(String(row.created_at || "").slice(0, 10))}</p>
+        </div>
+        ${row.reservation_date ? `<p class="text-sm font-bold text-stone-900 mt-1">${escapeHtml(formatShortDate(row.reservation_date))} ${escapeHtml(normalizeTime(row.reservation_time || "", ""))}</p>` : ""}
+        ${row.service_name ? `<p class="text-xs text-stone-600 mt-1">${escapeHtml(row.service_name)}</p>` : ""}
+        ${row.memo ? `<p class="text-xs text-stone-500 mt-2 whitespace-pre-wrap leading-relaxed">${escapeHtml(row.memo)}</p>` : ""}
+      </div>`).join("");
+  }
+
+  function toggleHistory() {
+    const list = $("history-list");
+    const label = $("history-toggle-label");
+    const isHidden = list.classList.contains("hidden");
+    list.classList.toggle("hidden", !isHidden);
+    label.textContent = isHidden ? "閉じる" : "開く";
+  }
+
+  async function openChangePanel(index) {
+    const reservations = Array.isArray(memberData?.reservations) ? memberData.reservations : [];
+    const target = reservations[index];
+    if (!target) {
+      alert("変更する予約が見つかりません。画面を更新してください。");
+      return;
+    }
+
+    selectedChangeReservation = target;
+    selectedChangeServiceCode = target.service_code || services[0]?.service_code || "";
+    selectedChangeDate = "";
+    selectedChangeTime = "";
+    changeDayDisplayCount = 28;
+
+    $("change-target-label").textContent = `変更前：${formatDate(target.reservation_date)} ${normalizeTime(target.reservation_time || "", "")} 開始`;
+    $("change-reason").value = "";
+    $("change-section").classList.remove("hidden");
+    renderChangeServices();
+    await loadChangeDays();
+    $("change-section").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function closeChangePanel() {
+    $("change-section").classList.add("hidden");
+    selectedChangeReservation = null;
+    selectedChangeServiceCode = "";
+    selectedChangeDate = "";
+    selectedChangeTime = "";
+  }
+
+  function renderChangeServices() {
+    const container = $("change-service-list");
+    if (!services.length) {
+      container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-3 text-xs text-stone-500">メニュー情報を取得できませんでした。既存予約のメニューで変更します。</div>`;
+      return;
+    }
+
+    container.innerHTML = services.filter(s => s.is_active !== false).map(service => {
+      const selected = service.service_code === selectedChangeServiceCode;
+      return `
+        <button type="button" onclick="selectChangeService('${escapeHtml(service.service_code)}')" class="w-full text-left rounded-2xl border p-4 ${selected ? "border-emerald-600 bg-emerald-50" : "border-stone-200 bg-white"}">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-sm font-black text-stone-900">${escapeHtml(service.service_name)}</p>
+              <p class="text-xs text-stone-500 mt-1">${escapeHtml([service.base_minutes ? `${service.base_minutes}分` : "", formatPrice(service.base_price)].filter(Boolean).join(" / "))}</p>
+            </div>
+            ${selected ? `<span class="text-xs font-bold text-emerald-700">選択中</span>` : ""}
+          </div>
+        </button>`;
+    }).join("");
+  }
+
+  function selectChangeService(serviceCode) {
+    selectedChangeServiceCode = serviceCode;
+    renderChangeServices();
+  }
+
+  async function loadChangeDays() {
+    $("change-day-list").innerHTML = `<div class="col-span-2 bg-stone-50 rounded-2xl p-4 text-sm text-stone-500">日付を読み込み中です。</div>`;
+    try {
+      const data = await apiGet("/api/public/available-days", { from: getLocalDateString(0), days: 60 });
+      changeAvailableDays = Array.isArray(data.days) ? data.days : [];
+      renderChangeDays();
+    } catch (error) {
+      console.error(error);
+      $("change-day-list").innerHTML = `<div class="col-span-2 bg-red-50 border border-red-100 text-red-700 rounded-2xl p-4 text-sm font-bold">${escapeHtml(error.message)}</div>`;
+    }
+  }
+
+  function renderChangeDays() {
+    const rows = changeAvailableDays.slice(0, changeDayDisplayCount);
+    if (!rows.length) {
+      $("change-day-list").innerHTML = `<div class="col-span-2 bg-stone-50 rounded-2xl p-4 text-sm text-stone-500">表示できる日付がありません。</div>`;
+      return;
+    }
+
+    $("change-day-list").innerHTML = rows.map(day => {
+      const disabled = !day.can_reserve;
+      const selected = selectedChangeDate === day.date;
+      const label = day.can_reserve ? `残り${day.remaining ?? "-"}` : (day.closed_reason || (day.is_full ? "満枠" : "不可"));
+      return `
+        <button type="button" ${disabled ? "disabled" : ""} onclick="selectChangeDate('${escapeHtml(day.date)}')" class="day-card rounded-2xl border p-3 text-left ${selected ? "selected" : "bg-white border-stone-200"} ${disabled ? "opacity-45 cursor-not-allowed" : ""}">
+          <p class="text-sm font-black">${escapeHtml(formatShortDate(day.date))}</p>
+          <p class="text-xs mt-1 ${day.can_reserve ? "text-emerald-700" : "text-stone-500"}">${escapeHtml(label)}</p>
+        </button>`;
+    }).join("");
+  }
+
+  async function loadMoreChangeDays() {
+    changeDayDisplayCount = Math.min(changeDayDisplayCount + 14, changeAvailableDays.length || 60);
+    renderChangeDays();
+  }
+
+  async function selectChangeDate(date) {
+    selectedChangeDate = date;
+    selectedChangeTime = "";
+    renderChangeDays();
+    await loadChangeTimes(date);
+  }
+
+  async function loadChangeTimes(date) {
+    $("change-time-list").innerHTML = `<div class="col-span-2 bg-stone-50 rounded-2xl p-4 text-sm text-stone-500">時間を読み込み中です。</div>`;
+    try {
+      const data = await apiGet("/api/public/available-times", { date });
+      changeAvailableTimes = Array.isArray(data.times) ? data.times : [];
+      renderChangeTimes();
+    } catch (error) {
+      console.error(error);
+      $("change-time-list").innerHTML = `<div class="col-span-2 bg-red-50 border border-red-100 text-red-700 rounded-2xl p-4 text-sm font-bold">${escapeHtml(error.message)}</div>`;
+    }
+  }
+
+  function renderChangeTimes() {
+    const rows = changeAvailableTimes;
+    if (!rows.length) {
+      $("change-time-list").innerHTML = `<div class="col-span-2 bg-stone-50 rounded-2xl p-4 text-sm text-stone-500">表示できる時間がありません。</div>`;
+      return;
+    }
+
+    $("change-time-list").innerHTML = rows.map(row => {
+      const disabled = !row.can_reserve;
+      const selected = selectedChangeTime === row.time;
+      const label = row.can_reserve ? `残り${row.remaining ?? "-"}` : (row.disabled_reason || "不可");
+      return `
+        <button type="button" ${disabled ? "disabled" : ""} onclick="selectChangeTime('${escapeHtml(row.time)}')" class="time-card rounded-2xl border p-3 text-left ${selected ? "selected" : "bg-white border-stone-200"} ${disabled ? "opacity-45 cursor-not-allowed" : ""}">
+          <p class="text-base font-black">${escapeHtml(row.time)}</p>
+          <p class="text-xs mt-1 ${row.can_reserve ? "text-emerald-700" : "text-stone-500"}">${escapeHtml(label)}</p>
+        </button>`;
+    }).join("");
+  }
+
+  function selectChangeTime(time) {
+    selectedChangeTime = time;
+    renderChangeTimes();
+  }
+
+  async function submitChangeReservation() {
+    if (isSubmittingChange) return;
+    if (!selectedChangeReservation) {
+      alert("変更前の予約が見つかりません。");
+      return;
+    }
+    if (!selectedChangeDate || !selectedChangeTime) {
+      alert("変更後の日付と時間を選択してください。");
+      return;
+    }
+
+    const previousTime = normalizeTime(selectedChangeReservation.reservation_time || "", "");
+    if (selectedChangeReservation.reservation_date === selectedChangeDate && previousTime === selectedChangeTime) {
+      alert("変更前と同じ日時です。別の日時を選択してください。");
+      return;
+    }
+
+    const customer = memberData?.customer || {};
+    const button = $("change-submit-button");
+    isSubmittingChange = true;
+    button.disabled = true;
+    button.textContent = "変更中...";
+
+    try {
+      await apiPost("/api/reservations/change", {
+        line_user_id: lineUserId || customer.line_id || "",
+        phone: demoPhone || customer.phone || "",
+        customer_name: customer.name || lineDisplayName || "リピート顧客",
+        reservation_id: selectedChangeReservation.id || "",
+        previous_reservation_date: selectedChangeReservation.reservation_date,
+        previous_reservation_time: previousTime,
+        new_reservation_date: selectedChangeDate,
+        new_reservation_time: selectedChangeTime,
+        service_code: selectedChangeServiceCode || selectedChangeReservation.service_code || "",
+        reason: clean($("change-reason").value),
+        source: "member.html"
+      });
+
+      closeChangePanel();
+      await loadMember();
+      showMessage("予約変更を受け付けました。", "info");
+    } catch (error) {
+      console.error(error);
+      alert("予約変更できませんでした。詳細: " + error.message);
+    } finally {
+      isSubmittingChange = false;
+      button.disabled = false;
+      button.textContent = "この内容で変更する";
+    }
+  }
+
+  async function cancelReservationFromMember(index) {
+    const reservations = Array.isArray(memberData?.reservations) ? memberData.reservations : [];
+    const target = reservations[index];
+    if (!target) {
+      alert("キャンセル対象が見つかりません。画面を更新してください。");
+      return;
+    }
+
+    const label = `${formatDate(target.reservation_date)} ${normalizeTime(target.reservation_time || "", "")} 開始`;
+    const ok = confirm(`${label} の予約をキャンセルしますか？\n\n※キャンセル内容はスタジオ側に記録されます。`);
+    if (!ok) return;
+
+    const reason = prompt("キャンセル理由があれば入力してください。未入力でもキャンセルできます。", "") || "";
+    const customer = memberData?.customer || {};
+
+    try {
+      await apiPost("/api/reservations/cancel", {
+        line_user_id: lineUserId || customer.line_id || "",
+        phone: demoPhone || customer.phone || "",
+        customer_name: customer.name || lineDisplayName || "",
+        reservation_id: target.id || "",
+        reservation_date: target.reservation_date,
+        reservation_time: normalizeTime(target.reservation_time || "", ""),
+        reason,
+        source: "member.html"
+      });
+      await loadMember();
+      showMessage("予約をキャンセルしました。", "info");
+    } catch (error) {
+      console.error(error);
+      alert("キャンセルできませんでした。詳細: " + error.message);
+    }
+  }
+
+  function buildFollowupMessage(row) {
+    const customer = memberData?.customer || {};
+    const name = customer.name || row.customer_name || "お客様";
+    if (String(row.followup_type || "").includes("ticket")) {
+      return `${name}さま\n\nいつもありがとうございます。\n回数券の期限が近づいておりますので、よろしければ次回レッスンのご予約をご検討ください。\n\nご都合のよい日時がありましたら、このLINEにご返信ください。`;
+    }
+    if (String(row.followup_type || "").includes("trial")) {
+      return `${name}さま\n\n先日は体験レッスンにお越しいただき、ありがとうございました。\nお身体の状態に合わせて、次回は無理なく続けやすい内容でご案内できます。\n\nご都合のよい日時がありましたら、このLINEにご返信ください。`;
+    }
+    return `${name}さま\n\nいつもありがとうございます。\n次回レッスンのご案内です。ご都合のよい日時がありましたら、このLINEにご返信ください。`;
+  }
+
+  async function copyFollowupMessage(index) {
+    const rows = (Array.isArray(memberData?.followups) ? memberData.followups : []).filter(row => !isHandledFollowup(row));
+    const row = rows[index];
+    if (!row) return;
+    const message = buildFollowupMessage(row);
+    await copyText(message);
+    await logLineCopy("member_followup_copy", "会員ページ次回案内", message, row.related_event_id || row.id || "");
+    showMessage("案内文面をコピーしました。LINEに貼り付けて送れます。", "info");
+  }
+
+  async function copyConsultMessage() {
+    const customer = memberData?.customer || {};
+    const name = customer.name || lineDisplayName || "";
+    const message = `${name ? `${name}です。\n` : ""}ヨガレッスンについて相談したいです。\n\n【相談内容】\n`;
+    await copyText(message);
+    await logLineCopy("member_consult_copy", "会員ページ相談文面", message, "");
+    showMessage("相談文面をコピーしました。LINEに貼り付けて使えます。", "info");
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+  }
+
+  async function logLineCopy(messageType, title, body, relatedEventId = "") {
+    const customer = memberData?.customer || {};
+    try {
+      await apiPost("/api/line/log-copy", {
+        line_user_id: lineUserId || customer.line_id || "",
+        customer_id: customer.id ? String(customer.id) : "",
+        customer_name: customer.name || lineDisplayName || "",
+        message_type: messageType,
+        message_title: title,
+        message_body: body,
+        source_screen: "member.html",
+        related_event_id: relatedEventId
+      });
+    } catch (error) {
+      console.warn("コピー履歴の保存に失敗", error);
+    }
+  }
+
+  function goReservationPage() {
+    const url = new URL("index.html", location.href);
+    if (lineUserId) url.searchParams.set("line_user_id", lineUserId);
+    if (lineDisplayName) url.searchParams.set("line_display_name", lineDisplayName);
+    location.href = url.toString();
+  }
+
+  window.onload = initLiff;
+</script>
+</body>
+</html>
