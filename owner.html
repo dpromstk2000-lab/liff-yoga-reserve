@@ -305,7 +305,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-25F-OWNER-TODAY-TASKS-COMPLETE-20260705";
+const STEP_VERSION = "YOGA-25J-R7-OWNER-SERVICE-DEDUP-COMPLETE-20260705";
 
 const state = {
   settings: null,
@@ -326,6 +326,30 @@ function $(id){ return document.getElementById(id); }
 function safeIcons(){ try { if (window.lucide) lucide.createIcons(); } catch(_){} }
 function adminCode(){ return ($("admin-code-input")?.value || localStorage.getItem("yogaOwnerAdminCode") || "1234").trim(); }
 function saveAdminCode(){ localStorage.setItem("yogaOwnerAdminCode", adminCode()); }
+function dedupeServicesForOwner(services){
+  const map = new Map();
+  (services || []).forEach((raw, index) => {
+    const s = raw || {};
+    const code = String(s.service_code || `menu_${index + 1}`).trim() || `menu_${index + 1}`;
+    const key = code.toLowerCase();
+    const normalized = {
+      ...s,
+      service_code: code,
+      service_name: String(s.service_name || "レッスン").trim(),
+      category: String(s.category || "lesson"),
+      description: String(s.description || ""),
+      base_price: Number(s.base_price || 0),
+      base_minutes: Number(s.base_minutes || 60),
+      sort_order: Number(s.sort_order || index + 1),
+      is_active: s.is_active !== false,
+    };
+    const old = map.get(key);
+    if (!old || normalized.is_active === true && old.is_active === false || Number(normalized.sort_order) <= Number(old.sort_order || 9999)) {
+      map.set(key, normalized);
+    }
+  });
+  return [...map.values()].sort((a,b) => Number(a.sort_order || 9999) - Number(b.sort_order || 9999) || String(a.service_name || "").localeCompare(String(b.service_name || ""), "ja"));
+}
 function escapeHtml(value){ return String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[c])); }
 function normalizeTime(value, fallback=""){ const m = String(value || "").slice(0,5).match(/^([01]\d|2[0-3]):([0-5]\d)$/); return m ? `${m[1]}:${m[2]}` : fallback; }
 function todayJst(){ const p = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()); return `${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`; }
@@ -416,10 +440,10 @@ async function loadSettings(){
 async function loadServices(){
   try{
     const data = await apiGet("/api/admin/services");
-    state.services = data.services || [];
+    state.services = dedupeServicesForOwner(data.services || []);
   }catch(err){
     const data = await fetchJson(urlWithParams("/api/public/services", { shop_code: SHOP_CODE }), { cache: "no-store" });
-    state.services = data.services || [];
+    state.services = dedupeServicesForOwner(data.services || []);
   }
 }
 
@@ -930,7 +954,7 @@ async function saveSettings(){
 function openServicesModal(){ renderServicesEditor(); $("services-modal").classList.remove("hidden"); safeIcons(); }
 function closeServicesModal(){ $("services-modal").classList.add("hidden"); }
 function renderServicesEditor(){
-  const rows = state.services.length ? state.services : [{service_code:"trial_60", service_name:"初回体験レッスン", category:"trial", base_price:3000, base_minutes:60, is_active:true, sort_order:1, description:""}];
+  const rows = dedupeServicesForOwner(state.services).length ? dedupeServicesForOwner(state.services) : [{service_code:"trial_60", service_name:"初回体験レッスン", category:"trial", base_price:3000, base_minutes:60, is_active:true, sort_order:1, description:""}];
   $("services-editor").innerHTML = rows.map((s,i)=>serviceRowHtml(s,i)).join("");
 }
 function serviceRowHtml(s,i){
@@ -967,7 +991,7 @@ async function saveServices(){
   })).filter(s => s.service_name.trim());
   try{
     const data = await apiPost("/api/admin/services/save", { services });
-    state.services = data.services || services;
+    state.services = dedupeServicesForOwner(data.services || services);
     toast("メニューを保存しました。");
     closeServicesModal();
     renderManualServices();
