@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE 会員ページ STEP YOGA-25J-R14</title>
+  <title>DPRO YOGA LINE 会員ページ STEP YOGA-25J-R15</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
@@ -885,23 +885,52 @@
     return `${name}さま\n\nいつもありがとうございます。\n次回レッスンのご案内です。ご都合のよい日時がありましたら、このLINEにご返信ください。`;
   }
 
+  function buildConsultMessage() {
+    const customer = memberData?.customer || {};
+    const name = customer.name || lineDisplayName || "";
+    return `${name ? `${name}です。\n` : ""}ヨガレッスンについて相談したいです。\n\n【相談内容】\n`;
+  }
+
+  function renderConsultMessage() {
+    const textarea = $("consult-message-textarea");
+    const status = $("consult-copy-status");
+    if (!textarea) return;
+    textarea.value = buildConsultMessage();
+    if (status) {
+      status.textContent = "";
+      status.classList.add("hidden");
+    }
+  }
+
+  function showInlineCopyStatus(id, message) {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove("hidden");
+    setTimeout(() => {
+      el.classList.add("hidden");
+    }, 3500);
+  }
+
   async function copyFollowupMessage(index) {
     const rows = (Array.isArray(memberData?.followups) ? memberData.followups : []).filter(row => !isHandledFollowup(row));
     const row = rows[index];
     if (!row) return;
-    const message = buildFollowupMessage(row);
+    const textarea = $(`followup-message-${index}`);
+    const message = clean(textarea?.value || "") || buildFollowupMessage(row);
     await copyText(message);
     await logLineCopy("member_followup_copy", "会員ページ次回案内", message, row.related_event_id || row.id || "");
-    showMessage("案内文面をコピーしました。LINEに貼り付けて送れます。", "info");
+    showInlineCopyStatus(`followup-copy-status-${index}`, `コピーしました：${message.slice(0, 34).replace(/\n/g, " ")}${message.length > 34 ? "..." : ""}`);
+    showMessage("案内文面をコピーしました。編集した内容をLINEに貼り付けて送れます。", "info");
   }
 
   async function copyConsultMessage() {
-    const customer = memberData?.customer || {};
-    const name = customer.name || lineDisplayName || "";
-    const message = `${name ? `${name}です。\n` : ""}ヨガレッスンについて相談したいです。\n\n【相談内容】\n`;
+    const textarea = $("consult-message-textarea");
+    const message = clean(textarea?.value || "") || buildConsultMessage();
     await copyText(message);
     await logLineCopy("member_consult_copy", "会員ページ相談文面", message, "");
-    showMessage("相談文面をコピーしました。LINEに貼り付けて使えます。", "info");
+    showInlineCopyStatus("consult-copy-status", `コピーしました：${message.slice(0, 34).replace(/\n/g, " ")}${message.length > 34 ? "..." : ""}`);
+    showMessage("相談文面をコピーしました。編集した内容をLINEに貼り付けて使えます。", "info");
   }
 
   async function copyText(text) {
