@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-25J-R11</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-25J-R12</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,7 +36,7 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-25J-R11</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-25J-R12</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
             <p class="text-sm text-slate-500 mt-2">今日やること・予約・顧客カルテ・LINEフォローを1画面で管理します。</p>
           </div>
@@ -240,8 +240,8 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
         <label class="text-sm font-bold text-slate-700">店舗名<input id="setting-shop-name" class="input-ui mt-1" /></label>
         <label class="text-sm font-bold text-slate-700">サービス名<input id="setting-service-name" class="input-ui mt-1" /></label>
-        <label class="text-sm font-bold text-slate-700">開始時間<span class="text-xs text-slate-400 ml-2">15分単位</span><input id="setting-open-time" type="time" step="900" class="input-ui mt-1" /></label>
-        <label class="text-sm font-bold text-slate-700">終了時間<span class="text-xs text-slate-400 ml-2">15分単位</span><input id="setting-close-time" type="time" step="900" class="input-ui mt-1" /></label>
+        <label class="text-sm font-bold text-slate-700">開始時間<span class="text-xs text-slate-400 ml-2">15分単位</span><select id="setting-open-time" class="select-ui mt-1"></select></label>
+        <label class="text-sm font-bold text-slate-700">終了時間<span class="text-xs text-slate-400 ml-2">15分単位</span><select id="setting-close-time" class="select-ui mt-1"></select></label>
         <label class="text-sm font-bold text-slate-700">1日の予約上限<input id="setting-max-day" type="number" min="1" class="input-ui mt-1" /></label>
         <label class="text-sm font-bold text-slate-700">同時間の予約上限<input id="setting-max-slot" type="number" min="1" class="input-ui mt-1" /></label>
         <label class="text-sm font-bold text-slate-700">1人の有効予約上限<input id="setting-max-active" type="number" min="1" class="input-ui mt-1" /></label>
@@ -951,8 +951,8 @@ function openSettingsModal(){
   const s = state.settings || {};
   $("setting-shop-name").value = s.shop_name || "DPRO YOGA";
   $("setting-service-name").value = s.service_name || "DPRO YOGA LINE";
-  $("setting-open-time").value = normalizeTime(s.open_time || "10:00", "10:00");
-  $("setting-close-time").value = normalizeTime(s.close_time || "19:00", "19:00");
+  fillQuarterTimeSelect("setting-open-time", s.open_time || "10:00", "10:00");
+  fillQuarterTimeSelect("setting-close-time", s.close_time || "19:00", "19:00");
   $("setting-max-day").value = s.max_reservations_per_day || 8;
   $("setting-max-slot").value = s.max_reservations_per_slot || 1;
   $("setting-max-active").value = s.max_active_reservations_per_customer || 2;
@@ -967,6 +967,24 @@ function closeSettingsModal(){ $("settings-modal").classList.add("hidden"); }
 function normalizeArray(value){ if(Array.isArray(value)) return value; if(!value) return []; try{ const p = JSON.parse(value); return Array.isArray(p) ? p : []; }catch{ return String(value).split(/[,\n]/).map(v=>v.trim()).filter(Boolean); } }
 function renderHolidayCheckboxes(active){
   $("holiday-checkboxes").innerHTML = dayLabels.map((label,i)=>`<label class="rounded-2xl bg-white border border-slate-100 px-3 py-3 text-sm font-bold text-slate-700 flex items-center gap-2"><input type="checkbox" class="holiday-check" value="${i}" ${active.includes(i)?"checked":""}/> ${label}曜</label>`).join("");
+}
+function buildQuarterTimeOptions(){
+  const options = [];
+  for(let total = 0; total < 24 * 60; total += 15){
+    const hh = String(Math.floor(total / 60)).padStart(2, "0");
+    const mm = String(total % 60).padStart(2, "0");
+    options.push(`${hh}:${mm}`);
+  }
+  return options;
+}
+function fillQuarterTimeSelect(selectId, selectedValue, fallback="10:00"){
+  const select = $(selectId);
+  if(!select) return;
+  const selected = roundToQuarterTime(selectedValue || fallback, fallback);
+  select.innerHTML = buildQuarterTimeOptions()
+    .map(time => `<option value="${time}" ${time === selected ? "selected" : ""}>${time}</option>`)
+    .join("");
+  select.value = selected;
 }
 function roundToQuarterTime(value, fallback="10:00"){
   const normalized = normalizeTime(value || fallback, fallback);
