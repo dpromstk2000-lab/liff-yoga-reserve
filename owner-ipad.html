@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-25G</title>
+  <title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-25J-R6</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -43,7 +43,7 @@
             <i data-lucide="tablet-smartphone" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-25G</p>
+            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-25J-R6</p>
             <h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE iPad店頭画面</h1>
             <p class="text-sm text-slate-500 mt-2">店頭受付・本日の予約・次営業日・フォロー・LINE文面コピーに絞った操作画面です。</p>
           </div>
@@ -221,7 +221,7 @@
 
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
-const STEP_VERSION = "YOGA-25G";
+const STEP_VERSION = "YOGA-25J-R6-OWNER-IPAD-PAST-DATE-FIX-20260705";
 const state = {
   status: null,
   services: [],
@@ -249,6 +249,18 @@ function todayIso(){
   const m = parts.find(p=>p.type==="month")?.value;
   const d = parts.find(p=>p.type==="day")?.value;
   return `${y}-${m}-${d}`;
+}
+function isPastDate(dateStr){
+  return !!dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) && dateStr < todayIso();
+}
+function applyManualDateMin(){
+  const el = $("manual-date");
+  if(!el) return;
+  const today = todayIso();
+  el.min = today;
+  if(!el.value || isPastDate(el.value)){
+    el.value = today;
+  }
 }
 function addDays(dateStr, days){
   const [y,m,d] = safe(dateStr || todayIso()).split("-").map(Number);
@@ -329,6 +341,7 @@ function goPcOwner(){ location.href = "owner.html"; }
 
 async function loadAll(){
   saveAdminCode();
+  applyManualDateMin();
   setStatus("読み込み中...", "loading");
   try{
     const [health, status, services, summary, day, followups] = await Promise.all([
@@ -526,22 +539,35 @@ async function markFollowupHandled(id){
 }
 
 function setManualDate(date){
-  $("manual-date").value = date;
+  const safeDate = isPastDate(date) ? todayIso() : (date || todayIso());
+  const el = $("manual-date");
+  if(el){
+    applyManualDateMin();
+    el.value = safeDate;
+  }
+  if(isPastDate(date)){
+    toast("過去の日付は選べません。本日以降を選択してください。", 3200);
+  }
   loadManualTimes();
 }
 async function loadManualTimes(){
-  const date = $("manual-date")?.value || todayIso();
-  if($("manual-date")) $("manual-date").value = date;
+  applyManualDateMin();
+  let date = $("manual-date")?.value || todayIso();
   const select = $("manual-time");
   if(!select) return;
+  if(isPastDate(date)){
+    date = todayIso();
+    if($("manual-date")) $("manual-date").value = date;
+    toast("過去の日付は選べません。本日以降を選択してください。", 3200);
+  }
   select.innerHTML = `<option value="">読み込み中...</option>`;
   try{
     const data = await publicGet("/api/public/available-times", { date });
     const times = Array.isArray(data.times) ? data.times : [];
     const available = times.filter(t => t.can_reserve);
-    select.innerHTML = (available.length ? available : times).map(t => `<option value="${esc(t.time)}" ${!t.can_reserve ? "disabled" : ""}>${esc(t.time)}${t.can_reserve ? ` / 残${t.remaining}` : ` / ${esc(t.disabled_reason || "不可")}`}</option>`).join("") || fallbackTimes().map(t=>`<option value="${t}">${t}</option>`).join("");
+    select.innerHTML = (available.length ? available : times).map(t => `<option value="${esc(t.time)}" ${!t.can_reserve ? "disabled" : ""}>${esc(t.time)}${t.can_reserve ? ` / 残${t.remaining}` : ` / ${esc(t.disabled_reason || "不可")}`}</option>`).join("") || `<option value="" disabled>予約できる時間がありません</option>`;
   }catch(_){
-    select.innerHTML = fallbackTimes().map(t=>`<option value="${t}">${t}</option>`).join("");
+    select.innerHTML = `<option value="" disabled>時間の取得に失敗しました</option>`;
   }
 }
 function fallbackTimes(){
@@ -573,6 +599,11 @@ async function submitManualBooking(){
   };
   if(!body.customer_name || !body.phone || !body.reservation_date || !body.reservation_time){
     toast("お名前・電話番号・日付・時間を入力してください", 3200);
+    return;
+  }
+  if(isPastDate(body.reservation_date)){
+    toast("過去の日付は予約登録できません。本日以降を選択してください。", 3600);
+    applyManualDateMin();
     return;
   }
   btn.disabled = true; btn.textContent = "登録中...";
