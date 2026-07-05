@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-25F</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-25J-R9</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,7 +36,7 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-25F</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-25J-R9</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
             <p class="text-sm text-slate-500 mt-2">今日やること・予約・顧客カルテ・LINEフォローを1画面で管理します。</p>
           </div>
@@ -305,7 +305,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-25J-R7-OWNER-SERVICE-DEDUP-COMPLETE-20260705";
+const STEP_VERSION = "YOGA-25J-R10-SERVICE-SAVE-DIFF-COMPLETE-20260705";
 
 const state = {
   settings: null,
@@ -438,11 +438,15 @@ async function loadSettings(){
 }
 
 async function loadServices(){
+  // STEP YOGA-25J-R9:
+  // メニュー編集画面で重複表示が残るケースを防ぐため、
+  // 予約画面と同じ public/services を正として毎回最新取得する。
+  // admin/services は旧Workerや古いDB状態の影響を受ける可能性があるためフォールバック扱いにする。
   try{
-    const data = await apiGet("/api/admin/services");
+    const data = await fetchJson(urlWithParams("/api/public/services", { shop_code: SHOP_CODE, _ts: Date.now() }), { cache: "no-store" });
     state.services = dedupeServicesForOwner(data.services || []);
   }catch(err){
-    const data = await fetchJson(urlWithParams("/api/public/services", { shop_code: SHOP_CODE }), { cache: "no-store" });
+    const data = await apiGet("/api/admin/services", { _ts: Date.now() });
     state.services = dedupeServicesForOwner(data.services || []);
   }
 }
@@ -951,7 +955,16 @@ async function saveSettings(){
   }catch(err){ toast(`店舗設定の保存に失敗しました。\n${err.message}`); }
 }
 
-function openServicesModal(){ renderServicesEditor(); $("services-modal").classList.remove("hidden"); safeIcons(); }
+async function openServicesModal(){
+  try{
+    await loadServices();
+  }catch(err){
+    console.warn("services reload failed", err);
+  }
+  renderServicesEditor();
+  $("services-modal").classList.remove("hidden");
+  safeIcons();
+}
 function closeServicesModal(){ $("services-modal").classList.add("hidden"); }
 function renderServicesEditor(){
   const rows = dedupeServicesForOwner(state.services).length ? dedupeServicesForOwner(state.services) : [{service_code:"trial_60", service_name:"初回体験レッスン", category:"trial", base_price:3000, base_minutes:60, is_active:true, sort_order:1, description:""}];
@@ -978,7 +991,71 @@ function addServiceRow(){
   wrap.insertAdjacentHTML("beforeend", serviceRowHtml({service_code:`menu_${i+1}`,service_name:"新しいメニュー",category:"lesson",base_price:0,base_minutes:60,is_active:true,sort_order:i+1,description:""}, i));
 }
 function removeServiceRow(btn){ btn.closest(".service-row")?.remove(); }
+function serviceComparableMap(services){
+  const map = new Map();
+  dedupeServicesForOwner(services).forEach(s => {
+    const code = String(s.service_code || "").trim().toLowerCase();
+    if(!code) return;
+    map.set(code, {
+      code,
+      service_code: String(s.service_code || ""),
+      service_name: String(s.service_name || ""),
+      category: String(s.category || "lesson"),
+      base_minutes: Number(s.base_minutes || 0),
+      base_price: Number(s.base_price || 0),
+      sort_order: Number(s.sort_order || 0),
+      is_active: s.is_active !== false,
+      description: String(s.description || ""),
+    });
+  });
+  return map;
+}
+function serviceSaveDiffText(beforeServices, afterServices){
+  const before = serviceComparableMap(beforeServices);
+  const after = serviceComparableMap(afterServices);
+  const lines = [];
+  const categoryLabel = v => ({trial:"体験", lesson:"通常", ticket:"回数券", online:"オンライン", other:"その他"}[v] || v || "-");
+  const activeLabel = v => v ? "表示" : "非表示";
+  const allKeys = [...new Set([...before.keys(), ...after.keys()])].sort((a,b) => {
+    const aa = after.get(a) || before.get(a) || {};
+    const bb = after.get(b) || before.get(b) || {};
+    return Number(aa.sort_order || 9999) - Number(bb.sort_order || 9999) || String(aa.service_name || "").localeCompare(String(bb.service_name || ""), "ja");
+  });
+
+  for(const key of allKeys){
+    const old = before.get(key);
+    const now = after.get(key);
+    const name = now?.service_name || old?.service_name || key;
+    if(!old && now){
+      lines.push(`追加：${name}（${now.base_minutes}分 / ${yen(now.base_price)}）`);
+      continue;
+    }
+    if(old && !now){
+      lines.push(`削除：${old.service_name}`);
+      continue;
+    }
+    if(!old || !now) continue;
+    if(old.service_name !== now.service_name) lines.push(`${old.service_name} → ${now.service_name}`);
+    if(old.base_price !== now.base_price) lines.push(`${name} 料金：${yen(old.base_price)} → ${yen(now.base_price)}`);
+    if(old.base_minutes !== now.base_minutes) lines.push(`${name} 時間：${old.base_minutes}分 → ${now.base_minutes}分`);
+    if(old.category !== now.category) lines.push(`${name} カテゴリ：${categoryLabel(old.category)} → ${categoryLabel(now.category)}`);
+    if(old.sort_order !== now.sort_order) lines.push(`${name} 順番：${old.sort_order} → ${now.sort_order}`);
+    if(old.is_active !== now.is_active) lines.push(`${name} 表示：${activeLabel(old.is_active)} → ${activeLabel(now.is_active)}`);
+  }
+  return lines;
+}
+function showServiceSaveResult(beforeServices, afterServices){
+  const changes = serviceSaveDiffText(beforeServices, afterServices);
+  if(changes.length === 0){
+    toast("メニューを保存しました。\n\n変更内容：変更はありません。");
+    return;
+  }
+  const shown = changes.slice(0, 8);
+  const more = changes.length > shown.length ? `\nほか ${changes.length - shown.length}件` : "";
+  toast(`メニューを保存しました。\n\n変更内容：\n${shown.join("\n")}${more}`);
+}
 async function saveServices(){
+  const beforeServices = dedupeServicesForOwner(state.services);
   const services = [...document.querySelectorAll(".service-row")].map((row,i)=>({
     service_code: row.querySelector(".service-code").value,
     service_name: row.querySelector(".service-name").value,
@@ -992,7 +1069,7 @@ async function saveServices(){
   try{
     const data = await apiPost("/api/admin/services/save", { services });
     state.services = dedupeServicesForOwner(data.services || services);
-    toast("メニューを保存しました。");
+    showServiceSaveResult(beforeServices, state.services);
     closeServicesModal();
     renderManualServices();
   }catch(err){ toast(`メニュー保存に失敗しました。\n${err.message}`); }
