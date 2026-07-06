@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-27D</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-27E</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,7 +36,7 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-27D</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-27E</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
             <p class="text-sm text-slate-500 mt-2">未対応タスク・本日のレッスン予定・顧客カルテ・LINEフォローを1画面で管理します。</p>
           </div>
@@ -284,7 +284,7 @@
   <div id="message-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm p-4 overflow-y-auto">
     <div class="modal-shell max-w-3xl mx-auto my-6 glass rounded-[30px] p-5 lg:p-7">
       <div class="flex items-start justify-between gap-4">
-        <div><p class="section-label">LINE Message</p><h2 class="text-2xl font-black text-slate-800 mt-1">LINE文面作成・コピー</h2><p id="message-subtitle" class="text-sm text-slate-500 mt-2">お客様に送る文面を確認できます。</p></div>
+        <div><p class="section-label">LINE Message</p><h2 class="text-2xl font-black text-slate-800 mt-1">LINE文面の確認・編集・コピー</h2><p id="message-subtitle" class="text-sm text-slate-500 mt-2">お客様に送る前に、文面を確認して必要に応じて編集できます。</p></div>
         <button onclick="closeMessageModal()" class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="flex flex-wrap gap-2 mt-5">
@@ -294,11 +294,14 @@
         <button onclick="setMessageTemplate('cancel')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700">キャンセル確認</button>
         <button onclick="setMessageTemplate('short')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700">短め</button>
       </div>
+      <div id="message-preview-help" class="mt-4 rounded-[20px] bg-[var(--sage-50)] border border-[var(--sage-100)] p-4 text-sm leading-7 text-[var(--sage-800)]">
+        文面を確認して、必要なら下の入力欄で編集してからコピーできます。
+      </div>
       <textarea id="message-textarea" class="textarea-ui mt-4 min-h-[280px]"></textarea>
       <div class="flex flex-wrap justify-end gap-2 mt-5">
         <button onclick="closeMessageModal()" class="rounded-full bg-white border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700">閉じる</button>
-        <button onclick="copyCurrentMessage()" class="rounded-full bg-white border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700">コピーだけ</button>
-        <button onclick="copyAndLogCurrentMessage()" class="rounded-full yoga-gradient px-5 py-3 text-sm font-bold text-white">コピーして履歴保存</button>
+        <button id="message-copy-only-btn" onclick="copyCurrentMessage()" class="rounded-full bg-white border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700">コピーだけ</button>
+        <button id="message-copy-log-btn" onclick="copyAndLogCurrentMessage()" class="rounded-full yoga-gradient px-5 py-3 text-sm font-bold text-white">コピーして履歴保存</button>
       </div>
     </div>
   </div>
@@ -306,7 +309,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-27D-TASK-SCHEDULE-SEPARATION-COMPLETE-20260706";
+const STEP_VERSION = "YOGA-27E-MESSAGE-PREVIEW-EDIT-COPY-COMPLETE-20260706";
 
 const state = {
   settings: null,
@@ -642,7 +645,7 @@ function renderTasks(){
 function renderTaskCard(task, i){
   const priorityClass = task.priority === "high" ? "bg-amber-50 text-amber-800 border-amber-100" : "bg-[var(--sage-50)] text-[var(--sage-800)] border-[var(--sage-100)]";
   const icon = task.type === "reservation" ? "calendar-check" : task.type === "followup" ? "heart-handshake" : "message-square-text";
-  const action = task.type === "followup" ? `<button onclick="openMessageFromFollowup('${escapeHtml(task.followup_id || "")}', '${escapeHtml(task.title || "フォロー")}', '${escapeHtml(task.detail || "")}' )" class="rounded-full yoga-gradient text-white px-3 py-2 text-xs font-black">文面</button><button onclick="markFollowupHandled('${escapeHtml(task.followup_id || "")}')" class="rounded-full bg-white border border-slate-200 text-slate-700 px-3 py-2 text-xs font-black">対応済み</button>` : task.type === "line_message" ? `<button onclick="copyLineMessageById('${escapeHtml(task.message_id || "")}')" class="rounded-full yoga-gradient text-white px-3 py-2 text-xs font-black">コピーして対応済み</button>` : `<button onclick="selectEventById('${escapeHtml(task.related_event_id || "")}')" class="rounded-full bg-white border border-slate-200 text-slate-700 px-3 py-2 text-xs font-black">詳細</button>`;
+  const action = task.type === "followup" ? `<button onclick="openMessageFromFollowup('${escapeHtml(task.followup_id || "")}', '${escapeHtml(task.title || "フォロー")}', '${escapeHtml(task.detail || "")}' )" class="rounded-full yoga-gradient text-white px-3 py-2 text-xs font-black">文面</button><button onclick="markFollowupHandled('${escapeHtml(task.followup_id || "")}')" class="rounded-full bg-white border border-slate-200 text-slate-700 px-3 py-2 text-xs font-black">対応済み</button>` : task.type === "line_message" ? `<button onclick="openLineMessageModalById('${escapeHtml(task.message_id || "")}')" class="rounded-full yoga-gradient text-white px-3 py-2 text-xs font-black">文面を確認・コピー</button>` : `<button onclick="selectEventById('${escapeHtml(task.related_event_id || "")}')" class="rounded-full bg-white border border-slate-200 text-slate-700 px-3 py-2 text-xs font-black">詳細</button>`;
   return `<article class="rounded-[24px] bg-white/82 border border-slate-100 p-5">
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0"><div class="w-11 h-11 rounded-2xl ${priorityClass} border flex items-center justify-center"><i data-lucide="${icon}" class="w-5 h-5"></i></div><div class="min-w-0"><p class="text-sm font-black text-slate-800 truncate">${escapeHtml(task.title || "タスク")}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(task.type || "task")}</p></div></div>
@@ -1261,25 +1264,56 @@ async function saveServices(){
   }catch(err){ toast(`メニュー保存に失敗しました。\n${err.message}`); }
 }
 
+function resetMessageModalButtons(mode="manual"){
+  const help = $("message-preview-help");
+  const logBtn = $("message-copy-log-btn");
+  const copyBtn = $("message-copy-only-btn");
+  if(copyBtn) copyBtn.textContent = "コピーだけ";
+  if(mode === "line_message"){
+    if(help) help.textContent = "自動作成されたLINE文面です。内容を確認し、必要なら編集してからコピーできます。コピー後は今日やることから消えます。";
+    if(logBtn) logBtn.textContent = "コピーして対応済みにする";
+  }else if(mode === "followup"){
+    if(help) help.textContent = "フォロー用の文面です。内容を確認し、必要なら編集してからコピーできます。コピー後にフォローを対応済みにするか確認できます。";
+    if(logBtn) logBtn.textContent = "コピーして履歴保存";
+  }else{
+    if(help) help.textContent = "文面を確認して、必要なら下の入力欄で編集してからコピーできます。";
+    if(logBtn) logBtn.textContent = "コピーして履歴保存";
+  }
+}
+
 function openQuickMessageModal(){
   state.messageTarget = { customer: state.selected?.customer || null, row: state.selected?.row || null, type: "manual" };
+  resetMessageModalButtons("manual");
   $("message-subtitle").textContent = state.messageTarget.customer?.name ? `${state.messageTarget.customer.name} 様` : "任意の文面を作成できます。";
   $("message-textarea").value = buildMessage("booking", state.messageTarget);
   $("message-modal").classList.remove("hidden"); safeIcons();
 }
 function closeMessageModal(){ $("message-modal").classList.add("hidden"); }
-function openMessageForSelected(){ if(!state.selected) return toast("顧客を選択してください。"); state.messageTarget = { customer: state.selected.customer, row: state.selected.row, type: "selected" }; $("message-subtitle").textContent = `${state.selected.customer?.name || "お客様"} 様`; $("message-textarea").value = buildMessage("booking", state.messageTarget); $("message-modal").classList.remove("hidden"); }
-function openMessageForCustomer(key){ const c = state.customers.find(x => x._key === key); state.messageTarget = { customer: c, row: null, type: "customer" }; $("message-subtitle").textContent = `${c?.name || "お客様"} 様`; $("message-textarea").value = buildMessage("booking", state.messageTarget); $("message-modal").classList.remove("hidden"); safeIcons(); }
-function openMessageFromRow(key){ const row = findEventByKey(key); state.messageTarget = { customer: findCustomerForRow(row), row, type: "reservation" }; $("message-subtitle").textContent = `${row?.name || row?.customer_name || "お客様"} 様 / ${row?.status || "予約"}`; $("message-textarea").value = buildMessage("booking", state.messageTarget); $("message-modal").classList.remove("hidden"); safeIcons(); }
+function openMessageForSelected(){ if(!state.selected) return toast("顧客を選択してください。"); state.messageTarget = { customer: state.selected.customer, row: state.selected.row, type: "selected" }; resetMessageModalButtons("manual"); $("message-subtitle").textContent = `${state.selected.customer?.name || "お客様"} 様`; $("message-textarea").value = buildMessage("booking", state.messageTarget); $("message-modal").classList.remove("hidden"); }
+function openMessageForCustomer(key){ const c = state.customers.find(x => x._key === key); state.messageTarget = { customer: c, row: null, type: "customer" }; resetMessageModalButtons("manual"); $("message-subtitle").textContent = `${c?.name || "お客様"} 様`; $("message-textarea").value = buildMessage("booking", state.messageTarget); $("message-modal").classList.remove("hidden"); safeIcons(); }
+function openMessageFromRow(key){ const row = findEventByKey(key); state.messageTarget = { customer: findCustomerForRow(row), row, type: "reservation" }; resetMessageModalButtons("manual"); $("message-subtitle").textContent = `${row?.name || row?.customer_name || "お客様"} 様 / ${row?.status || "予約"}`; $("message-textarea").value = buildMessage("booking", state.messageTarget); $("message-modal").classList.remove("hidden"); safeIcons(); }
 function openMessageFromFollowup(id, title, memo, customerName=""){
   const f = (state.day?.followups || []).find(x => String(x.id) === String(id)) || { id, title, memo, customer_name: customerName };
   const c = state.customers.find(x => x.raw_line_id === f.line_user_id || x.line_id === f.line_user_id || x.name === f.customer_name) || { name: f.customer_name || customerName };
   state.messageTarget = { customer: c, row: null, followup: f, type: "followup" };
+  resetMessageModalButtons("followup");
   $("message-subtitle").textContent = `${c?.name || f.customer_name || "お客様"} 様 / ${title || "フォロー"}`;
   $("message-textarea").value = buildMessage(f.followup_type?.includes("ticket") ? "ticket" : "trial", state.messageTarget);
   $("message-modal").classList.remove("hidden"); safeIcons();
 }
 function setMessageTemplate(type){ $("message-textarea").value = buildMessage(type, state.messageTarget || {}); }
+
+function openLineMessageModalById(id){
+  const msg = (state.day?.line_messages || []).find(m => String(m.id) === String(id));
+  if(!msg) return toast("文面が見つかりません。画面を更新して再度お試しください。");
+  const c = state.customers.find(x => x.raw_line_id === msg.line_user_id || x.line_id === msg.line_user_id || x.line_user_id === msg.line_user_id || x.name === msg.customer_name) || { name: msg.customer_name || "お客様" };
+  state.messageTarget = { customer: c, row: null, lineMessage: msg, type: "line_message" };
+  resetMessageModalButtons("line_message");
+  $("message-subtitle").textContent = `${msg.customer_name || c?.name || "お客様"} 様 / ${msg.message_title || "LINE文面"}`;
+  $("message-textarea").value = msg.message_body || "";
+  $("message-modal").classList.remove("hidden");
+  safeIcons();
+}
 
 function buildMessage(type, target){
   const c = target?.customer || {};
@@ -1302,9 +1336,41 @@ async function copyAndLogCurrentMessage(){
   await copyText(body, "LINE文面をコピーしました。");
   const target = state.messageTarget || {};
   const c = target.customer || {};
+
+  if(target.lineMessage?.id){
+    const msg = target.lineMessage;
+    try{
+      await fetchJson("/api/line/log-copy", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          shop_code: SHOP_CODE,
+          message_id: msg.id,
+          line_user_id: msg.line_user_id || c.raw_line_id || c.line_id || "",
+          customer_id: msg.customer_id || c.id || "",
+          customer_name: msg.customer_name || c.name || "",
+          message_type: msg.message_type || "draft_line_message",
+          message_title: msg.message_title || "LINE文面コピー",
+          message_body: body,
+          related_event_id: msg.related_event_id || "",
+          source_screen: "owner.html",
+          meta: { original_message_id: msg.id, action: "preview_edit_copy_and_done", edited_in_owner: body !== (msg.message_body || ""), step: "YOGA-27E" }
+        })
+      });
+      toast("コピーして対応済みにしました。今日やることから消します。");
+      closeMessageModal();
+      await loadAll();
+    }catch(err){
+      console.warn(err);
+      toast(`コピーは完了しましたが、対応済み更新に失敗しました。
+${err.message}`);
+    }
+    return;
+  }
+
   try{
     const rawLine = c.raw_line_id || c.line_id || target.row?.raw_line_id || target.row?.line_id || target.row?.line_user_id || "";
-    await fetchJson("/api/line/log-copy", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ shop_code: SHOP_CODE, line_user_id: rawLine, customer_name: c.name || target.row?.name || target.row?.customer_name || "", message_type: target.type || "owner_manual", message_title: "オーナー画面コピー文面", message_body: body, source_screen: "owner.html" }) });
+    await fetchJson("/api/line/log-copy", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ shop_code: SHOP_CODE, line_user_id: rawLine, customer_name: c.name || target.row?.name || target.row?.customer_name || "", message_type: target.type || "owner_manual", message_title: "オーナー画面コピー文面", message_body: body, source_screen: "owner.html", meta: { action: "preview_edit_copy", step: "YOGA-27E" } }) });
   }catch(err){ console.warn(err); }
   if(target.followup?.id){
     if(confirm("このフォローを対応済みにしますか？")) await markFollowupHandled(target.followup.id, false);
@@ -1331,7 +1397,7 @@ async function copyLineMessageById(id){
         message_body: body,
         related_event_id: msg.related_event_id || "",
         source_screen: "owner.html",
-        meta: { original_message_id: msg.id, action: "copy_and_done", step: "YOGA-27D" }
+        meta: { original_message_id: msg.id, action: "copy_and_done", step: "YOGA-27E" }
       })
     });
     toast("コピー済みにしました。今日やることから消します。");
