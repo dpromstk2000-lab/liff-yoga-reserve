@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-25J-R12</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-27B</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,7 +36,7 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-25J-R12</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-27B</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
             <p class="text-sm text-slate-500 mt-2">今日やること・予約・顧客カルテ・LINEフォローを1画面で管理します。</p>
           </div>
@@ -198,7 +198,7 @@
   <div id="manual-booking-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm p-4 overflow-y-auto">
     <div class="modal-shell max-w-4xl mx-auto my-6 glass rounded-[30px] p-5 lg:p-7">
       <div class="flex items-start justify-between gap-4">
-        <div><p class="section-label">Manual Booking</p><h2 class="text-2xl font-black text-slate-800 mt-1">電話・店頭予約を追加</h2><p class="text-sm text-slate-500 mt-2">既存顧客を選ぶと入力を省略できます。LINE未連携のお客様も登録できます。</p></div>
+        <div><p class="section-label">Manual Booking</p><h2 class="text-2xl font-black text-slate-800 mt-1">電話・店頭予約を追加</h2><p class="text-sm text-slate-500 mt-2">既存顧客を選ぶと入力を省略できます。LINE未連携のお客様は、電話番号で顧客管理し、画面上も「LINE未連携」として表示します。</p></div>
         <button onclick="closeManualBookingModal()" class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div class="grid grid-cols-1 lg:grid-cols-[.9fr_1.1fr] gap-5 mt-6">
@@ -305,7 +305,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-27A-SETTING-TIME-30MIN-COMPLETE-20260706";
+const STEP_VERSION = "YOGA-27B-MANUAL-LINE-UNLINKED-DISPLAY-COMPLETE-20260706";
 
 const state = {
   settings: null,
@@ -539,7 +539,8 @@ function normalizeCustomers(rows){
       ...c,
       _type: "customer",
       _key: customerKey(c) || `customer-${index}`,
-      line_id: c.line_id || c.line_user_id || "",
+      raw_line_id: c.line_id || c.line_user_id || "",
+      line_id: realLineId(c.line_id || c.line_user_id || ""),
       name: c.name || c.customer_name || "",
       phone: c.phone || "",
       goals,
@@ -555,7 +556,9 @@ function normalizeEvent(row, index=0){
     ...row,
     _type: "event",
     _key: eventKey(row, index),
-    line_id: row.line_user_id || row.line_id || "",
+    raw_line_id: row.line_user_id || row.line_id || "",
+    line_id: realLineId(row.line_user_id || row.line_id || ""),
+    line_user_id: realLineId(row.line_user_id || row.line_id || ""),
     name: row.customer_name || row.name || "",
     reservation_time: normalizeTime(row.reservation_time || row.booking_time || "", ""),
     reservation_date: row.reservation_date || row.booking_date || "",
@@ -572,6 +575,34 @@ function parseGoal(value){
   if(!value) return [];
   try{ const parsed = JSON.parse(value); if(Array.isArray(parsed)) return parsed.filter(Boolean); }catch(_){ }
   return String(value).split(/[,、\n]/).map(v => v.trim()).filter(Boolean);
+}
+
+function isSyntheticLineId(value){
+  const v = compact(value);
+  return !!v && /^(OWNER_|OWNER_MANUAL_|PHONE_MANUAL_|MANUAL_NO_LINE_|NO_LINE_)/i.test(v);
+}
+function realLineId(value){
+  const v = compact(value);
+  return isSyntheticLineId(v) ? "" : v;
+}
+function lineConnectionBadge(value, source=""){
+  const real = realLineId(value);
+  if(real) return `<span class="badge bg-emerald-50 text-emerald-700">LINE連携</span>`;
+  const s = String(source || "");
+  const label = (s.includes("owner_manual") || s.includes("電話") || s.includes("店頭")) ? "LINE未連携・電話予約" : "LINE未連携";
+  return `<span class="badge bg-slate-100 text-slate-600">${label}</span>`;
+}
+function lineDisplayText(value, source=""){
+  const real = realLineId(value);
+  if(real) return real;
+  const s = String(source || "");
+  return (s.includes("owner_manual") || s.includes("電話") || s.includes("店頭")) ? "未連携（電話・店頭予約）" : "未連携";
+}
+function stableManualLineId(phone, name){
+  const digits = String(phone || "").replace(/\D/g, "");
+  if(digits) return `PHONE_MANUAL_${digits}`;
+  const safeName = compact(name).replace(/[^A-Za-z0-9一-龥ぁ-んァ-ヶー]/g, "").slice(0, 24);
+  return `OWNER_MANUAL_${safeName || Date.now()}`;
 }
 
 function renderAll(){
@@ -711,17 +742,20 @@ function renderReservationRow(row){
   const name = row.name || row.customer_name || customer?.name || "お客様";
   const phone = customer?.phone || row.phone || "";
   const status = row.status || "予約";
+  const rawLine = row.raw_line_id || row.line_user_id || row.line_id || customer?.raw_line_id || customer?.line_id || "";
+  const sourceText = row.source || status || "";
+  const messageLabel = realLineId(rawLine) ? "LINE文面" : "LINE登録案内";
   return `<article class="rounded-[24px] bg-white/82 border border-slate-100 p-5 hover:bg-white transition">
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
       <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2"><span class="badge ${statusBadgeClass(status)}">${escapeHtml(status)}</span><span class="text-xs font-bold text-slate-400">${escapeHtml(row.source || "")}</span></div>
+        <div class="flex flex-wrap items-center gap-2"><span class="badge ${statusBadgeClass(status)}">${escapeHtml(status)}</span>${lineConnectionBadge(rawLine, sourceText)}<span class="text-xs font-bold text-slate-400">${escapeHtml(row.source || "")}</span></div>
         <h3 class="text-lg font-black text-slate-800 mt-2">${escapeHtml(name)}</h3>
         <p class="text-sm text-slate-500 mt-1">${escapeHtml(formatDate(row.reservation_date))} ${escapeHtml(normalizeTime(row.reservation_time || "", ""))} / ${escapeHtml(row.service_name || "レッスン")}</p>
         <p class="text-sm text-slate-600 mt-2 leading-7 whitespace-pre-wrap">${escapeHtml(row.request_note || row.memo || customer?.owner_memo || "")}</p>
       </div>
       <div class="flex flex-wrap lg:justify-end gap-2">
         <button onclick="selectReservation('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">詳細</button>
-        <button onclick="openMessageFromRow('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">LINE文面</button>
+        <button onclick="openMessageFromRow('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">${messageLabel}</button>
         ${phone ? `<button onclick="copyText('${escapeHtml(phone)}','電話番号をコピーしました。')" class="rounded-full bg-[var(--sage-50)] text-[var(--sage-800)] px-4 py-2 text-xs font-black">電話コピー</button>` : ""}
       </div>
     </div>
@@ -746,10 +780,12 @@ function renderFollowupRow(row){
 }
 
 function renderCustomerRow(c){
+  const rawLine = c.raw_line_id || c.line_id || c.line_user_id || "";
+  const messageLabel = realLineId(rawLine) ? "LINE文面" : "LINE登録案内";
   return `<article class="rounded-[24px] bg-white/82 border border-slate-100 p-5 hover:bg-white transition">
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-      <div class="min-w-0"><div class="flex flex-wrap gap-2"><span class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">${escapeHtml(c.customer_status || "顧客")}</span>${c.line_id ? `<span class="badge bg-emerald-50 text-emerald-700">LINE連携</span>` : `<span class="badge bg-slate-100 text-slate-600">LINE未連携</span>`}</div><h3 class="text-lg font-black text-slate-800 mt-2">${escapeHtml(c.name || "名前未入力")}</h3><p class="text-sm text-slate-500 mt-1">${escapeHtml(c.phone || "電話番号未入力")} / ${escapeHtml((c.goals || []).join("・") || "目的未入力")}</p></div>
-      <div class="flex flex-wrap lg:justify-end gap-2"><button onclick="selectCustomer('${escapeHtml(c._key)}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">カルテ</button><button onclick="openMessageForCustomer('${escapeHtml(c._key)}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">LINE文面</button></div>
+      <div class="min-w-0"><div class="flex flex-wrap gap-2"><span class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">${escapeHtml(c.customer_status || "顧客")}</span>${lineConnectionBadge(rawLine, c.source || c.customer_status || "")}</div><h3 class="text-lg font-black text-slate-800 mt-2">${escapeHtml(c.name || "名前未入力")}</h3><p class="text-sm text-slate-500 mt-1">${escapeHtml(c.phone || "電話番号未入力")} / ${escapeHtml((c.goals || []).join("・") || "目的未入力")}</p></div>
+      <div class="flex flex-wrap lg:justify-end gap-2"><button onclick="selectCustomer('${escapeHtml(c._key)}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">カルテ</button><button onclick="openMessageForCustomer('${escapeHtml(c._key)}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">${messageLabel}</button></div>
     </div>
   </article>`;
 }
@@ -765,9 +801,11 @@ function statusBadgeClass(status){
 }
 
 function findCustomerForRow(row){
-  const line = row.line_id || row.line_user_id;
-  if(line){ const c = state.customers.find(x => x.line_id === line || x.line_user_id === line); if(c) return c; }
-  const name = row.name || row.customer_name;
+  const rawLine = row?.raw_line_id || row?.line_user_id || row?.line_id || "";
+  if(rawLine){ const c = state.customers.find(x => x.raw_line_id === rawLine || x.line_id === rawLine || x.line_user_id === rawLine); if(c) return c; }
+  const phone = row?.phone || row?.customer_phone || "";
+  if(phone){ const c = state.customers.find(x => normalizePhone(x.phone || "") === normalizePhone(phone)); if(c) return c; }
+  const name = row?.name || row?.customer_name;
   if(name){ const c = state.customers.find(x => x.name === name); if(c) return c; }
   return null;
 }
@@ -795,10 +833,11 @@ function showDetail(row, customer){
   $("detail-avatar").textContent = (name || "ヨ").slice(0,1);
   $("detail-name").textContent = name;
   $("detail-phone").textContent = base.phone || row?.phone || "-";
-  $("detail-line").textContent = base.line_id || row?.line_id || row?.line_user_id || "未連携";
+  const rawLine = base.raw_line_id || base.line_id || row?.raw_line_id || row?.line_id || row?.line_user_id || "";
+  $("detail-line").textContent = lineDisplayText(rawLine, row?.source || row?.status || base.source || base.customer_status || "");
   $("detail-goals").textContent = (base.goals || parseGoal(base.primary_goal)).join("・") || "-";
   $("detail-pace").textContent = base.target_pace || "-";
-  $("detail-badges").innerHTML = `${base.line_id ? `<span class="badge bg-emerald-50 text-emerald-700">LINE連携</span>` : `<span class="badge bg-slate-100 text-slate-600">LINE未連携</span>`}<span class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">${escapeHtml(base.customer_status || row?.status || "顧客")}</span>`;
+  $("detail-badges").innerHTML = `${lineConnectionBadge(rawLine, row?.source || row?.status || base.source || base.customer_status || "")}<span class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">${escapeHtml(base.customer_status || row?.status || "顧客")}</span>`;
   const reservations = relatedReservations(base, row);
   $("detail-reservations").innerHTML = reservations.length ? reservations.slice(0,5).map(r => `<div class="rounded-2xl bg-slate-50 px-4 py-3"><p class="font-black text-slate-800">${escapeHtml(formatDate(r.reservation_date))} ${escapeHtml(normalizeTime(r.reservation_time || "", ""))}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(r.status || "予約")} / ${escapeHtml(r.service_name || "レッスン")}</p></div>`).join("") : `<p class="text-sm text-slate-500">現在表示できる予約はありません。</p>`;
   $("detail-note").value = base.owner_memo || base.memo || row?.request_note || row?.memo || "";
@@ -806,11 +845,12 @@ function showDetail(row, customer){
 }
 
 function relatedReservations(customer, row){
-  const line = customer?.line_id || row?.line_id || row?.line_user_id;
+  const rawLine = customer?.raw_line_id || customer?.line_id || row?.raw_line_id || row?.line_id || row?.line_user_id;
+  const phone = customer?.phone || row?.phone || row?.customer_phone;
   const name = customer?.name || row?.name || row?.customer_name;
   return [...(state.day?.today_reservations || []), ...(state.day?.next_business_reservations || []), ...state.legacyEvents]
     .map(normalizeEvent)
-    .filter(r => (line && (r.line_id === line || r.line_user_id === line)) || (name && (r.name === name || r.customer_name === name)) || (row && eventKey(r) === eventKey(row)))
+    .filter(r => (rawLine && (r.raw_line_id === rawLine || r.line_id === rawLine || r.line_user_id === rawLine)) || (phone && normalizePhone(r.phone || "") === normalizePhone(phone)) || (name && (r.name === name || r.customer_name === name)) || (row && eventKey(r) === eventKey(row)))
     .sort((a,b)=>`${a.reservation_date} ${a.reservation_time}`.localeCompare(`${b.reservation_date} ${b.reservation_time}`));
 }
 
@@ -820,7 +860,8 @@ async function saveDetailNote(){
   const selected = state.selected;
   if(!selected) return toast("顧客を選択してください。");
   const c = selected.customer || {};
-  const lineId = c.line_id || selected.row?.line_id || selected.row?.line_user_id || `OWNER_${(c.phone || c.name || Date.now()).replace(/\W/g,"")}`;
+  const rawLine = c.raw_line_id || c.line_id || selected.row?.raw_line_id || selected.row?.line_id || selected.row?.line_user_id || "";
+  const lineId = rawLine || stableManualLineId(c.phone || selected.row?.phone || "", c.name || selected.row?.name || selected.row?.customer_name || "");
   try{
     await legacyPost("update_memo", {
       lineUserId: lineId,
@@ -845,7 +886,8 @@ async function scheduleSelectedFollowup(days){
   const c = state.selected.customer || {};
   const date = addDays(todayJst(), days);
   const note = `【再フォロー予定】${formatDate(date)} に再フォロー`;
-  const lineId = c.line_id || state.selected.row?.line_id || state.selected.row?.line_user_id || `OWNER_${Date.now()}`;
+  const rawLine = c.raw_line_id || c.line_id || state.selected.row?.raw_line_id || state.selected.row?.line_id || state.selected.row?.line_user_id || "";
+  const lineId = rawLine || stableManualLineId(c.phone || state.selected.row?.phone || "", c.name || state.selected.row?.name || state.selected.row?.customer_name || "");
   try{
     await legacyPost("update_memo", { lineUserId: lineId, customerName: c.name || "お客様", memoContent: `${$("detail-note").value}\n\n${note}`.trim(), status: c.customer_status || "フォロー予定", nextGuidanceDate: date });
     toast(`${days}日後のフォロー予定を保存しました。`);
@@ -867,7 +909,10 @@ function closeManualBookingModal(){ $("manual-booking-modal").classList.add("hid
 function renderManualSuggestions(){
   const q = compact($("manual-search")?.value).toLowerCase();
   const rows = state.customers.filter(c => !q || JSON.stringify(c).toLowerCase().includes(q)).slice(0,12);
-  $("manual-suggestions").innerHTML = rows.length ? rows.map(c => `<button type="button" onclick="selectManualCustomer('${escapeHtml(c._key)}')" class="w-full rounded-2xl bg-white border border-slate-100 px-4 py-3 text-left hover:bg-[var(--sage-50)] transition"><p class="text-sm font-black text-slate-800">${escapeHtml(c.name || "名前未入力")}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(c.phone || "電話番号未入力")} / ${(c.goals || []).map(escapeHtml).join("・")}</p></button>`).join("") : `<div class="rounded-2xl bg-white border border-slate-100 px-4 py-4 text-sm text-slate-500">該当する顧客がいません。</div>`;
+  $("manual-suggestions").innerHTML = rows.length ? rows.map(c => {
+    const rawLine = c.raw_line_id || c.line_id || c.line_user_id || "";
+    return `<button type="button" onclick="selectManualCustomer('${escapeHtml(c._key)}')" class="w-full rounded-2xl bg-white border border-slate-100 px-4 py-3 text-left hover:bg-[var(--sage-50)] transition"><div class="flex flex-wrap gap-2 mb-2">${lineConnectionBadge(rawLine, c.source || c.customer_status || "")}</div><p class="text-sm font-black text-slate-800">${escapeHtml(c.name || "名前未入力")}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(c.phone || "電話番号未入力")} / ${(c.goals || []).map(escapeHtml).join("・")}</p></button>`;
+  }).join("") : `<div class="rounded-2xl bg-white border border-slate-100 px-4 py-4 text-sm text-slate-500">該当する顧客がいません。</div>`;
 }
 
 function selectManualCustomer(key){
@@ -880,7 +925,8 @@ function selectManualCustomer(key){
   $("manual-experience").value = c.yoga_experience || "少し経験あり";
   $("manual-pace").value = c.target_pace || "月2回";
   $("manual-selected").classList.remove("hidden");
-  $("manual-selected").textContent = `選択中：${c.name || "お客様"} / ${c.phone || "電話番号未入力"}`;
+  const rawLine = c.raw_line_id || c.line_id || c.line_user_id || "";
+  $("manual-selected").textContent = `選択中：${c.name || "お客様"} / ${c.phone || "電話番号未入力"} / ${realLineId(rawLine) ? "LINE連携" : "LINE未連携"}`;
 }
 
 function renderManualServices(){
@@ -937,10 +983,12 @@ async function submitManualBooking(){
       yoga_experience: $("manual-experience").value,
       target_pace: $("manual-pace").value,
       primary_goal: goals,
-      request_note: $("manual-note").value,
+      request_note: [$("manual-note").value, isLineLinked ? "" : "LINE未連携：次回来店時にLINE登録案内"].filter(Boolean).join("\n"),
+      customer_status: isLineLinked ? "active" : "電話予約・LINE未連携",
+      line_connection_status: isLineLinked ? "linked" : "unlinked",
       source: "owner_manual",
     });
-    toast("電話・店頭予約を追加しました。");
+    toast(isLineLinked ? "電話・店頭予約を追加しました。" : "LINE未連携として電話・店頭予約を追加しました。");
     closeManualBookingModal();
     await loadAll();
   }catch(err){ toast(`予約追加に失敗しました。\n${err.message}`); }
@@ -1217,7 +1265,7 @@ function openMessageForCustomer(key){ const c = state.customers.find(x => x._key
 function openMessageFromRow(key){ const row = findEventByKey(key); state.messageTarget = { customer: findCustomerForRow(row), row, type: "reservation" }; $("message-subtitle").textContent = `${row?.name || row?.customer_name || "お客様"} 様 / ${row?.status || "予約"}`; $("message-textarea").value = buildMessage("booking", state.messageTarget); $("message-modal").classList.remove("hidden"); safeIcons(); }
 function openMessageFromFollowup(id, title, memo, customerName=""){
   const f = (state.day?.followups || []).find(x => String(x.id) === String(id)) || { id, title, memo, customer_name: customerName };
-  const c = state.customers.find(x => x.line_id === f.line_user_id || x.name === f.customer_name) || { name: f.customer_name || customerName };
+  const c = state.customers.find(x => x.raw_line_id === f.line_user_id || x.line_id === f.line_user_id || x.name === f.customer_name) || { name: f.customer_name || customerName };
   state.messageTarget = { customer: c, row: null, followup: f, type: "followup" };
   $("message-subtitle").textContent = `${c?.name || f.customer_name || "お客様"} 様 / ${title || "フォロー"}`;
   $("message-textarea").value = buildMessage(f.followup_type?.includes("ticket") ? "ticket" : "trial", state.messageTarget);
@@ -1247,7 +1295,8 @@ async function copyAndLogCurrentMessage(){
   const target = state.messageTarget || {};
   const c = target.customer || {};
   try{
-    await fetchJson("/api/line/log-copy", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ shop_code: SHOP_CODE, line_user_id: c.line_id || target.row?.line_id || target.row?.line_user_id || "", customer_name: c.name || target.row?.name || target.row?.customer_name || "", message_type: target.type || "owner_manual", message_title: "オーナー画面コピー文面", message_body: body, source_screen: "owner.html" }) });
+    const rawLine = c.raw_line_id || c.line_id || target.row?.raw_line_id || target.row?.line_id || target.row?.line_user_id || "";
+    await fetchJson("/api/line/log-copy", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ shop_code: SHOP_CODE, line_user_id: rawLine, customer_name: c.name || target.row?.name || target.row?.customer_name || "", message_type: target.type || "owner_manual", message_title: "オーナー画面コピー文面", message_body: body, source_screen: "owner.html" }) });
   }catch(err){ console.warn(err); }
   if(target.followup?.id){
     if(confirm("このフォローを対応済みにしますか？")) await markFollowupHandled(target.followup.id, false);
