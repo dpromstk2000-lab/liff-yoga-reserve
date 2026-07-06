@@ -240,12 +240,12 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
         <label class="text-sm font-bold text-slate-700">店舗名<input id="setting-shop-name" class="input-ui mt-1" /></label>
         <label class="text-sm font-bold text-slate-700">サービス名<input id="setting-service-name" class="input-ui mt-1" /></label>
-        <label class="text-sm font-bold text-slate-700">開始時間<span class="text-xs text-slate-400 ml-2">15分単位</span><select id="setting-open-time" class="select-ui mt-1"></select></label>
-        <label class="text-sm font-bold text-slate-700">終了時間<span class="text-xs text-slate-400 ml-2">15分単位</span><select id="setting-close-time" class="select-ui mt-1"></select></label>
+        <label class="text-sm font-bold text-slate-700">開始時間<span class="text-xs text-slate-400 ml-2">30分単位</span><select id="setting-open-time" class="select-ui mt-1"></select></label>
+        <label class="text-sm font-bold text-slate-700">終了時間<span class="text-xs text-slate-400 ml-2">30分単位</span><select id="setting-close-time" class="select-ui mt-1"></select></label>
         <label class="text-sm font-bold text-slate-700">1日の予約上限<input id="setting-max-day" type="number" min="1" class="input-ui mt-1" /></label>
         <label class="text-sm font-bold text-slate-700">同時間の予約上限<input id="setting-max-slot" type="number" min="1" class="input-ui mt-1" /></label>
         <label class="text-sm font-bold text-slate-700">1人の有効予約上限<input id="setting-max-active" type="number" min="1" class="input-ui mt-1" /></label>
-        <label class="text-sm font-bold text-slate-700">予約刻み<select id="setting-slot-minutes" class="select-ui mt-1"><option value="30">30分</option><option value="60">60分</option><option value="15">15分</option></select></label>
+        <label class="text-sm font-bold text-slate-700">予約刻み<span class="text-xs text-slate-400 ml-2">30分固定</span><select id="setting-slot-minutes" class="select-ui mt-1"><option value="30">30分</option></select></label>
         <label class="text-sm font-bold text-slate-700 md:col-span-2">スタジオ住所<input id="setting-address" class="input-ui mt-1" /></label>
         <label class="text-sm font-bold text-slate-700 md:col-span-2">案内メモ<textarea id="setting-note" class="textarea-ui mt-1"></textarea></label>
       </div>
@@ -305,7 +305,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-25J-R11-SETTING-TIME-15MIN-COMPLETE-20260705";
+const STEP_VERSION = "YOGA-27A-SETTING-TIME-30MIN-COMPLETE-20260706";
 
 const state = {
   settings: null,
@@ -899,7 +899,7 @@ async function loadManualTimes(){
   }catch(err){
     const open = normalizeTime(state.settings?.open_time || "10:00", "10:00");
     const close = normalizeTime(state.settings?.close_time || "19:00", "19:00");
-    select.innerHTML = buildTimeOptions(open, close, Number(state.settings?.reservation_slot_minutes || 30));
+    select.innerHTML = buildTimeOptions(open, close, 30);
   }
 }
 
@@ -951,12 +951,12 @@ function openSettingsModal(){
   const s = state.settings || {};
   $("setting-shop-name").value = s.shop_name || "DPRO YOGA";
   $("setting-service-name").value = s.service_name || "DPRO YOGA LINE";
-  fillQuarterTimeSelect("setting-open-time", s.open_time || "10:00", "10:00");
-  fillQuarterTimeSelect("setting-close-time", s.close_time || "19:00", "19:00");
+  fillHalfHourTimeSelect("setting-open-time", s.open_time || "10:00", "10:00");
+  fillHalfHourTimeSelect("setting-close-time", s.close_time || "19:00", "19:00");
   $("setting-max-day").value = s.max_reservations_per_day || 8;
   $("setting-max-slot").value = s.max_reservations_per_slot || 1;
   $("setting-max-active").value = s.max_active_reservations_per_customer || 2;
-  $("setting-slot-minutes").value = String(s.reservation_slot_minutes || 30);
+  $("setting-slot-minutes").value = "30";
   $("setting-address").value = s.studio_address || "";
   $("setting-note").value = s.studio_note || "";
   $("setting-closed-dates").value = (normalizeArray(s.closed_dates)).join("\n");
@@ -968,31 +968,31 @@ function normalizeArray(value){ if(Array.isArray(value)) return value; if(!value
 function renderHolidayCheckboxes(active){
   $("holiday-checkboxes").innerHTML = dayLabels.map((label,i)=>`<label class="rounded-2xl bg-white border border-slate-100 px-3 py-3 text-sm font-bold text-slate-700 flex items-center gap-2"><input type="checkbox" class="holiday-check" value="${i}" ${active.includes(i)?"checked":""}/> ${label}曜</label>`).join("");
 }
-function buildQuarterTimeOptions(){
+function buildHalfHourTimeOptions(){
   const options = [];
-  for(let total = 0; total < 24 * 60; total += 15){
+  for(let total = 0; total < 24 * 60; total += 30){
     const hh = String(Math.floor(total / 60)).padStart(2, "0");
     const mm = String(total % 60).padStart(2, "0");
     options.push(`${hh}:${mm}`);
   }
   return options;
 }
-function fillQuarterTimeSelect(selectId, selectedValue, fallback="10:00"){
+function fillHalfHourTimeSelect(selectId, selectedValue, fallback="10:00"){
   const select = $(selectId);
   if(!select) return;
-  const selected = roundToQuarterTime(selectedValue || fallback, fallback);
-  select.innerHTML = buildQuarterTimeOptions()
+  const selected = roundToHalfHourTime(selectedValue || fallback, fallback);
+  select.innerHTML = buildHalfHourTimeOptions()
     .map(time => `<option value="${time}" ${time === selected ? "selected" : ""}>${time}</option>`)
     .join("");
   select.value = selected;
 }
-function roundToQuarterTime(value, fallback="10:00"){
+function roundToHalfHourTime(value, fallback="10:00"){
   const normalized = normalizeTime(value || fallback, fallback);
   const [h, m] = normalized.split(":").map(Number);
   let total = h * 60 + m;
-  total = Math.round(total / 15) * 15;
+  total = Math.round(total / 30) * 30;
   if(total < 0) total = 0;
-  if(total >= 24 * 60) total = 23 * 60 + 45;
+  if(total >= 24 * 60) total = 23 * 60 + 30;
   const hh = String(Math.floor(total / 60)).padStart(2, "0");
   const mm = String(total % 60).padStart(2, "0");
   return `${hh}:${mm}`;
@@ -1059,8 +1059,8 @@ async function saveSettings(){
   const beforeSettings = {...(state.settings || {})};
   const holidays = [...document.querySelectorAll(".holiday-check:checked")].map(el => Number(el.value));
   const closedDates = $("setting-closed-dates").value.split(/[,\n]/).map(v=>v.trim()).filter(Boolean);
-  const openTime = roundToQuarterTime($("setting-open-time").value, "10:00");
-  const closeTime = roundToQuarterTime($("setting-close-time").value, "19:00");
+  const openTime = roundToHalfHourTime($("setting-open-time").value, "10:00");
+  const closeTime = roundToHalfHourTime($("setting-close-time").value, "19:00");
   $("setting-open-time").value = openTime;
   $("setting-close-time").value = closeTime;
   try{
@@ -1072,7 +1072,7 @@ async function saveSettings(){
       max_reservations_per_day: Number($("setting-max-day").value || 8),
       max_reservations_per_slot: Number($("setting-max-slot").value || 1),
       max_active_reservations_per_customer: Number($("setting-max-active").value || 2),
-      reservation_slot_minutes: Number($("setting-slot-minutes").value || 30),
+      reservation_slot_minutes: 30,
       studio_address: $("setting-address").value,
       studio_note: $("setting-note").value,
       holidays,
