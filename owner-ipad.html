@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-25J-R6</title>
+  <title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-PHONE-3</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -43,7 +43,7 @@
             <i data-lucide="tablet-smartphone" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-25J-R6</p>
+            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-PHONE-3</p>
             <h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE iPad店頭画面</h1>
             <p class="text-sm text-slate-500 mt-2">店頭受付・本日の予約・次営業日・フォロー・LINE文面コピーに絞った操作画面です。</p>
           </div>
@@ -221,7 +221,7 @@
 
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
-const STEP_VERSION = "YOGA-25J-R6-OWNER-IPAD-PAST-DATE-FIX-20260705";
+const STEP_VERSION = "YOGA-PHONE-3-CUSTOMER-PAGES-PHONE-NORMALIZED-20260709";
 const state = {
   status: null,
   services: [],
@@ -239,6 +239,18 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const safe = (v) => String(v ?? "");
 const clean = (v) => safe(v).trim();
+const normalizePhone = (value) => {
+  let text = safe(value).trim();
+  if(!text) return "";
+  text = text.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+  text = text.replace(/[＋]/g, "+");
+  text = text.replace(/[ー－―−‐‑‒–—ｰ]/g, "-");
+  text = text.replace(/[^0-9+]/g, "");
+  if(text.startsWith("+81")) text = "0" + text.slice(3);
+  text = text.replace(/\D/g, "");
+  if(text.startsWith("81") && text.length >= 11) text = "0" + text.slice(2);
+  return text;
+};
 const yen = (n) => Number(n || 0) ? `¥${Number(n || 0).toLocaleString()}` : "-";
 const esc = (value) => safe(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
 const normalizeTime = (t) => clean(t).slice(0,5);
@@ -587,7 +599,7 @@ async function submitManualBooking(){
   const body = {
     customer_name: clean($("manual-name").value),
     name: clean($("manual-name").value),
-    phone: clean($("manual-phone").value),
+    phone: normalizePhone($("manual-phone").value),
     line_user_id: clean(state.selectedCustomer?.line_id || state.selectedCustomer?.line_user_id || ""),
     reservation_date: clean($("manual-date").value),
     reservation_time: clean($("manual-time").value),
@@ -626,7 +638,8 @@ function debouncedSearchCustomers(){
   state.searchTimer = setTimeout(searchCustomers, 320);
 }
 async function searchCustomers(){
-  const q = clean($("customer-search")?.value || "");
+  const rawQ = clean($("customer-search")?.value || "");
+  const q = normalizePhone(rawQ) || rawQ;
   const el = $("customer-list");
   if(el) el.innerHTML = `<div class="rounded-2xl bg-white/70 p-3 text-sm text-slate-500">検索中...</div>`;
   try{
@@ -647,7 +660,7 @@ function renderCustomers(){
     window.__customerRows[`c_${idx}`] = c;
     return `<button onclick="selectCustomer('c_${idx}')" class="touch w-full rounded-[22px] bg-white/78 border border-slate-100 p-3 text-left shadow-sm">
       <div class="flex items-center justify-between gap-2"><strong class="text-slate-800">${esc(c.name || "お客様")}</strong><span class="text-xs font-black text-slate-400">${c.line_id ? "LINE連携" : "電話/未連携"}</span></div>
-      <p class="mt-1 text-sm text-slate-500">${esc(c.phone || "電話未登録")} ${c.target_pace ? ` / ${esc(c.target_pace)}` : ""}</p>
+      <p class="mt-1 text-sm text-slate-500">${esc(normalizePhone(c.phone) || "電話未登録")} ${c.target_pace ? ` / ${esc(c.target_pace)}` : ""}</p>
     </button>`;
   }).join("");
 }
@@ -656,12 +669,12 @@ async function selectCustomer(key){
   if(!c) return;
   state.selectedCustomer = c;
   $("manual-name").value = c.name || "";
-  $("manual-phone").value = c.phone || "";
+  $("manual-phone").value = normalizePhone(c.phone || "");
   $("line-message").value = buildMessage("short");
   renderCustomerDetail(c);
   toast("顧客を選択しました");
   try{
-    const params = c.line_id ? { line_user_id:c.line_id } : c.phone ? { phone:c.phone, demo:"1" } : null;
+    const params = c.line_id ? { line_user_id:c.line_id } : normalizePhone(c.phone) ? { phone:normalizePhone(c.phone), demo:"1" } : null;
     if(params){
       const detail = await publicGet("/api/public/customer", params);
       state.selectedCustomerDetail = detail;
@@ -676,12 +689,12 @@ function renderCustomerDetail(c, detail=null){
   const followups = detail?.followups || [];
   el.innerHTML = `
     <div class="flex items-start justify-between gap-3">
-      <div><h3 class="text-xl font-black text-slate-800">${esc(c.name || "お客様")}</h3><p class="mt-1 text-sm text-slate-500">${esc(c.phone || "電話未登録")}</p></div>
+      <div><h3 class="text-xl font-black text-slate-800">${esc(c.name || "お客様")}</h3><p class="mt-1 text-sm text-slate-500">${esc(normalizePhone(c.phone) || "電話未登録")}</p></div>
       <span class="badge ${c.line_id ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}">${c.line_id ? "LINE連携" : "未連携"}</span>
     </div>
     <div class="mt-3 grid grid-cols-2 gap-2">
       <button onclick="copyText('${esc(c.name || '')}','名前をコピーしました')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">名前コピー</button>
-      <button onclick="copyText('${esc(c.phone || '')}','電話番号をコピーしました')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">電話コピー</button>
+      <button onclick="copyText('${esc(normalizePhone(c.phone) || '')}','電話番号をコピーしました')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">電話コピー</button>
     </div>
     <div class="mt-4 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
       <p><b>目的：</b>${esc(Array.isArray(c.primary_goal) ? c.primary_goal.join("、") : (c.primary_goal || "未登録"))}</p>
