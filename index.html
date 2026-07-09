@@ -291,6 +291,7 @@
 </main>
 
 <script>
+  // STEP YOGA-PHONE-3: お客様予約画面 電話番号正規化対応
   const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
   const LIFF_ID = "2010377734-4tHMhUx6";
   const SHOP_CODE = "yoga_demo";
@@ -335,6 +336,20 @@
     const compact = value.substring(0, 5);
     if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(compact)) return fallback;
     return compact;
+  }
+
+  // STEP YOGA-PHONE-3: 電話番号を保存・検索前に統一する
+  function normalizePhone(value) {
+    let text = String(value ?? "").trim();
+    if (!text) return "";
+    text = text.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+    text = text.replace(/[＋]/g, "+");
+    text = text.replace(/[ー－―−‐‑‒–—ｰ]/g, "-");
+    text = text.replace(/[^0-9+]/g, "");
+    if (text.startsWith("+81")) text = "0" + text.slice(3);
+    text = text.replace(/\D/g, "");
+    if (text.startsWith("81") && text.length >= 11) text = "0" + text.slice(2);
+    return text;
   }
 
   function timeToMinutes(time) {
@@ -1147,14 +1162,14 @@
     if (!isExisting) {
       payload.name = document.getElementById("name").value.trim();
       payload.customer_name = payload.name;
-      payload.phone = document.getElementById("phone").value.trim();
+      payload.phone = normalizePhone(document.getElementById("phone").value);
       payload.yoga_experience = document.getElementById("yoga_experience").value;
       payload.primary_goal = document.getElementById("primary_goal").value;
       payload.target_pace = document.getElementById("target_pace").value;
     } else {
       payload.name = existingCustomerData?.name || existingCustomerData?.customer_name || lineDisplayName || "リピート顧客";
       payload.customer_name = payload.name;
-      payload.phone = existingCustomerData?.phone || "";
+      payload.phone = normalizePhone(existingCustomerData?.phone || "");
       payload.yoga_experience = existingCustomerData?.yoga_experience || "";
       payload.primary_goal = existingCustomerData?.primary_goal || "";
       payload.target_pace = existingCustomerData?.target_pace || "";
@@ -1375,7 +1390,7 @@
     try {
       const payload = {
         line_user_id: lineUserId,
-        phone: existingCustomerData?.phone || "",
+        phone: normalizePhone(existingCustomerData?.phone || ""),
         customer_name: existingCustomerData?.name || lineDisplayName || "",
         reservation_id: target.id || "",
         reservation_date: target.reservation_date,
