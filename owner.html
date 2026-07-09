@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-27E</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-PHONE-2</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,7 +36,7 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-27E</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-PHONE-2</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
             <p class="text-sm text-slate-500 mt-2">未対応タスク・本日のレッスン予定・顧客カルテ・LINEフォローを1画面で管理します。</p>
           </div>
@@ -309,7 +309,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-27E-MESSAGE-PREVIEW-EDIT-COPY-COMPLETE-20260706";
+const STEP_VERSION = "YOGA-PHONE-2-PHONE-NORMALIZED-OWNER-SEARCH-20260709";
 
 const state = {
   settings: null,
@@ -361,6 +361,41 @@ function addDays(dateStr, days){ const d = new Date(`${dateStr}T00:00:00+09:00`)
 function formatDate(dateStr){ if(!dateStr) return "-"; const d = new Date(`${dateStr}T00:00:00+09:00`); if(Number.isNaN(d.getTime())) return dateStr; return `${dateStr}（${dayLabels[d.getDay()]}）`; }
 function yen(value){ const n = Number(value || 0); return n ? `${n.toLocaleString()}円` : "-"; }
 function compact(value){ return String(value ?? "").trim(); }
+
+// STEP YOGA-PHONE-2:
+// 電話番号の表記ゆれを統一する。
+// 090-1111-2222 / 09011112222 / 090 1111 2222 / ０９０－１１１１－２２２２ / +81 90 1111 2222 を同じ番号として扱う。
+function toHalfWidthForPhone(value){
+  return String(value ?? "")
+    .replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/[＋]/g, "+")
+    .replace(/[－ー―−‐‑‒–—]/g, "-")
+    .replace(/[（]/g, "(")
+    .replace(/[）]/g, ")");
+}
+function normalizePhone(value){
+  let text = toHalfWidthForPhone(value).trim();
+  if(!text) return "";
+  text = text.replace(/[^0-9+]/g, "");
+  if(text.startsWith("+81")) text = `0${text.slice(3)}`;
+  else if(text.startsWith("81") && text.length >= 11) text = `0${text.slice(2)}`;
+  return text.replace(/\D/g, "");
+}
+function normalizeSearchText(value){
+  return toHalfWidthForPhone(value)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function phoneMatches(input, ...values){
+  const q = normalizePhone(input);
+  if(!q) return false;
+  return values
+    .map(v => normalizePhone(v))
+    .filter(Boolean)
+    .some(v => v.includes(q) || q.includes(v));
+}
+
 function toast(message){
   const text = String(message || "").trim() || "処理が完了しました。";
   const lines = text.split("\n");
@@ -603,7 +638,7 @@ function lineDisplayText(value, source=""){
   return (s.includes("owner_manual") || s.includes("電話") || s.includes("店頭")) ? "未連携（電話・店頭予約）" : "未連携";
 }
 function stableManualLineId(phone, name){
-  const digits = String(phone || "").replace(/\D/g, "");
+  const digits = normalizePhone(phone);
   if(digits) return `PHONE_MANUAL_${digits}`;
   const safeName = compact(name).replace(/[^A-Za-z0-9一-龥ぁ-んァ-ヶー]/g, "").slice(0, 24);
   return `OWNER_MANUAL_${safeName || Date.now()}`;
@@ -724,11 +759,13 @@ function renderTaskWide(task, i){
 }
 
 function filterRows(rows, type){
-  const q = compact($("search-input")?.value).toLowerCase();
+  const rawQ = compact($("search-input")?.value);
+  const q = normalizeSearchText(rawQ);
   const status = $("status-filter")?.value || "all";
   return (rows || []).filter(row => {
-    const text = JSON.stringify(row || {}).toLowerCase();
-    const qOk = !q || text.includes(q);
+    const relatedCustomer = type === "event" ? findCustomerForRow(row) : null;
+    const text = normalizeSearchText(`${JSON.stringify(row || {})} ${JSON.stringify(relatedCustomer || {})}`);
+    const qOk = !rawQ || text.includes(q) || phoneMatches(rawQ, row.phone, row.customer_phone, row.tel, relatedCustomer?.phone, relatedCustomer?.tel);
     const statusValue = row.status || row.customer_status || "";
     const statusOk = status === "all" || String(statusValue).includes(status);
     return qOk && statusOk;
@@ -918,8 +955,13 @@ function openManualBookingModal(){
 function closeManualBookingModal(){ $("manual-booking-modal").classList.add("hidden"); }
 
 function renderManualSuggestions(){
-  const q = compact($("manual-search")?.value).toLowerCase();
-  const rows = state.customers.filter(c => !q || JSON.stringify(c).toLowerCase().includes(q)).slice(0,12);
+  const rawQ = compact($("manual-search")?.value);
+  const q = normalizeSearchText(rawQ);
+  const rows = state.customers.filter(c => {
+    if(!rawQ) return true;
+    const text = normalizeSearchText(JSON.stringify(c || {}));
+    return text.includes(q) || phoneMatches(rawQ, c.phone, c.tel, c.customer_phone);
+  }).slice(0,12);
   $("manual-suggestions").innerHTML = rows.length ? rows.map(c => {
     const rawLine = c.raw_line_id || c.line_id || c.line_user_id || "";
     return `<button type="button" onclick="selectManualCustomer('${escapeHtml(c._key)}')" class="w-full rounded-2xl bg-white border border-slate-100 px-4 py-3 text-left hover:bg-[var(--sage-50)] transition"><div class="flex flex-wrap gap-2 mb-2">${lineConnectionBadge(rawLine, c.source || c.customer_status || "")}</div><p class="text-sm font-black text-slate-800">${escapeHtml(c.name || "名前未入力")}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(c.phone || "電話番号未入力")} / ${(c.goals || []).map(escapeHtml).join("・")}</p></button>`;
@@ -931,13 +973,13 @@ function selectManualCustomer(key){
   if(!c) return;
   state.manualSelectedCustomer = c;
   $("manual-name").value = c.name || "";
-  $("manual-phone").value = c.phone || "";
+  $("manual-phone").value = normalizePhone(c.phone || "") || c.phone || "";
   $("manual-goals").value = (c.goals || []).join(", ");
   $("manual-experience").value = c.yoga_experience || "少し経験あり";
   $("manual-pace").value = c.target_pace || "月2回";
   $("manual-selected").classList.remove("hidden");
   const rawLine = c.raw_line_id || c.line_id || c.line_user_id || "";
-  $("manual-selected").textContent = `選択中：${c.name || "お客様"} / ${c.phone || "電話番号未入力"} / ${realLineId(rawLine) ? "LINE連携" : "LINE未連携"}`;
+  $("manual-selected").textContent = `選択中：${c.name || "お客様"} / ${normalizePhone(c.phone || "") || c.phone || "電話番号未入力"} / ${realLineId(rawLine) ? "LINE連携" : "LINE未連携"}`;
 }
 
 function renderManualServices(){
@@ -970,14 +1012,20 @@ function buildTimeOptions(open, close, step){
 async function submitManualBooking(){
   const btn = $("manual-submit-btn");
   const name = compact($("manual-name").value);
-  const phone = compact($("manual-phone").value);
+  const rawPhone = compact($("manual-phone").value);
+  const phone = normalizePhone(rawPhone);
   const date = $("manual-date").value;
   const time = $("manual-time").value;
   const serviceCode = $("manual-service").value;
   if(!name) return toast("お名前を入力してください。");
+  if(rawPhone && !phone) return toast("電話番号を確認してください。");
   if(!date || !time) return toast("予約日時を選択してください。");
   const selected = state.manualSelectedCustomer;
-  const lineId = selected?.line_id || `OWNER_MANUAL_${phone.replace(/\D/g,"") || name}_${Date.now()}`;
+  const selectedRawLine = selected?.raw_line_id || selected?.line_user_id || selected?.line_id || "";
+  const realSelectedLineId = realLineId(selectedRawLine);
+  const isLineLinked = Boolean(realSelectedLineId);
+  const lineId = isLineLinked ? realSelectedLineId : stableManualLineId(phone, name);
+  if($("manual-phone")) $("manual-phone").value = phone || rawPhone;
   const goals = compact($("manual-goals").value).split(/[,、\n]/).map(v=>v.trim()).filter(Boolean);
   btn.disabled = true; const old = btn.textContent; btn.textContent = "保存中...";
   try{
