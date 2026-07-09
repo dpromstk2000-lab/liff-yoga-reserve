@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE 会員ページ STEP YOGA-25J-R16</title>
+  <title>DPRO YOGA LINE 会員ページ STEP YOGA-PHONE-3</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
@@ -262,6 +262,7 @@
   </main>
 
 <script>
+  // STEP YOGA-PHONE-3: 会員ページ 電話番号正規化対応
   const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
   const LIFF_ID = "2010377734-4tHMhUx6";
   const SHOP_CODE = "yoga_demo";
@@ -289,6 +290,21 @@
 
   function clean(value) {
     return String(value || "").trim();
+  }
+
+
+  // STEP YOGA-PHONE-3: 電話番号を保存・検索前に統一する
+  function normalizePhone(value) {
+    let text = String(value ?? "").trim();
+    if (!text) return "";
+    text = text.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+    text = text.replace(/[＋]/g, "+");
+    text = text.replace(/[ー－―−‐‑‒–—ｰ]/g, "-");
+    text = text.replace(/[^0-9+]/g, "");
+    if (text.startsWith("+81")) text = "0" + text.slice(3);
+    text = text.replace(/\D/g, "");
+    if (text.startsWith("81") && text.length >= 11) text = "0" + text.slice(2);
+    return text;
   }
 
   function normalizeTime(value, fallback = "") {
@@ -458,7 +474,7 @@
     const params = new URLSearchParams(location.search);
     lineUserId = clean(params.get("line_user_id") || params.get("line_id") || "");
     lineDisplayName = clean(params.get("line_display_name") || params.get("display_name") || "");
-    demoPhone = clean(params.get("phone") || "");
+    demoPhone = normalizePhone(params.get("phone") || "");
 
     if (!lineUserId && typeof liff !== "undefined" && LIFF_ID && !LIFF_ID.includes("YOUR")) {
       try {
@@ -487,24 +503,27 @@
   }
 
   async function searchByPhoneDemo() {
-    const phone = clean($("demo-phone").value);
+    const phone = normalizePhone($("demo-phone").value);
     if (!phone) {
       alert("電話番号を入力してください。");
       return;
     }
     demoPhone = phone;
+    const inputPhone = $("demo-phone");
+    if (inputPhone) inputPhone.value = phone;
     lineUserId = "";
     await loadMember();
   }
 
   async function searchByPhoneDemoFromNotFound() {
     const input = $("demo-phone-not-found");
-    const phone = clean(input ? input.value : "");
+    const phone = normalizePhone(input ? input.value : "");
     if (!phone) {
       alert("電話番号を入力してください。");
       return;
     }
     demoPhone = phone;
+    if (input) input.value = phone;
     lineUserId = "";
     setConnectionBadge("デモ電話確認中", "amber");
     await loadMember();
@@ -516,7 +535,7 @@
     try {
       const params = lineUserId
         ? { line_user_id: lineUserId, line_id: lineUserId }
-        : { phone: demoPhone, demo: "1", allow_phone: "1" };
+        : { phone: normalizePhone(demoPhone), demo: "1", allow_phone: "1" };
 
       const data = await apiGet("/api/public/customer", params);
       memberData = data;
@@ -529,7 +548,7 @@
 
       const customer = data.customer || {};
       if (!lineUserId && customer.line_id) lineUserId = customer.line_id;
-      if (!demoPhone && customer.phone) demoPhone = customer.phone;
+      if (!demoPhone && customer.phone) demoPhone = normalizePhone(customer.phone);
 
       setConnectionBadge(data.auth_method === "line_user_id" ? "LINE本人確認済み" : "デモ電話確認", data.auth_method === "line_user_id" ? "green" : "amber");
       renderMember(data);
@@ -552,7 +571,7 @@
     const followups = Array.isArray(data.followups) ? data.followups : [];
 
     $("member-name").textContent = customer.name || customer.customer_name || lineDisplayName || "お客様";
-    $("member-sub").textContent = customer.phone ? `電話番号：${customer.phone}` : "LINE会員";
+    $("member-sub").textContent = customer.phone ? `電話番号：${normalizePhone(customer.phone)}` : "LINE会員";
     $("reservation-count").textContent = `${reservations.length}件`;
     $("followup-count").textContent = `${followups.filter(f => !isHandledFollowup(f)).length}件`;
 
@@ -611,7 +630,7 @@
     const goal = normalizeGoal(customer.primary_goal);
     const items = [
       ["お名前", customer.name || customer.customer_name || "-"],
-      ["電話番号", customer.phone || "-"],
+      ["電話番号", normalizePhone(customer.phone) || "-"],
       ["ヨガ経験", customer.yoga_experience || "未登録"],
       ["目的", goal || "未登録"],
       ["通うペース", customer.target_pace || "未登録"],
@@ -848,7 +867,7 @@
     try {
       await apiPost("/api/reservations/change", {
         line_user_id: lineUserId || customer.line_id || "",
-        phone: demoPhone || customer.phone || "",
+        phone: normalizePhone(demoPhone || customer.phone || ""),
         customer_name: customer.name || lineDisplayName || "リピート顧客",
         reservation_id: selectedChangeReservation.id || "",
         previous_reservation_date: selectedChangeReservation.reservation_date,
@@ -891,7 +910,7 @@
     try {
       await apiPost("/api/reservations/cancel", {
         line_user_id: lineUserId || customer.line_id || "",
-        phone: demoPhone || customer.phone || "",
+        phone: normalizePhone(demoPhone || customer.phone || ""),
         customer_name: customer.name || lineDisplayName || "",
         reservation_id: target.id || "",
         reservation_date: target.reservation_date,
