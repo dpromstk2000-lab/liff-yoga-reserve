@@ -20,6 +20,10 @@
   <h1 class="text-lg font-black tracking-wider" id="header-shop-name">Private Yoga Studio</h1>
   <p class="text-xs text-emerald-100 mt-1" id="header-subtitle">ご予約・事前カウンセリング</p>
 </header>
+  <div id="embed-demo-banner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-3 text-center text-xs font-bold text-amber-900">
+    製品紹介用デモ表示です。画面操作は試せますが、予約データは送信されません。
+  </div>
+
 
 <main class="max-w-md mx-auto p-4 space-y-6">
 
@@ -293,6 +297,11 @@
 <script>
   // STEP YOGA-PHONE-3: お客様予約画面 電話番号正規化対応
   const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
+
+  // PHASE 2-R5-R1: 製品紹介サイト埋め込み専用デモモード
+  const PAGE_PARAMS = new URLSearchParams(window.location.search);
+  const IS_EMBED_DEMO = PAGE_PARAMS.get("embed_demo") === "1";
+
   const LIFF_ID = "2010377734-4tHMhUx6";
   const SHOP_CODE = "yoga_demo";
 
@@ -909,6 +918,28 @@
       await Promise.all([loadShopStatus(), loadServices()]);
       await loadAvailableDays();
 
+      if (IS_EMBED_DEMO) {
+        // 製品サイト内ではLINEログインを行わず、予約フォームを安全に表示する。
+        lineUserId = "embed_demo_user";
+        lineDisplayName = "デモ表示";
+        isExisting = false;
+        existingCustomerData = null;
+        activeReservations = [];
+
+        document.getElementById("embed-demo-banner").classList.remove("hidden");
+        document.getElementById("booking-form").classList.remove("hidden");
+        document.getElementById("survey-section").classList.remove("hidden");
+        document.getElementById("current-reservation-section").classList.add("hidden");
+        document.getElementById("no-current-reservation-section").classList.add("hidden");
+        document.getElementById("header-subtitle").innerText = "製品紹介デモ";
+
+        const nameInput = document.getElementById("name");
+        const phoneInput = document.getElementById("phone");
+        if (nameInput && !nameInput.value) nameInput.value = "デモ 太郎";
+        if (phoneInput && !phoneInput.value) phoneInput.value = "09012345678";
+        return;
+      }
+
       await liff.init({ liffId: LIFF_ID });
 
       if (!liff.isLoggedIn()) {
@@ -1242,6 +1273,11 @@
   }
 
   async function submitReservation() {
+    if (IS_EMBED_DEMO) {
+      alert("これは製品紹介用デモです。実際の予約データは送信されません。");
+      return;
+    }
+
     if (isSubmitting) return;
 
     const btn = document.getElementById("confirm-submit-btn");
