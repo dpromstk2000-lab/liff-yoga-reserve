@@ -1,0 +1,406 @@
+{
+  "ok": true,
+  "overall": "ATTENTION",
+  "step": "YOGA-NEXT-1",
+  "checked_at_utc": "2026-07-23T07:52:41.701625+00:00",
+  "checked_at_jst": "2026-07-23T16:52:41.701625+09:00",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "branch": "main",
+  "run_id": "29989511888",
+  "baseline_sha": "ddb2e9d922ce3c816336b7aef7fbe3f14817e6e8",
+  "baseline_reason": "workflow_upload_parent",
+  "backup_tag": "dpro-yoga-next-baseline-20260723",
+  "backup_tag_status": "created",
+  "required_files": [
+    "index.html",
+    "owner.html",
+    "owner-ipad.html",
+    "member.html"
+  ],
+  "optional_next_standard_files": {
+    "config.js": "NOT_YET_CREATED",
+    "system-check.html": "NOT_YET_CREATED",
+    "staff.html": "NOT_YET_CREATED",
+    "worker.js": "NOT_YET_CREATED"
+  },
+  "required_file_hash_checks": {
+    "index.html": "UNCHANGED",
+    "owner.html": "UNCHANGED",
+    "owner-ipad.html": "UNCHANGED",
+    "member.html": "UNCHANGED"
+  },
+  "html_checks": {
+    "index.html": {
+      "html_parse": "OK",
+      "id_count": 48,
+      "duplicate_ids": [],
+      "literal_id_reference_count": 48,
+      "literal_id_references_not_found": [],
+      "inline_javascript": [
+        {
+          "inline_script": 3,
+          "status": "OK",
+          "detail": ""
+        }
+      ],
+      "external_scripts": [
+        "https://cdn.tailwindcss.com",
+        "https://static.line-scdn.net/liff/edge/2/sdk.js"
+      ],
+      "api_paths": [
+        "/api/public/available-days",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status",
+        "/api/reservations/cancel",
+        "/api/reservations/change",
+        "/api/reservations/create"
+      ],
+      "bytes": 66539
+    },
+    "member.html": {
+      "html_parse": "OK",
+      "id_count": 32,
+      "duplicate_ids": [],
+      "literal_id_reference_count": 27,
+      "literal_id_references_not_found": [],
+      "inline_javascript": [
+        {
+          "inline_script": 3,
+          "status": "OK",
+          "detail": ""
+        }
+      ],
+      "external_scripts": [
+        "https://cdn.tailwindcss.com",
+        "https://static.line-scdn.net/liff/edge/2/sdk.js"
+      ],
+      "api_paths": [
+        "/api/line/log-copy",
+        "/api/public/available-days",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status",
+        "/api/reservations/cancel",
+        "/api/reservations/change"
+      ],
+      "bytes": 48065
+    },
+    "owner-ipad.html": {
+      "html_parse": "OK",
+      "id_count": 36,
+      "duplicate_ids": [],
+      "literal_id_reference_count": 24,
+      "literal_id_references_not_found": [],
+      "inline_javascript": [
+        {
+          "inline_script": 3,
+          "status": "OK",
+          "detail": ""
+        }
+      ],
+      "external_scripts": [
+        "https://cdn.tailwindcss.com",
+        "https://unpkg.com/lucide@latest"
+      ],
+      "api_paths": [
+        "/api/admin/customers/search",
+        "/api/admin/day",
+        "/api/admin/demo/prepare",
+        "/api/admin/followups",
+        "/api/admin/followups/update-status",
+        "/api/admin/reservations/manual-create",
+        "/api/admin/summary",
+        "/api/health",
+        "/api/line/log-copy",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status"
+      ],
+      "bytes": 48618
+    },
+    "owner.html": {
+      "html_parse": "OK",
+      "id_count": 68,
+      "duplicate_ids": [],
+      "literal_id_reference_count": 64,
+      "literal_id_references_not_found": [
+        "dpro-toast-area"
+      ],
+      "inline_javascript": [
+        {
+          "inline_script": 3,
+          "status": "OK",
+          "detail": ""
+        }
+      ],
+      "external_scripts": [
+        "https://cdn.tailwindcss.com",
+        "https://unpkg.com/lucide@latest"
+      ],
+      "api_paths": [
+        "/api/admin/customers/search",
+        "/api/admin/day",
+        "/api/admin/demo/prepare",
+        "/api/admin/followups/update-status",
+        "/api/admin/reservations/manual-create",
+        "/api/admin/services",
+        "/api/admin/services/save",
+        "/api/admin/settings",
+        "/api/admin/settings/update",
+        "/api/admin/summary",
+        "/api/line/log-copy",
+        "/api/public/available-times",
+        "/api/public/services",
+        "/api/public/status"
+      ],
+      "bytes": 96033
+    }
+  },
+  "javascript_file_checks": {},
+  "existing_feature_checks": {
+    "customer_reservation_create": {
+      "status": "OK",
+      "evidence": [
+        "/api/reservations/create",
+        "submitLegacyReservation"
+      ]
+    },
+    "reservation_change": {
+      "status": "OK",
+      "evidence": [
+        "/api/reservations/change",
+        "submitChangeReservation",
+        "startChangeReservation"
+      ]
+    },
+    "reservation_cancel": {
+      "status": "OK",
+      "evidence": [
+        "/api/reservations/cancel",
+        "cancelReservationFromList",
+        "cancelReservation"
+      ]
+    },
+    "current_reservation_display": {
+      "status": "OK",
+      "evidence": [
+        "renderCurrentReservations",
+        "現在のご予約"
+      ]
+    },
+    "owner_today_dashboard": {
+      "status": "OK",
+      "evidence": [
+        "/api/admin/day",
+        "今日やること"
+      ]
+    },
+    "owner_summary": {
+      "status": "OK",
+      "evidence": [
+        "/api/admin/summary",
+        "kpi-today"
+      ]
+    },
+    "customer_search": {
+      "status": "OK",
+      "evidence": [
+        "/api/admin/customers/search",
+        "顧客検索"
+      ]
+    },
+    "manual_phone_store_booking": {
+      "status": "OK",
+      "evidence": [
+        "openManualBookingModal",
+        "電話・店頭予約"
+      ]
+    },
+    "followup_management": {
+      "status": "OK",
+      "evidence": [
+        "markFollowupHandled",
+        "フォロー対象"
+      ]
+    },
+    "owner_ipad_screen": {
+      "status": "OK",
+      "evidence": [
+        "iPad店頭画面",
+        "screen-today"
+      ]
+    },
+    "member_page": {
+      "status": "OK",
+      "evidence": [
+        "ヨガ会員ページ",
+        "member-section"
+      ]
+    },
+    "phone_normalization": {
+      "status": "OK",
+      "evidence": [
+        "normalizePhone",
+        "+81"
+      ]
+    },
+    "past_date_guard": {
+      "status": "OK",
+      "evidence": [
+        "過去日は予約不可",
+        "isPastDate"
+      ]
+    },
+    "reservation_limit_guard": {
+      "status": "OK",
+      "evidence": [
+        "max_active_reservations_per_customer",
+        "max_reservations_per_slot"
+      ]
+    },
+    "safe_embed_demo": {
+      "status": "OK",
+      "evidence": [
+        "IS_EMBED_DEMO",
+        "実際の予約データは送信されません"
+      ]
+    },
+    "line_identity_priority": {
+      "status": "OK",
+      "evidence": [
+        "LINE IDで本人確認",
+        "本番ではLINE"
+      ]
+    },
+    "settings_and_service_management": {
+      "status": "OK",
+      "evidence": [
+        "openSettingsModal",
+        "openServicesModal"
+      ]
+    },
+    "individual_message_confirmation": {
+      "status": "OK",
+      "evidence": [
+        "copyAndLogCurrentMessage",
+        "文面の確認・編集・コピー"
+      ]
+    }
+  },
+  "yoga_business_logic_checks": {
+    "thirty_minute_slots": {
+      "status": "OK",
+      "evidence": [
+        "reservation_slot_minutes: 30",
+        "30分固定",
+        "30分単位"
+      ]
+    },
+    "trial_regular_ticket_services": {
+      "status": "OK",
+      "evidence": [
+        "初回体験レッスン",
+        "パーソナルヨガ",
+        "回数券利用"
+      ]
+    },
+    "initial_consultation": {
+      "status": "OK",
+      "evidence": [
+        "yoga_experience",
+        "primary_goal",
+        "target_pace"
+      ]
+    },
+    "capacity_management": {
+      "status": "OK",
+      "evidence": [
+        "max_reservations_per_day",
+        "max_reservations_per_slot"
+      ]
+    },
+    "change_and_cancel": {
+      "status": "OK",
+      "evidence": [
+        "予約変更",
+        "キャンセル"
+      ]
+    },
+    "owner_followup": {
+      "status": "OK",
+      "evidence": [
+        "体験後",
+        "次回予約",
+        "回数券"
+      ]
+    }
+  },
+  "api_paths_detected": [
+    "/api/admin/customers/search",
+    "/api/admin/day",
+    "/api/admin/demo/prepare",
+    "/api/admin/followups",
+    "/api/admin/followups/update-status",
+    "/api/admin/reservations/manual-create",
+    "/api/admin/services",
+    "/api/admin/services/save",
+    "/api/admin/settings",
+    "/api/admin/settings/update",
+    "/api/admin/summary",
+    "/api/health",
+    "/api/line/log-copy",
+    "/api/public/available-days",
+    "/api/public/available-times",
+    "/api/public/customer",
+    "/api/public/services",
+    "/api/public/status",
+    "/api/reservations/cancel",
+    "/api/reservations/change",
+    "/api/reservations/create"
+  ],
+  "public_management_information_findings": [],
+  "owner_admin_code_findings": [
+    {
+      "file": "owner.html",
+      "findings": [
+        "管理コード入力欄の初期値が1234"
+      ]
+    },
+    {
+      "file": "owner-ipad.html",
+      "findings": [
+        "管理コード入力欄の初期値が1234",
+        "管理コード削除ボタンを静的確認できない"
+      ]
+    }
+  ],
+  "file_count_at_baseline": 4,
+  "largest_file_at_baseline": {
+    "path": "owner.html",
+    "bytes": 96033,
+    "sha256": "0d7641c3b4bdc12eb273dbe2939108ff835f4c4e3e2d7f983f5c4838efa848d0"
+  },
+  "files_over_1mb": [],
+  "worker_source_files_in_repo": [],
+  "supabase_sql_files_in_repo": [],
+  "changes_from_baseline_to_workflow_upload": [],
+  "worker_changed": false,
+  "supabase_changed": false,
+  "api_changed": false,
+  "screen_function_changed": false,
+  "existing_data_changed": false,
+  "critical_errors": [],
+  "warnings": [
+    "next_standard_file_not_yet_created:config.js",
+    "next_standard_file_not_yet_created:system-check.html",
+    "next_standard_file_not_yet_created:staff.html",
+    "next_standard_file_not_yet_created:worker.js",
+    "literal_id_reference_not_found:owner.html:dpro-toast-area",
+    "owner_admin_code_next_improvement:owner.html",
+    "owner_admin_code_next_improvement:owner-ipad.html"
+  ]
+}

@@ -1,0 +1,65 @@
+system_name: "DPRO ヨガ LINE"
+standard: "DPRO NEXT"
+step_name: "正常版保護・現状基準台帳"
+current_step: "YOGA-NEXT-1-COMPLETE"
+previous_step: "NONE_INITIAL_BASELINE"
+next_step: "YOGA-NEXT-2"
+completed_at_jst: "2026-07-23 16:52:41 +0900"
+baseline_sha: "ddb2e9d922ce3c816336b7aef7fbe3f14817e6e8"
+backup_tag: "dpro-yoga-next-baseline-20260723"
+backup_tag_status: "created"
+target_files:
+  - "index.html"
+  - "owner.html"
+  - "owner-ipad.html"
+  - "member.html"
+optional_next_standard_files:
+  config.js: "NOT_YET_CREATED"
+  system-check.html: "NOT_YET_CREATED"
+  staff.html: "NOT_YET_CREATED"
+  worker.js: "NOT_YET_CREATED"
+generated_files:
+  - "dpro-next-ledger.yml"
+  - "dpro-next-baseline.json"
+  - "dpro-next-file-manifest.txt"
+  - "dpro-next-api-baseline.txt"
+  - "dpro-next-check-result.json"
+checks:
+  required_files: "OK"
+  yml_syntax: "OK"
+  html_syntax: "OK"
+  javascript_syntax: "OK"
+  html_id_duplicates: "OK"
+  existing_function_preservation: "OK"
+  yoga_business_logic: "OK"
+  required_screen_hash_preservation: "OK"
+  public_management_information: "OK"
+  optional_next_standard_readiness: "ATTENTION"
+  overall: "ATTENTION"
+change_record:
+  worker_changed: false
+  supabase_changed: false
+  api_changed: false
+  screen_function_changed: false
+  existing_data_changed: false
+performance_baseline:
+  all_customer_history_initial_load_detected: true
+  all_images_initial_load_detected: false
+  largest_tracked_file:
+    path: "owner.html"
+    bytes: 96033
+    sha256: "0d7641c3b4bdc12eb273dbe2939108ff835f4c4e3e2d7f983f5c4838efa848d0"
+known_risks:
+  - "system-check.htmlは未作成。YOGA-NEXT-9でDPRO NEXT一括検査画面を追加する"
+  - "config.jsは未作成。Worker URL・SHOP_CODE・LIFF IDが各HTMLへ分散している"
+  - "staff.htmlは未作成。YOGA-NEXT-6で必要性を再判定する"
+  - "Workerソースは本リポジトリ内にないため、Worker内部ロジックは公開API応答と後続system-checkで確認する"
+  - "新APIと旧action APIのフォールバックが混在しているため、後続STEPで正式APIを台帳化して重複取得を整理する"
+  - "PC・iPad管理コードUIはNEXT標準の削除ボタンと本番空欄開始へ改善が必要"
+  - "初期読込で顧客全件・旧履歴を取得する箇所は、YOGA-NEXT-2以降で遅延読込へ整理する"
+rollback:
+  method: "backup_tag"
+  tag: "dpro-yoga-next-baseline-20260723"
+  command_reference: "git checkout dpro-yoga-next-baseline-20260723"
+workflow_self_delete_after_success: true
+auto_commit_push: true

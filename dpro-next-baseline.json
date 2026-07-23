@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "system_name": "DPRO ヨガ LINE",
+  "standard": "DPRO NEXT",
+  "step": "YOGA-NEXT-1",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "default_branch": "main",
+  "baseline_sha": "ddb2e9d922ce3c816336b7aef7fbe3f14817e6e8",
+  "baseline_reason": "workflow_upload_parent",
+  "backup_tag": "dpro-yoga-next-baseline-20260723",
+  "captured_at_utc": "2026-07-23T07:52:41.701625+00:00",
+  "captured_at_jst": "2026-07-23T16:52:41.701625+09:00",
+  "files": [
+    {
+      "path": "index.html",
+      "bytes": 66539,
+      "sha256": "6eaac9c47e2be7deed2a8d8758c67d866fe07db39b8ddba6b9daf029c7f58c06"
+    },
+    {
+      "path": "member.html",
+      "bytes": 48065,
+      "sha256": "6b8668cb90a95e8f211bd5c9b39031f0f6954b6fcf64bfcdbd3bdf2bf8bbd191"
+    },
+    {
+      "path": "owner-ipad.html",
+      "bytes": 48618,
+      "sha256": "01f96cba77321cfcff3c47e92c278fc73b02f87b77e7bd29a6db3fbac741c1ea"
+    },
+    {
+      "path": "owner.html",
+      "bytes": 96033,
+      "sha256": "0d7641c3b4bdc12eb273dbe2939108ff835f4c4e3e2d7f983f5c4838efa848d0"
+    }
+  ],
+  "api_paths": [
+    "/api/admin/customers/search",
+    "/api/admin/day",
+    "/api/admin/demo/prepare",
+    "/api/admin/followups",
+    "/api/admin/followups/update-status",
+    "/api/admin/reservations/manual-create",
+    "/api/admin/services",
+    "/api/admin/services/save",
+    "/api/admin/settings",
+    "/api/admin/settings/update",
+    "/api/admin/summary",
+    "/api/health",
+    "/api/line/log-copy",
+    "/api/public/available-days",
+    "/api/public/available-times",
+    "/api/public/customer",
+    "/api/public/services",
+    "/api/public/status",
+    "/api/reservations/cancel",
+    "/api/reservations/change",
+    "/api/reservations/create"
+  ],
+  "required_screens": [
+    "index.html",
+    "owner.html",
+    "owner-ipad.html",
+    "member.html"
+  ],
+  "optional_next_standard_files": {
+    "config.js": "NOT_YET_CREATED",
+    "system-check.html": "NOT_YET_CREATED",
+    "staff.html": "NOT_YET_CREATED",
+    "worker.js": "NOT_YET_CREATED"
+  },
+  "worker_source_in_repository": false,
+  "supabase_sql_in_repository": false
+}

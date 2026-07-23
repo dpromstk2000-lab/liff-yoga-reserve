@@ -1,0 +1,35 @@
+# DPRO ヨガ LINE / API baseline
+# step=YOGA-NEXT-1
+# baseline_sha=ddb2e9d922ce3c816336b7aef7fbe3f14817e6e8
+# captured_at_jst=2026-07-23T16:52:41.701625+09:00
+
+[Detected API paths]
+/api/admin/customers/search	owner-ipad.html, owner.html
+/api/admin/day	owner-ipad.html, owner.html
+/api/admin/demo/prepare	owner-ipad.html, owner.html
+/api/admin/followups	owner-ipad.html
+/api/admin/followups/update-status	owner-ipad.html, owner.html
+/api/admin/reservations/manual-create	owner-ipad.html, owner.html
+/api/admin/services	owner.html
+/api/admin/services/save	owner.html
+/api/admin/settings	owner.html
+/api/admin/settings/update	owner.html
+/api/admin/summary	owner-ipad.html, owner.html
+/api/health	owner-ipad.html
+/api/line/log-copy	member.html, owner-ipad.html, owner.html
+/api/public/available-days	index.html, member.html
+/api/public/available-times	index.html, member.html, owner-ipad.html, owner.html
+/api/public/customer	index.html, member.html, owner-ipad.html
+/api/public/services	index.html, member.html, owner-ipad.html, owner.html
+/api/public/status	index.html, member.html, owner-ipad.html, owner.html
+/api/reservations/cancel	index.html, member.html
+/api/reservations/change	index.html, member.html
+/api/reservations/create	index.html
+
+[External Worker URLs]
+https://yoga-liff-webhook.dpromstk2000.workers.dev
+
+[Legacy API indicators]
+legacyGet=8
+legacyPost=3
+action_parameter=14

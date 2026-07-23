@@ -1,0 +1,9 @@
+# DPRO ヨガ LINE / STEP YOGA-NEXT-1
+# baseline_sha=ddb2e9d922ce3c816336b7aef7fbe3f14817e6e8
+# baseline_reason=workflow_upload_parent
+# backup_tag=dpro-yoga-next-baseline-20260723
+# sha256  bytes  path
+6eaac9c47e2be7deed2a8d8758c67d866fe07db39b8ddba6b9daf029c7f58c06     66539  index.html
+6b8668cb90a95e8f211bd5c9b39031f0f6954b6fcf64bfcdbd3bdf2bf8bbd191     48065  member.html
+01f96cba77321cfcff3c47e92c278fc73b02f87b77e7bd29a6db3fbac741c1ea     48618  owner-ipad.html
+0d7641c3b4bdc12eb273dbe2939108ff835f4c4e3e2d7f983f5c4838efa848d0     96033  owner.html
