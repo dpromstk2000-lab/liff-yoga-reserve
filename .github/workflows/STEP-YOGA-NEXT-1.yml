@@ -1,0 +1,863 @@
+name: "STEP YOGA-NEXT-1 | 正常版保護・現状基準台帳"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/STEP-YOGA-NEXT-1.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yoga-next-1-baseline
+  cancel-in-progress: false
+
+jobs:
+  baseline-protection:
+    name: "YOGA-NEXT-1 baseline protection"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      STEP_NAME: "YOGA-NEXT-1"
+      WORKFLOW_PATH: ".github/workflows/STEP-YOGA-NEXT-1.yml"
+      BACKUP_TAG: "dpro-yoga-next-baseline-20260723"
+      LEDGER_FILE: "dpro-next-ledger.yml"
+      BASELINE_FILE: "dpro-next-baseline.json"
+      MANIFEST_FILE: "dpro-next-file-manifest.txt"
+      API_BASELINE_FILE: "dpro-next-api-baseline.txt"
+      RESULT_FILE: "dpro-next-check-result.json"
+
+    steps:
+      - name: "1. Checkout full repository history"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "2. 前STEP・対象ファイル・正常版SHA確認"
+        id: preflight
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          required_files=(
+            "index.html"
+            "owner.html"
+            "owner-ipad.html"
+            "member.html"
+          )
+
+          missing=0
+          for file in "${required_files[@]}"; do
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::現行ヨガ版の必須画面がありません。"
+              missing=1
+            fi
+          done
+
+          if [[ ! -f "$WORKFLOW_PATH" ]]; then
+            echo "::error file=$WORKFLOW_PATH::STEP YMLが所定位置にありません。"
+            missing=1
+          fi
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+          mapfile -t head_changed < <(git diff-tree --no-commit-id --name-only -r HEAD)
+          baseline_sha="$(git rev-parse HEAD)"
+          baseline_reason="current_head"
+
+          if [[ "${#head_changed[@]}" -eq 1 && "${head_changed[0]}" == "$WORKFLOW_PATH" ]]; then
+            if git rev-parse HEAD^ >/dev/null 2>&1; then
+              baseline_sha="$(git rev-parse HEAD^)"
+              baseline_reason="workflow_upload_parent"
+            fi
+          fi
+
+          echo "BASELINE_SHA=$baseline_sha" >> "$GITHUB_ENV"
+          echo "BASELINE_REASON=$baseline_reason" >> "$GITHUB_ENV"
+          echo "baseline_sha=$baseline_sha" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## STEP YOGA-NEXT-1"
+            echo ""
+            echo "- STEP名: 正常版保護・現状基準台帳"
+            echo "- 前STEP: 初回基準台帳のためなし"
+            echo "- 必須画面: index.html / owner.html / owner-ipad.html / member.html"
+            echo "- 正常版基準SHA: \`$baseline_sha\`"
+            echo "- 基準判定: \`$baseline_reason\`"
+            echo "- このSTEPでは既存画面・Worker・Supabase・APIを変更しません"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "3. 変更前バックアップタグ作成"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$BACKUP_TAG" >/dev/null 2>&1; then
+            existing_sha="$(git rev-list -n 1 "$BACKUP_TAG")"
+            if [[ "$existing_sha" != "$BASELINE_SHA" ]]; then
+              echo "::error::既存タグ $BACKUP_TAG は別SHAを指しています。既存=$existing_sha / 今回=$BASELINE_SHA"
+              exit 1
+            fi
+            tag_status="existing_same_sha"
+          else
+            git tag -a "$BACKUP_TAG" "$BASELINE_SHA" -m "DPRO ヨガ LINE before DPRO NEXT"
+            git push origin "$BACKUP_TAG"
+            tag_status="created"
+          fi
+
+          echo "BACKUP_TAG_STATUS=$tag_status" >> "$GITHUB_ENV"
+
+          {
+            echo "- 変更前バックアップタグ: \`$BACKUP_TAG\`"
+            echo "- タグ状態: \`$tag_status\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "4. YML構文検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ruby -e 'require "yaml"; YAML.load_file(ARGV[0], aliases: true); puts "YAML syntax OK"' "$WORKFLOW_PATH"
+
+      - name: "5. 現状基準台帳・構文・ID・既存機能・ヨガ業務ロジック検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import collections
+          import datetime as dt
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import tempfile
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          ROOT = Path(".")
+          WORKFLOW_PATH = Path(os.environ["WORKFLOW_PATH"])
+          BACKUP_TAG = os.environ["BACKUP_TAG"]
+          BASELINE_SHA = os.environ["BASELINE_SHA"]
+          BASELINE_REASON = os.environ["BASELINE_REASON"]
+          TAG_STATUS = os.environ.get("BACKUP_TAG_STATUS", "unknown")
+          STEP_NAME = os.environ["STEP_NAME"]
+          LEDGER_FILE = Path(os.environ["LEDGER_FILE"])
+          BASELINE_FILE = Path(os.environ["BASELINE_FILE"])
+          MANIFEST_FILE = Path(os.environ["MANIFEST_FILE"])
+          API_BASELINE_FILE = Path(os.environ["API_BASELINE_FILE"])
+          RESULT_FILE = Path(os.environ["RESULT_FILE"])
+
+          REQUIRED = [
+              "index.html",
+              "owner.html",
+              "owner-ipad.html",
+              "member.html",
+          ]
+
+          OPTIONAL_NEXT_STANDARD = [
+              "config.js",
+              "system-check.html",
+              "staff.html",
+              "worker.js",
+          ]
+
+          GENERATED = {
+              str(LEDGER_FILE),
+              str(BASELINE_FILE),
+              str(MANIFEST_FILE),
+              str(API_BASELINE_FILE),
+              str(RESULT_FILE),
+          }
+
+          class Inspector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.ids: list[str] = []
+                  self.scripts: list[str] = []
+                  self.script_srcs: list[str] = []
+                  self._in_script = False
+                  self._script_type = ""
+                  self._script_parts: list[str] = []
+
+              def handle_starttag(self, tag, attrs):
+                  attrs_dict = dict(attrs)
+                  element_id = attrs_dict.get("id")
+                  if element_id:
+                      self.ids.append(element_id)
+                  if tag.lower() == "script":
+                      self._in_script = True
+                      self._script_type = (attrs_dict.get("type") or "").lower()
+                      self._script_parts = []
+                      src = attrs_dict.get("src")
+                      if src:
+                          self.script_srcs.append(src)
+
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self._in_script:
+                      if self._script_type in ("", "text/javascript", "application/javascript", "module"):
+                          self.scripts.append("\n".join(self._script_parts))
+                      self._in_script = False
+                      self._script_type = ""
+                      self._script_parts = []
+
+              def handle_data(self, data):
+                  if self._in_script:
+                      self._script_parts.append(data)
+
+          def run(*args: str, check: bool = True) -> subprocess.CompletedProcess:
+              return subprocess.run(args, text=True, capture_output=True, check=check)
+
+          def git_bytes_at(ref: str, path: str) -> bytes:
+              cp = subprocess.run(
+                  ["git", "show", f"{ref}:{path}"],
+                  capture_output=True,
+                  check=True,
+              )
+              return cp.stdout
+
+          def tracked_files_at(ref: str) -> list[str]:
+              cp = run("git", "ls-tree", "-r", "--name-only", ref)
+              return [line.strip() for line in cp.stdout.splitlines() if line.strip()]
+
+          def sha256(data: bytes) -> str:
+              return hashlib.sha256(data).hexdigest()
+
+          def yaml_scalar(value):
+              if value is None:
+                  return "null"
+              if isinstance(value, bool):
+                  return "true" if value else "false"
+              if isinstance(value, (int, float)):
+                  return str(value)
+              return json.dumps(str(value), ensure_ascii=False)
+
+          def to_yaml(value, indent=0):
+              pad = " " * indent
+              lines = []
+              if isinstance(value, dict):
+                  for key, item in value.items():
+                      if isinstance(item, (dict, list)):
+                          lines.append(f"{pad}{key}:")
+                          lines.extend(to_yaml(item, indent + 2))
+                      else:
+                          lines.append(f"{pad}{key}: {yaml_scalar(item)}")
+              elif isinstance(value, list):
+                  if not value:
+                      lines.append(f"{pad}[]")
+                  for item in value:
+                      if isinstance(item, (dict, list)):
+                          lines.append(f"{pad}-")
+                          lines.extend(to_yaml(item, indent + 2))
+                      else:
+                          lines.append(f"{pad}- {yaml_scalar(item)}")
+              else:
+                  lines.append(f"{pad}{yaml_scalar(value)}")
+              return lines
+
+          def repo_files(pattern: str) -> list[Path]:
+              return sorted(
+                  p for p in ROOT.rglob(pattern)
+                  if p.is_file()
+                  and ".git" not in p.parts
+                  and "node_modules" not in p.parts
+              )
+
+          now_utc = dt.datetime.now(dt.timezone.utc)
+          jst = dt.timezone(dt.timedelta(hours=9))
+          now_jst = now_utc.astimezone(jst)
+
+          baseline_files = tracked_files_at(BASELINE_SHA)
+          manifest_rows = []
+          for path in baseline_files:
+              data = git_bytes_at(BASELINE_SHA, path)
+              manifest_rows.append({
+                  "path": path,
+                  "bytes": len(data),
+                  "sha256": sha256(data),
+              })
+
+          manifest_lines = [
+              "# DPRO ヨガ LINE / STEP YOGA-NEXT-1",
+              f"# baseline_sha={BASELINE_SHA}",
+              f"# baseline_reason={BASELINE_REASON}",
+              f"# backup_tag={BACKUP_TAG}",
+              "# sha256  bytes  path",
+          ]
+          for row in manifest_rows:
+              manifest_lines.append(f'{row["sha256"]}  {row["bytes"]:>8}  {row["path"]}')
+          MANIFEST_FILE.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
+
+          critical_errors: list[str] = []
+          warnings: list[str] = []
+          html_results = {}
+          js_results = {}
+          all_api_paths: set[str] = set()
+          api_evidence: dict[str, set[str]] = collections.defaultdict(set)
+          feature_source_parts: list[str] = []
+          public_admin_findings = []
+          owner_admin_findings = []
+
+          for required in REQUIRED:
+              if not Path(required).is_file():
+                  critical_errors.append(f"missing_required_file:{required}")
+
+          optional_status = {}
+          for optional in OPTIONAL_NEXT_STANDARD:
+              exists = Path(optional).is_file()
+              optional_status[optional] = "EXISTS" if exists else "NOT_YET_CREATED"
+              if not exists:
+                  warnings.append(f"next_standard_file_not_yet_created:{optional}")
+
+          for html_path in repo_files("*.html"):
+              text = html_path.read_text(encoding="utf-8-sig")
+              parser = Inspector()
+              try:
+                  parser.feed(text)
+                  parser.close()
+                  html_parse = "OK"
+              except Exception as exc:
+                  html_parse = "NG"
+                  critical_errors.append(f"html_parse:{html_path}:{exc}")
+
+              id_counts = collections.Counter(parser.ids)
+              duplicate_ids = sorted([item for item, count in id_counts.items() if count > 1])
+              if duplicate_ids:
+                  critical_errors.append(f"duplicate_html_id:{html_path}:{','.join(duplicate_ids)}")
+
+              literal_refs = sorted(set(
+                  re.findall(r'getElementById\(\s*["\']([^"\']+)["\']\s*\)', text)
+                  + re.findall(r'\$\(\s*["\']([^"\']+)["\']\s*\)', text)
+              ))
+              missing_refs = sorted(set(literal_refs) - set(parser.ids))
+              if missing_refs:
+                  warnings.append(f"literal_id_reference_not_found:{html_path}:{','.join(missing_refs)}")
+
+              inline_js_checks = []
+              for index, script in enumerate(parser.scripts, start=1):
+                  if not script.strip():
+                      continue
+                  temp_path = None
+                  try:
+                      with tempfile.NamedTemporaryFile(
+                          mode="w",
+                          encoding="utf-8",
+                          suffix=f"-{html_path.stem}-{index}.js",
+                          delete=False,
+                      ) as tmp:
+                          tmp.write(script)
+                          temp_path = tmp.name
+                      cp = subprocess.run(
+                          ["node", "--check", temp_path],
+                          text=True,
+                          capture_output=True,
+                      )
+                      status = "OK" if cp.returncode == 0 else "NG"
+                      inline_js_checks.append({
+                          "inline_script": index,
+                          "status": status,
+                          "detail": (cp.stderr or cp.stdout).strip()[:1600],
+                      })
+                      if cp.returncode != 0:
+                          critical_errors.append(f"javascript_syntax:{html_path}:inline_script_{index}")
+                  finally:
+                      if temp_path:
+                          Path(temp_path).unlink(missing_ok=True)
+
+              api_paths = sorted(set(re.findall(r'["\'](/api/[A-Za-z0-9_./?=&-]+)', text)))
+              for api_path in api_paths:
+                  all_api_paths.add(api_path)
+                  api_evidence[api_path].add(str(html_path))
+
+              feature_source_parts.append(f"\n/* FILE:{html_path} */\n{text}")
+              html_results[str(html_path)] = {
+                  "html_parse": html_parse,
+                  "id_count": len(parser.ids),
+                  "duplicate_ids": duplicate_ids,
+                  "literal_id_reference_count": len(literal_refs),
+                  "literal_id_references_not_found": missing_refs,
+                  "inline_javascript": inline_js_checks,
+                  "external_scripts": parser.script_srcs,
+                  "api_paths": api_paths,
+                  "bytes": html_path.stat().st_size,
+              }
+
+          for js_path in repo_files("*.js"):
+              cp = subprocess.run(
+                  ["node", "--check", str(js_path)],
+                  text=True,
+                  capture_output=True,
+              )
+              status = "OK" if cp.returncode == 0 else "NG"
+              js_results[str(js_path)] = {
+                  "status": status,
+                  "detail": (cp.stderr or cp.stdout).strip()[:1600],
+                  "bytes": js_path.stat().st_size,
+              }
+              if cp.returncode != 0:
+                  critical_errors.append(f"javascript_syntax:{js_path}")
+              text = js_path.read_text(encoding="utf-8-sig")
+              api_paths = sorted(set(re.findall(r'["\'](/api/[A-Za-z0-9_./?=&-]+)', text)))
+              for api_path in api_paths:
+                  all_api_paths.add(api_path)
+                  api_evidence[api_path].add(str(js_path))
+              feature_source_parts.append(f"\n/* FILE:{js_path} */\n{text}")
+
+          feature_source = "\n".join(feature_source_parts)
+
+          core_features = {
+              "customer_reservation_create": [
+                  "/api/reservations/create",
+                  "submitLegacyReservation",
+              ],
+              "reservation_change": [
+                  "/api/reservations/change",
+                  "submitChangeReservation",
+                  "startChangeReservation",
+              ],
+              "reservation_cancel": [
+                  "/api/reservations/cancel",
+                  "cancelReservationFromList",
+                  "cancelReservation",
+              ],
+              "current_reservation_display": [
+                  "renderCurrentReservations",
+                  "現在のご予約",
+              ],
+              "owner_today_dashboard": [
+                  "/api/admin/day",
+                  "今日やること",
+              ],
+              "owner_summary": [
+                  "/api/admin/summary",
+                  "kpi-today",
+              ],
+              "customer_search": [
+                  "/api/admin/customers/search",
+                  "顧客検索",
+              ],
+              "manual_phone_store_booking": [
+                  "openManualBookingModal",
+                  "電話・店頭予約",
+              ],
+              "followup_management": [
+                  "markFollowupHandled",
+                  "フォロー対象",
+              ],
+              "owner_ipad_screen": [
+                  "iPad店頭画面",
+                  "screen-today",
+              ],
+              "member_page": [
+                  "ヨガ会員ページ",
+                  "member-section",
+              ],
+              "phone_normalization": [
+                  "normalizePhone",
+                  "+81",
+              ],
+              "past_date_guard": [
+                  "過去日は予約不可",
+                  "isPastDate",
+              ],
+              "reservation_limit_guard": [
+                  "max_active_reservations_per_customer",
+                  "max_reservations_per_slot",
+              ],
+              "safe_embed_demo": [
+                  "IS_EMBED_DEMO",
+                  "実際の予約データは送信されません",
+              ],
+              "line_identity_priority": [
+                  "LINE IDで本人確認",
+                  "本番ではLINE",
+              ],
+              "settings_and_service_management": [
+                  "openSettingsModal",
+                  "openServicesModal",
+              ],
+              "individual_message_confirmation": [
+                  "copyAndLogCurrentMessage",
+                  "文面の確認・編集・コピー",
+              ],
+          }
+
+          feature_checks = {}
+          for key, markers in core_features.items():
+              evidence = [marker for marker in markers if marker in feature_source]
+              status = "OK" if evidence else "NG"
+              feature_checks[key] = {"status": status, "evidence": evidence}
+              if status == "NG":
+                  critical_errors.append(f"existing_feature_missing:{key}")
+
+          yoga_logic_markers = {
+              "thirty_minute_slots": ["reservation_slot_minutes: 30", "30分固定", "30分単位"],
+              "trial_regular_ticket_services": ["初回体験レッスン", "パーソナルヨガ", "回数券利用"],
+              "initial_consultation": ["yoga_experience", "primary_goal", "target_pace"],
+              "capacity_management": ["max_reservations_per_day", "max_reservations_per_slot"],
+              "change_and_cancel": ["予約変更", "キャンセル"],
+              "owner_followup": ["体験後", "次回予約", "回数券"],
+          }
+          yoga_logic_checks = {}
+          for key, markers in yoga_logic_markers.items():
+              evidence = [marker for marker in markers if marker in feature_source]
+              status = "OK" if evidence else "NG"
+              yoga_logic_checks[key] = {"status": status, "evidence": evidence}
+              if status == "NG":
+                  critical_errors.append(f"yoga_business_logic_missing:{key}")
+
+          for public_path in ["index.html", "member.html"]:
+              path = Path(public_path)
+              if not path.exists():
+                  continue
+              text = path.read_text(encoding="utf-8-sig")
+              findings = []
+              if re.search(r'(/api/admin/|admin_code|ADMIN_TOKEN)', text, flags=re.I):
+                  findings.append("管理用APIまたは管理コード識別子が公開画面に含まれる可能性")
+              if re.search(r'(adminCode|admin_code)\s*[:=]\s*["\']1234["\']', text):
+                  findings.append("実行時管理コード1234の直書き")
+              if findings:
+                  public_admin_findings.append({"file": public_path, "findings": findings})
+                  critical_errors.append(f"public_management_information:{public_path}")
+
+          for owner_path in ["owner.html", "owner-ipad.html"]:
+              path = Path(owner_path)
+              if not path.exists():
+                  continue
+              text = path.read_text(encoding="utf-8-sig")
+              findings = []
+              if re.search(r'<input[^>]+admin-code[^>]+value=["\']1234["\']', text, flags=re.I):
+                  findings.append("管理コード入力欄の初期値が1234")
+              if not re.search(r'(clear|delete|remove).{0,40}(AdminCode|admin.code)|コード削除|削除', text, flags=re.I | re.S):
+                  findings.append("管理コード削除ボタンを静的確認できない")
+              if findings:
+                  owner_admin_findings.append({"file": owner_path, "findings": findings})
+                  warnings.append(f"owner_admin_code_next_improvement:{owner_path}")
+
+          baseline_to_head = run(
+              "git", "diff", "--name-only", f"{BASELINE_SHA}..HEAD", check=True
+          ).stdout.splitlines()
+
+          app_changes = sorted(
+              path for path in baseline_to_head
+              if path != str(WORKFLOW_PATH) and path not in GENERATED
+          )
+
+          required_hash_checks = {}
+          for required in REQUIRED:
+              current = Path(required)
+              if not current.exists():
+                  required_hash_checks[required] = "MISSING"
+                  continue
+              baseline_data = git_bytes_at(BASELINE_SHA, required)
+              current_data = current.read_bytes()
+              same = sha256(baseline_data) == sha256(current_data)
+              required_hash_checks[required] = "UNCHANGED" if same else "CHANGED"
+              if not same:
+                  critical_errors.append(f"required_screen_changed_during_next1:{required}")
+
+          sql_files = sorted(str(p) for p in repo_files("*.sql"))
+          worker_candidates = sorted(
+              str(p) for p in ROOT.rglob("*")
+              if p.is_file()
+              and ".git" not in p.parts
+              and "node_modules" not in p.parts
+              and p.name.lower() in {"worker.js", "worker.mjs", "worker.ts"}
+          )
+
+          worker_changed = any(
+              Path(path).name.lower() in {"worker.js", "worker.mjs", "worker.ts"}
+              for path in app_changes
+          )
+          supabase_changed = any(path.lower().endswith(".sql") for path in app_changes)
+          api_changed = any(
+              Path(path).name.lower() in {"worker.js", "worker.mjs", "worker.ts", "config.js"}
+              or "/api/" in path.lower()
+              for path in app_changes
+          )
+          screen_function_changed = any(path.lower().endswith((".html", ".js")) for path in app_changes)
+
+          size_warnings = [row for row in manifest_rows if row["bytes"] > 1_000_000]
+          if size_warnings:
+              warnings.append("tracked_file_over_1mb")
+          largest_file = max(manifest_rows, key=lambda row: row["bytes"], default=None)
+
+          api_lines = [
+              "# DPRO ヨガ LINE / API baseline",
+              f"# step={STEP_NAME}",
+              f"# baseline_sha={BASELINE_SHA}",
+              f"# captured_at_jst={now_jst.isoformat()}",
+              "",
+              "[Detected API paths]",
+          ]
+          if all_api_paths:
+              for api_path in sorted(all_api_paths):
+                  files = ", ".join(sorted(api_evidence[api_path]))
+                  api_lines.append(f"{api_path}\t{files}")
+          else:
+              api_lines.append("(none detected)")
+          api_lines.extend([
+              "",
+              "[External Worker URLs]",
+          ])
+          worker_urls = sorted(set(re.findall(r'https://[A-Za-z0-9.-]+\.workers\.dev', feature_source)))
+          api_lines.extend(worker_urls or ["(none detected)"])
+          api_lines.extend([
+              "",
+              "[Legacy API indicators]",
+              f"legacyGet={feature_source.count('legacyGet')}",
+              f"legacyPost={feature_source.count('legacyPost')}",
+              f"action_parameter={feature_source.count('action')}",
+          ])
+          API_BASELINE_FILE.write_text("\n".join(api_lines) + "\n", encoding="utf-8")
+
+          overall = "NG" if critical_errors else ("ATTENTION" if warnings else "OK")
+
+          result = {
+              "ok": not critical_errors,
+              "overall": overall,
+              "step": STEP_NAME,
+              "checked_at_utc": now_utc.isoformat(),
+              "checked_at_jst": now_jst.isoformat(),
+              "repository": os.environ.get("GITHUB_REPOSITORY", ""),
+              "branch": os.environ.get("GITHUB_REF_NAME", "main"),
+              "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "baseline_sha": BASELINE_SHA,
+              "baseline_reason": BASELINE_REASON,
+              "backup_tag": BACKUP_TAG,
+              "backup_tag_status": TAG_STATUS,
+              "required_files": REQUIRED,
+              "optional_next_standard_files": optional_status,
+              "required_file_hash_checks": required_hash_checks,
+              "html_checks": html_results,
+              "javascript_file_checks": js_results,
+              "existing_feature_checks": feature_checks,
+              "yoga_business_logic_checks": yoga_logic_checks,
+              "api_paths_detected": sorted(all_api_paths),
+              "public_management_information_findings": public_admin_findings,
+              "owner_admin_code_findings": owner_admin_findings,
+              "file_count_at_baseline": len(manifest_rows),
+              "largest_file_at_baseline": largest_file,
+              "files_over_1mb": size_warnings,
+              "worker_source_files_in_repo": worker_candidates,
+              "supabase_sql_files_in_repo": sql_files,
+              "changes_from_baseline_to_workflow_upload": app_changes,
+              "worker_changed": worker_changed,
+              "supabase_changed": supabase_changed,
+              "api_changed": api_changed,
+              "screen_function_changed": screen_function_changed,
+              "existing_data_changed": False,
+              "critical_errors": critical_errors,
+              "warnings": warnings,
+          }
+          RESULT_FILE.write_text(
+              json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          baseline = {
+              "schema_version": 1,
+              "system_name": "DPRO ヨガ LINE",
+              "standard": "DPRO NEXT",
+              "step": STEP_NAME,
+              "repository": os.environ.get("GITHUB_REPOSITORY", ""),
+              "default_branch": os.environ.get("GITHUB_REF_NAME", "main"),
+              "baseline_sha": BASELINE_SHA,
+              "baseline_reason": BASELINE_REASON,
+              "backup_tag": BACKUP_TAG,
+              "captured_at_utc": now_utc.isoformat(),
+              "captured_at_jst": now_jst.isoformat(),
+              "files": manifest_rows,
+              "api_paths": sorted(all_api_paths),
+              "required_screens": REQUIRED,
+              "optional_next_standard_files": optional_status,
+              "worker_source_in_repository": bool(worker_candidates),
+              "supabase_sql_in_repository": bool(sql_files),
+          }
+          BASELINE_FILE.write_text(
+              json.dumps(baseline, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
+          known_risks = []
+          if not Path("system-check.html").exists():
+              known_risks.append("system-check.htmlは未作成。YOGA-NEXT-9でDPRO NEXT一括検査画面を追加する")
+          if not Path("config.js").exists():
+              known_risks.append("config.jsは未作成。Worker URL・SHOP_CODE・LIFF IDが各HTMLへ分散している")
+          if not Path("staff.html").exists():
+              known_risks.append("staff.htmlは未作成。YOGA-NEXT-6で必要性を再判定する")
+          if not worker_candidates:
+              known_risks.append("Workerソースは本リポジトリ内にないため、Worker内部ロジックは公開API応答と後続system-checkで確認する")
+          if "legacyGet" in feature_source or "legacyPost" in feature_source:
+              known_risks.append("新APIと旧action APIのフォールバックが混在しているため、後続STEPで正式APIを台帳化して重複取得を整理する")
+          if owner_admin_findings:
+              known_risks.append("PC・iPad管理コードUIはNEXT標準の削除ボタンと本番空欄開始へ改善が必要")
+          known_risks.append("初期読込で顧客全件・旧履歴を取得する箇所は、YOGA-NEXT-2以降で遅延読込へ整理する")
+
+          ledger = {
+              "system_name": "DPRO ヨガ LINE",
+              "standard": "DPRO NEXT",
+              "step_name": "正常版保護・現状基準台帳",
+              "current_step": "YOGA-NEXT-1-COMPLETE" if not critical_errors else "YOGA-NEXT-1-FAILED",
+              "previous_step": "NONE_INITIAL_BASELINE",
+              "next_step": "YOGA-NEXT-2" if not critical_errors else "YOGA-NEXT-1-R2",
+              "completed_at_jst": now_jst.strftime("%Y-%m-%d %H:%M:%S %z"),
+              "baseline_sha": BASELINE_SHA,
+              "backup_tag": BACKUP_TAG,
+              "backup_tag_status": TAG_STATUS,
+              "target_files": REQUIRED,
+              "optional_next_standard_files": optional_status,
+              "generated_files": [
+                  str(LEDGER_FILE),
+                  str(BASELINE_FILE),
+                  str(MANIFEST_FILE),
+                  str(API_BASELINE_FILE),
+                  str(RESULT_FILE),
+              ],
+              "checks": {
+                  "required_files": "OK" if all(Path(p).is_file() for p in REQUIRED) else "NG",
+                  "yml_syntax": "OK",
+                  "html_syntax": "OK" if not any(e.startswith("html_parse:") for e in critical_errors) else "NG",
+                  "javascript_syntax": "OK" if not any(e.startswith("javascript_syntax:") for e in critical_errors) else "NG",
+                  "html_id_duplicates": "OK" if not any(e.startswith("duplicate_html_id:") for e in critical_errors) else "NG",
+                  "existing_function_preservation": "OK" if not any(e.startswith("existing_feature_missing:") for e in critical_errors) else "NG",
+                  "yoga_business_logic": "OK" if not any(e.startswith("yoga_business_logic_missing:") for e in critical_errors) else "NG",
+                  "required_screen_hash_preservation": "OK" if not any(e.startswith("required_screen_changed_during_next1:") for e in critical_errors) else "NG",
+                  "public_management_information": "OK" if not public_admin_findings else "NG",
+                  "optional_next_standard_readiness": "ATTENTION" if any(v == "NOT_YET_CREATED" for v in optional_status.values()) else "OK",
+                  "overall": overall,
+              },
+              "change_record": {
+                  "worker_changed": worker_changed,
+                  "supabase_changed": supabase_changed,
+                  "api_changed": api_changed,
+                  "screen_function_changed": screen_function_changed,
+                  "existing_data_changed": False,
+              },
+              "performance_baseline": {
+                  "all_customer_history_initial_load_detected": "/api/admin/customers/search" in feature_source and "legacyGet" in feature_source,
+                  "all_images_initial_load_detected": False,
+                  "largest_tracked_file": largest_file,
+              },
+              "known_risks": known_risks,
+              "rollback": {
+                  "method": "backup_tag",
+                  "tag": BACKUP_TAG,
+                  "command_reference": f"git checkout {BACKUP_TAG}",
+              },
+              "workflow_self_delete_after_success": True,
+              "auto_commit_push": True,
+          }
+          LEDGER_FILE.write_text("\n".join(to_yaml(ledger)) + "\n", encoding="utf-8")
+
+          print(json.dumps({
+              "overall": overall,
+              "critical_errors": critical_errors,
+              "warnings": warnings,
+              "generated": sorted(GENERATED),
+          }, ensure_ascii=False, indent=2))
+
+          if critical_errors:
+              sys.exit(2)
+          PY
+
+      - name: "6. 検査結果アーティファクト保存"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "yoga-next-1-baseline-results"
+          if-no-files-found: warn
+          retention-days: 30
+          path: |
+            dpro-next-ledger.yml
+            dpro-next-baseline.json
+            dpro-next-file-manifest.txt
+            dpro-next-api-baseline.txt
+            dpro-next-check-result.json
+
+      - name: "7. STEP完了条件確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(Path(os.environ["RESULT_FILE"]).read_text(encoding="utf-8"))
+          if not result.get("ok"):
+              raise SystemExit("重大な検査エラーがあるため、STEPを完了できません。")
+
+          forbidden = {
+              "worker_changed": "NEXT-1でWorker変更が検出されました。",
+              "supabase_changed": "NEXT-1でSupabase SQL変更が検出されました。",
+              "api_changed": "NEXT-1でAPI変更が検出されました。",
+              "screen_function_changed": "NEXT-1で既存画面・機能ファイル変更が検出されました。",
+              "existing_data_changed": "NEXT-1で既存データ変更が検出されました。",
+          }
+          for key, message in forbidden.items():
+              if result.get(key):
+                  raise SystemExit(message)
+
+          for path, status in result.get("required_file_hash_checks", {}).items():
+              if status != "UNCHANGED":
+                  raise SystemExit(f"必須画面の正常版維持検査NG: {path}={status}")
+
+          print("STEP YOGA-NEXT-1 completion conditions: OK")
+          PY
+
+      - name: "8. YML自身を削除・台帳を自動Commit/Push"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          rm -f "$WORKFLOW_PATH"
+
+          git add \
+            "$LEDGER_FILE" \
+            "$BASELINE_FILE" \
+            "$MANIFEST_FILE" \
+            "$API_BASELINE_FILE" \
+            "$RESULT_FILE"
+          git add -u "$WORKFLOW_PATH"
+
+          if git diff --cached --quiet; then
+            echo "::error::Commit対象の変更がありません。"
+            exit 1
+          fi
+
+          git commit -m "chore(yoga-next): complete YOGA-NEXT-1 baseline protection [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+          {
+            echo ""
+            echo "## 完了"
+            echo ""
+            echo "- current_step: \`YOGA-NEXT-1-COMPLETE\`"
+            echo "- next_step: \`YOGA-NEXT-2\`"
+            echo "- Worker変更: \`false\`"
+            echo "- Supabase変更: \`false\`"
+            echo "- API変更: \`false\`"
+            echo "- 既存画面機能変更: \`false\`"
+            echo "- バックアップタグ: \`$BACKUP_TAG\`"
+            echo "- STEP YML: 成功後に自動削除"
+            echo "- 台帳・検査結果: mainへ自動Commit/Push済み"
+          } >> "$GITHUB_STEP_SUMMARY"
