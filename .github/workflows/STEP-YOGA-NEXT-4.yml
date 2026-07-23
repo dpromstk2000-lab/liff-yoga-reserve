@@ -1,0 +1,1148 @@
+name: "STEP YOGA-NEXT-4 | 業務進捗・ステータス見える化"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/STEP-YOGA-NEXT-4.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yoga-next-4-workflow-visibility
+  cancel-in-progress: false
+
+jobs:
+  workflow-visibility:
+    name: "YOGA-NEXT-4 workflow visibility"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      STEP_NAME: "YOGA-NEXT-4"
+      WORKFLOW_PATH: ".github/workflows/STEP-YOGA-NEXT-4.yml"
+      LEDGER_FILE: "dpro-next-ledger.yml"
+      RESULT_FILE: "dpro-next-yoga-next-4-result.json"
+      BEFORE_TAG: "dpro-yoga-next-4-before-20260723"
+      WORKER_URL: "https://yoga-liff-webhook.dpromstk2000.workers.dev"
+      SHOP_CODE: "yoga_demo"
+      DEMO_ADMIN_CODE: "1234"
+      EXPECTED_WORKER_VERSION: "YOGA-NEXT-4-WORKFLOW-STATUS-20260723"
+      WORKER_SOURCE_SHA256: "86b9577a6549f67f031071ee82398472175055494f5a64879234b0aa554424f7"
+      EXPECTED_OWNER_BLOB_SHA: "eef557757ce6e1c39451d833cbb0649117e82922"
+      EXPECTED_IPAD_BLOB_SHA: "5222a54ab987eac21acef7f6c79773cd1fce85fc"
+      EXPECTED_LEDGER_BLOB_SHA: "a81105317073c51240be90905dd604ead655dac8"
+
+    steps:
+      - name: "1. Checkout full repository history"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "2. 前STEP・対象ファイル・基準状態確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          for file in \
+            owner.html \
+            owner-ipad.html \
+            index.html \
+            member.html \
+            dpro-next-ledger.yml \
+            dpro-next-yoga-next-3-result.json \
+            "$WORKFLOW_PATH"
+          do
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::YOGA-NEXT-4の必須ファイルがありません。"
+              exit 1
+            fi
+          done
+
+          grep -q 'current_step: "YOGA-NEXT-3-COMPLETE"' "$LEDGER_FILE" || {
+            echo "::error file=$LEDGER_FILE::前STEP YOGA-NEXT-3-COMPLETEを確認できません。"
+            exit 1
+          }
+
+          owner_blob="$(git hash-object owner.html)"
+          ipad_blob="$(git hash-object owner-ipad.html)"
+          ledger_blob="$(git hash-object "$LEDGER_FILE")"
+
+          [[ "$owner_blob" == "$EXPECTED_OWNER_BLOB_SHA" ]] || {
+            echo "::error file=owner.html::owner.htmlがNEXT-3完成版から変更されています。期待=$EXPECTED_OWNER_BLOB_SHA / 現在=$owner_blob"
+            exit 1
+          }
+          [[ "$ipad_blob" == "$EXPECTED_IPAD_BLOB_SHA" ]] || {
+            echo "::error file=owner-ipad.html::owner-ipad.htmlが基準版から変更されています。期待=$EXPECTED_IPAD_BLOB_SHA / 現在=$ipad_blob"
+            exit 1
+          }
+          [[ "$ledger_blob" == "$EXPECTED_LEDGER_BLOB_SHA" ]] || {
+            echo "::error file=$LEDGER_FILE::完成台帳が確認済み版から変更されています。期待=$EXPECTED_LEDGER_BLOB_SHA / 現在=$ledger_blob"
+            exit 1
+          }
+
+          mapfile -t head_changed < <(git diff-tree --no-commit-id --name-only -r HEAD)
+          before_sha="$(git rev-parse HEAD)"
+          before_reason="current_head"
+
+          if [[ "${#head_changed[@]}" -eq 1 && "${head_changed[0]}" == "$WORKFLOW_PATH" ]]; then
+            before_sha="$(git rev-parse HEAD^)"
+            before_reason="workflow_upload_parent"
+          fi
+
+          echo "BEFORE_SHA=$before_sha" >> "$GITHUB_ENV"
+          echo "BEFORE_REASON=$before_reason" >> "$GITHUB_ENV"
+
+          {
+            echo "## STEP YOGA-NEXT-4"
+            echo ""
+            echo "- STEP名: 業務進捗・ステータス見える化"
+            echo "- 前STEP: YOGA-NEXT-3-COMPLETE"
+            echo "- 対象: owner.html / owner-ipad.html"
+            echo "- 外部変更: Cloudflare Worker / Supabase"
+            echo "- 既存予約status: 変更しない"
+            echo "- 進捗保存列: workflow_status系4列"
+            echo "- 変更前SHA: \`$before_sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "3. 変更前バックアップタグ作成"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$BEFORE_TAG" >/dev/null 2>&1; then
+            tag_sha="$(git rev-list -n 1 "$BEFORE_TAG")"
+            if [[ "$tag_sha" != "$BEFORE_SHA" ]]; then
+              echo "::error::既存タグ $BEFORE_TAG が別SHAを指しています。既存=$tag_sha / 今回=$BEFORE_SHA"
+              exit 1
+            fi
+            tag_status="existing_same_sha"
+          else
+            git tag -a "$BEFORE_TAG" "$BEFORE_SHA" -m "DPRO ヨガ LINE before YOGA-NEXT-4"
+            git push origin "$BEFORE_TAG"
+            tag_status="created"
+          fi
+
+          echo "BEFORE_TAG_STATUS=$tag_status" >> "$GITHUB_ENV"
+
+      - name: "4. YML構文検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ruby -e 'require "yaml"; YAML.load_file(ARGV[0], aliases: true); puts "YAML syntax OK"' "$WORKFLOW_PATH"
+
+      - name: "5. Worker・Supabase進捗機能の稼働確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            "$WORKER_URL/api/health" > /tmp/yoga_next4_health.json
+
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 --get \
+            --data-urlencode "shop_code=$SHOP_CODE" \
+            --data-urlencode "admin_code=$DEMO_ADMIN_CODE" \
+            "$WORKER_URL/api/admin/workflow/check" > /tmp/yoga_next4_schema.json
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import os
+
+          health = json.loads(Path("/tmp/yoga_next4_health.json").read_text(encoding="utf-8"))
+          schema = json.loads(Path("/tmp/yoga_next4_schema.json").read_text(encoding="utf-8"))
+
+          expected = os.environ["EXPECTED_WORKER_VERSION"]
+          if health.get("worker_version") != expected:
+              raise SystemExit(f"Worker版が違います。期待={expected} / 現在={health.get('worker_version')}")
+          if health.get("features", {}).get("workflow_update_api") is not True:
+              raise SystemExit("Worker healthでworkflow_update_api=trueを確認できません。")
+          if schema.get("ok") is not True or schema.get("schema_ok") is not True:
+              raise SystemExit(f"Supabase進捗列を確認できません: {schema}")
+          if schema.get("worker_version") != expected:
+              raise SystemExit("workflow/checkのWorker版が一致しません。")
+
+          steps = [item.get("status") for item in schema.get("workflow_steps", [])]
+          expected_steps = ["reserved","checked_in","in_session","completed","recorded","followup_done"]
+          if steps != expected_steps:
+              raise SystemExit(f"進捗順が違います: {steps}")
+
+          print(json.dumps({
+              "worker_version": health.get("worker_version"),
+              "workflow_api": health.get("features", {}).get("workflow_update_api"),
+              "schema_ok": schema.get("schema_ok"),
+              "workflow_steps": steps,
+          }, ensure_ascii=False, indent=2))
+          PY
+
+          {
+            echo ""
+            echo "### Worker・Supabase事前確認"
+            echo "- Worker version: \`$EXPECTED_WORKER_VERSION\`"
+            echo "- workflow update API: OK"
+            echo "- Supabase workflow columns: OK"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "6. PCオーナー画面へ進捗表示を追加"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("owner.html")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: 置換対象が1件ではありません。count={count}")
+              text = text.replace(old, new, 1)
+
+          def sub_once(pattern: str, replacement: str, label: str, flags=0) -> None:
+              global text
+              updated, count = re.subn(pattern, lambda _: replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"{label}: 正規表現対象が1件ではありません。count={count}")
+              text = updated
+
+          replace_once(
+              "<title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-NEXT-3</title>",
+              "<title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-NEXT-4</title>",
+              "owner title"
+          )
+          replace_once(
+              '<p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-NEXT-3</p>',
+              '<p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-NEXT-4</p>',
+              "owner step label"
+          )
+          replace_once(
+              '<p class="text-sm text-slate-500 mt-2">LINE・電話・店頭の予約を同じ一覧で管理し、受付経路を一目で確認できます。</p>',
+              '<p class="text-sm text-slate-500 mt-2">受付待ちから次回案内済みまで、今日のレッスン進捗を1操作ずつ安全に進めます。</p>',
+              "owner header description"
+          )
+          replace_once(
+              'const STEP_VERSION = "YOGA-NEXT-3-RECEPTION-UNIFIED-20260723";',
+              'const STEP_VERSION = "YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723";',
+              "owner version"
+          )
+
+          summary_section = '''</header>
+
+              <section class="glass rounded-[30px] p-5 lg:p-6 mb-5">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                  <div>
+                    <p class="section-label">Today Workflow</p>
+                    <h2 class="text-xl lg:text-2xl font-black text-slate-800 mt-1">本日のレッスン進捗</h2>
+                    <p class="text-sm text-slate-500 mt-2">予約カードの「次へ」を押すと、受付待ちから次回案内済みまで1段階ずつ進みます。</p>
+                  </div>
+                  <span class="badge bg-white text-slate-600 border border-slate-200">予約状態とは別管理</span>
+                </div>
+                <div id="workflow-summary" class="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                  <div class="rounded-2xl bg-white/70 p-4 text-sm text-slate-500 xl:col-span-6">進捗を読み込み中...</div>
+                </div>
+              </section>
+
+              <section class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-5">'''
+
+          sub_once(
+              r'''</header>\s*<section class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-5">''',
+              summary_section,
+              "workflow summary section",
+              flags=re.S
+          )
+
+          workflow_helpers = r'''const WORKFLOW_STEPS = ["reserved","checked_in","in_session","completed","recorded","followup_done"];
+          const WORKFLOW_VIEW = {
+            reserved: { label:"受付待ち", next:"checked_in", nextLabel:"受付済みにする", badge:"bg-slate-100 text-slate-700", card:"bg-slate-50" },
+            checked_in: { label:"受付済み", next:"in_session", nextLabel:"レッスン開始", badge:"bg-sky-50 text-sky-700", card:"bg-sky-50/70" },
+            in_session: { label:"レッスン中", next:"completed", nextLabel:"レッスン完了", badge:"bg-amber-50 text-amber-800", card:"bg-amber-50/70" },
+            completed: { label:"レッスン完了", next:"recorded", nextLabel:"記録済みにする", badge:"bg-emerald-50 text-emerald-700", card:"bg-emerald-50/70" },
+            recorded: { label:"記録済み", next:"followup_done", nextLabel:"次回案内済みにする", badge:"bg-purple-50 text-purple-700", card:"bg-purple-50/70" },
+            followup_done: { label:"次回案内済み", next:null, nextLabel:"完了済み", badge:"bg-[var(--sage-100)] text-[var(--sage-800)]", card:"bg-[var(--sage-50)]" },
+          };
+
+          function normalizeWorkflowStatus(value){
+            const raw = compact(value).toLowerCase();
+            const aliases = {
+              "":"reserved",
+              "受付待ち":"reserved",
+              "reserved":"reserved",
+              "booked":"reserved",
+              "受付済み":"checked_in",
+              "受付済":"checked_in",
+              "checked_in":"checked_in",
+              "checkin":"checked_in",
+              "来店":"checked_in",
+              "レッスン中":"in_session",
+              "in_session":"in_session",
+              "started":"in_session",
+              "実施中":"in_session",
+              "レッスン完了":"completed",
+              "completed":"completed",
+              "終了":"completed",
+              "記録済み":"recorded",
+              "記録済":"recorded",
+              "recorded":"recorded",
+              "次回案内済み":"followup_done",
+              "次回案内済":"followup_done",
+              "followup_done":"followup_done",
+            };
+            return aliases[raw] || "reserved";
+          }
+
+          function workflowMeta(value){
+            const status = normalizeWorkflowStatus(value);
+            const index = WORKFLOW_STEPS.indexOf(status);
+            return { status, index, total:WORKFLOW_STEPS.length, ...(WORKFLOW_VIEW[status] || WORKFLOW_VIEW.reserved) };
+          }
+
+          function workflowBadge(value){
+            const meta = workflowMeta(value);
+            return `<span class="badge ${meta.badge}">${meta.label}</span>`;
+          }
+
+          function workflowProgressHtml(value){
+            const meta = workflowMeta(value);
+            return `<div class="mt-3 flex items-center gap-1.5" aria-label="進捗 ${meta.label}">
+              ${WORKFLOW_STEPS.map((step, index) => `<span class="h-2 flex-1 rounded-full ${index <= meta.index ? "bg-[var(--sage-600)]" : "bg-slate-200"}"></span>`).join("")}
+            </div>`;
+          }
+
+          function todayWorkflowRows(){
+            return (state.day?.today_reservations || []).map(normalizeEvent);
+          }
+
+          function renderWorkflowSummary(){
+            const wrap = $("workflow-summary");
+            if(!wrap) return;
+            const rows = todayWorkflowRows();
+            const counts = Object.fromEntries(WORKFLOW_STEPS.map(step => [step, 0]));
+            rows.forEach(row => { counts[normalizeWorkflowStatus(row.workflow_status)] += 1; });
+            wrap.innerHTML = WORKFLOW_STEPS.map(step => {
+              const meta = workflowMeta(step);
+              return `<div class="rounded-[22px] ${meta.card} border border-white/80 p-4">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-black text-slate-500">${meta.label}</span>
+                  <span class="text-2xl font-black text-slate-800">${counts[step] || 0}</span>
+                </div>
+              </div>`;
+            }).join("");
+          }
+
+          function workflowActionButton(row){
+            const meta = workflowMeta(row.workflow_status);
+            const id = compact(row.id || row.event_id || "");
+            if(!id) return `<button type="button" disabled class="rounded-full bg-slate-100 text-slate-400 px-4 py-2 text-xs font-black">予約ID確認中</button>`;
+            if(!meta.next) return `<button type="button" disabled class="rounded-full bg-[var(--sage-100)] text-[var(--sage-800)] px-4 py-2 text-xs font-black">進捗完了</button>`;
+            if(row.reservation_date && row.reservation_date > todayJst()) return `<button type="button" disabled class="rounded-full bg-slate-100 text-slate-400 px-4 py-2 text-xs font-black">当日から操作</button>`;
+            return `<button type="button" onclick="advanceReservationWorkflow('${escapeHtml(id)}','${escapeHtml(meta.status)}','${escapeHtml(row.customer_name || row.name || "お客様")}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">${meta.nextLabel}</button>`;
+          }
+
+          async function advanceReservationWorkflow(reservationId, currentStatus, customerName){
+            const current = workflowMeta(currentStatus);
+            if(!current.next) return toast("この予約の進捗は完了しています。");
+            const next = workflowMeta(current.next);
+            const ok = window.confirm(`${customerName || "お客様"}の進捗を\n「${current.label}」→「${next.label}」へ進めますか？`);
+            if(!ok) return;
+
+            try{
+              await apiPost("/api/admin/reservations/update-workflow", {
+                reservation_id: reservationId,
+                workflow_status: current.next,
+                workflow_updated_by: "owner_pc",
+                source_screen: "owner.html",
+                workflow_note: `${current.label}から${next.label}へ更新`,
+              });
+              toast(`${customerName || "お客様"}：${next.label}へ更新しました。`);
+              await loadAll();
+            }catch(err){
+              toast(`進捗更新に失敗しました。\n${err.message}`);
+            }
+          }
+
+          '''
+
+          sub_once(
+              r'''function renderAll\(\)\{''',
+              workflow_helpers + 'function renderAll(){',
+              "workflow helpers"
+          )
+
+          replace_once(
+              '''function renderAll(){
+            renderKpis();''',
+              '''function renderAll(){
+            renderKpis();
+            renderWorkflowSummary();''',
+              "render workflow summary call"
+          )
+
+          reservation_function = r'''function renderReservationRow(row){
+            const customer = findCustomerForRow(row);
+            const name = row.name || row.customer_name || customer?.name || "お客様";
+            const phone = customer?.phone || row.phone || "";
+            const status = row.status || "予約";
+            const rawLine = row.raw_line_id || row.line_user_id || row.line_id || customer?.raw_line_id || customer?.line_id || "";
+            const sourceText = row.reception_source || row.source || status || "";
+            const messageLabel = realLineId(rawLine) ? "LINE文面" : "LINE登録案内";
+            const progress = workflowMeta(row.workflow_status);
+            return `<article class="rounded-[24px] bg-white/82 border border-slate-100 p-5 hover:bg-white transition">
+              <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2"><span class="badge bg-slate-50 text-slate-600">レッスン予定</span>${intakeChannelBadge(row)}<span class="badge ${statusBadgeClass(status)}">${escapeHtml(status)}</span>${workflowBadge(progress.status)}${lineConnectionBadge(rawLine, sourceText)}</div>
+                  <h3 class="text-lg font-black text-slate-800 mt-2">${escapeHtml(name)}</h3>
+                  <p class="text-sm text-slate-500 mt-1">${escapeHtml(formatDate(row.reservation_date))} ${escapeHtml(normalizeTime(row.reservation_time || "", ""))} / ${escapeHtml(row.service_name || "レッスン")}</p>
+                  ${workflowProgressHtml(progress.status)}
+                  <p class="text-sm text-slate-600 mt-2 leading-7 whitespace-pre-wrap">${escapeHtml(row.request_note || row.memo || customer?.owner_memo || "")}</p>
+                </div>
+                <div class="flex flex-wrap lg:justify-end gap-2">
+                  ${workflowActionButton(row)}
+                  <button onclick="selectReservation('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">詳細</button>
+                  <button onclick="openMessageFromRow('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">${messageLabel}</button>
+                  ${phone ? `<button onclick="copyText('${escapeHtml(phone)}','電話番号をコピーしました。')" class="rounded-full bg-[var(--sage-50)] text-[var(--sage-800)] px-4 py-2 text-xs font-black">電話コピー</button>` : ""}
+                </div>
+              </div>
+            </article>`;
+          }
+
+          function renderFollowupRow'''
+
+          sub_once(
+              r'''function renderReservationRow\(row\)\{.*?\n\}\n\nfunction renderFollowupRow''',
+              reservation_function,
+              "reservation workflow card",
+              flags=re.S
+          )
+
+          replace_once(
+              '${row ? intakeChannelBadge(row) : ""}${lineConnectionBadge',
+              '${row ? `${intakeChannelBadge(row)}${workflowBadge(row.workflow_status)}` : ""}${lineConnectionBadge',
+              "detail workflow badge"
+          )
+
+          path.write_text(text, encoding="utf-8")
+          print("owner.html YOGA-NEXT-4 patch applied")
+          PY
+
+      - name: "7. iPad画面へ進捗表示を追加"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("owner-ipad.html")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: 置換対象が1件ではありません。count={count}")
+              text = text.replace(old, new, 1)
+
+          def sub_once(pattern: str, replacement: str, label: str, flags=0) -> None:
+              global text
+              updated, count = re.subn(pattern, lambda _: replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"{label}: 正規表現対象が1件ではありません。count={count}")
+              text = updated
+
+          replace_once(
+              "<title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-PHONE-3</title>",
+              "<title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-NEXT-4</title>",
+              "ipad title"
+          )
+          replace_once(
+              '<p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-PHONE-3</p>',
+              '<p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-4</p>',
+              "ipad step label"
+          )
+          replace_once(
+              '<p class="text-sm text-slate-500 mt-2">店頭受付・本日の予約・次営業日・フォロー・LINE文面コピーに絞った操作画面です。</p>',
+              '<p class="text-sm text-slate-500 mt-2">本日の予約を受付待ちから次回案内済みまで、タップ操作で1段階ずつ進めます。</p>',
+              "ipad description"
+          )
+          replace_once(
+              'const STEP_VERSION = "YOGA-PHONE-3-CUSTOMER-PAGES-PHONE-NORMALIZED-20260709";',
+              'const STEP_VERSION = "YOGA-NEXT-4-IPAD-WORKFLOW-20260723";',
+              "ipad version"
+          )
+
+          summary_section = '''</header>
+
+              <section class="glass rounded-[30px] p-4 md:p-5 mb-4">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="section-label">Today Workflow</p>
+                    <h2 class="text-xl font-black text-slate-800 mt-1">本日の進捗</h2>
+                  </div>
+                  <span class="badge bg-white text-slate-600 border border-slate-200">1段階ずつ更新</span>
+                </div>
+                <div id="workflow-summary" class="mt-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+                  <div class="rounded-2xl bg-white/70 p-4 text-sm text-slate-500 md:col-span-3 xl:col-span-6">進捗を読み込み中...</div>
+                </div>
+              </section>
+
+              <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">'''
+
+          sub_once(
+              r'''</header>\s*<section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">''',
+              summary_section,
+              "ipad workflow summary section",
+              flags=re.S
+          )
+
+          workflow_helpers = r'''const WORKFLOW_STEPS = ["reserved","checked_in","in_session","completed","recorded","followup_done"];
+          const WORKFLOW_VIEW = {
+            reserved: { label:"受付待ち", next:"checked_in", nextLabel:"受付済み", badge:"bg-slate-100 text-slate-700", card:"bg-slate-50" },
+            checked_in: { label:"受付済み", next:"in_session", nextLabel:"開始", badge:"bg-sky-50 text-sky-700", card:"bg-sky-50/70" },
+            in_session: { label:"レッスン中", next:"completed", nextLabel:"完了", badge:"bg-amber-50 text-amber-800", card:"bg-amber-50/70" },
+            completed: { label:"レッスン完了", next:"recorded", nextLabel:"記録済み", badge:"bg-emerald-50 text-emerald-700", card:"bg-emerald-50/70" },
+            recorded: { label:"記録済み", next:"followup_done", nextLabel:"案内済み", badge:"bg-purple-50 text-purple-700", card:"bg-purple-50/70" },
+            followup_done: { label:"次回案内済み", next:null, nextLabel:"完了済み", badge:"bg-[var(--sage-100)] text-[var(--sage-800)]", card:"bg-[var(--sage-50)]" },
+          };
+
+          function normalizeWorkflowStatus(value){
+            const raw = clean(value).toLowerCase();
+            const aliases = {
+              "":"reserved",
+              "受付待ち":"reserved",
+              "reserved":"reserved",
+              "booked":"reserved",
+              "受付済み":"checked_in",
+              "受付済":"checked_in",
+              "checked_in":"checked_in",
+              "checkin":"checked_in",
+              "来店":"checked_in",
+              "レッスン中":"in_session",
+              "in_session":"in_session",
+              "started":"in_session",
+              "実施中":"in_session",
+              "レッスン完了":"completed",
+              "completed":"completed",
+              "終了":"completed",
+              "記録済み":"recorded",
+              "記録済":"recorded",
+              "recorded":"recorded",
+              "次回案内済み":"followup_done",
+              "次回案内済":"followup_done",
+              "followup_done":"followup_done",
+            };
+            return aliases[raw] || "reserved";
+          }
+
+          function workflowMeta(value){
+            const status = normalizeWorkflowStatus(value);
+            const index = WORKFLOW_STEPS.indexOf(status);
+            return { status, index, ...(WORKFLOW_VIEW[status] || WORKFLOW_VIEW.reserved) };
+          }
+
+          function workflowBadge(value){
+            const meta = workflowMeta(value);
+            return `<span class="badge ${meta.badge}">${meta.label}</span>`;
+          }
+
+          function workflowProgress(value){
+            const meta = workflowMeta(value);
+            return `<div class="mt-3 flex gap-1.5">${WORKFLOW_STEPS.map((_, index) => `<span class="h-2 flex-1 rounded-full ${index <= meta.index ? "bg-[var(--sage-600)]" : "bg-slate-200"}"></span>`).join("")}</div>`;
+          }
+
+          function renderWorkflowSummary(){
+            const wrap = $("workflow-summary");
+            if(!wrap) return;
+            const rows = state.day?.today_reservations || [];
+            const counts = Object.fromEntries(WORKFLOW_STEPS.map(step => [step, 0]));
+            rows.forEach(row => { counts[normalizeWorkflowStatus(row.workflow_status)] += 1; });
+            wrap.innerHTML = WORKFLOW_STEPS.map(step => {
+              const meta = workflowMeta(step);
+              return `<div class="rounded-[20px] ${meta.card} border border-white/80 p-3">
+                <p class="text-[11px] font-black text-slate-500">${meta.label}</p>
+                <p class="mt-1 text-2xl font-black text-slate-800">${counts[step] || 0}</p>
+              </div>`;
+            }).join("");
+          }
+
+          function workflowButton(row, key){
+            const meta = workflowMeta(row.workflow_status);
+            const id = clean(row.id || row.event_id || "");
+            if(!id) return `<button type="button" disabled class="touch rounded-2xl bg-slate-100 text-slate-400 px-3 py-2 text-sm font-black">ID確認中</button>`;
+            if(!meta.next) return `<button type="button" disabled class="touch rounded-2xl bg-[var(--sage-100)] text-[var(--sage-800)] px-3 py-2 text-sm font-black">進捗完了</button>`;
+            if(row.reservation_date && row.reservation_date > todayIso()) return `<button type="button" disabled class="touch rounded-2xl bg-slate-100 text-slate-400 px-3 py-2 text-sm font-black">当日から</button>`;
+            return `<button type="button" onclick="advanceWorkflowByKey('${esc(key)}')" class="touch rounded-2xl yoga-gradient text-white px-3 py-2 text-sm font-black">${meta.nextLabel}</button>`;
+          }
+
+          async function advanceWorkflowByKey(key){
+            const row = window.__reservationRows?.[key];
+            if(!row) return toast("予約データを更新して再度お試しください。", 3200);
+            const id = clean(row.id || row.event_id || "");
+            const current = workflowMeta(row.workflow_status);
+            if(!id || !current.next) return;
+            const next = workflowMeta(current.next);
+            const customerName = row.customer_name || "お客様";
+            if(!window.confirm(`${customerName}の進捗を\n「${current.label}」→「${next.label}」へ進めますか？`)) return;
+
+            try{
+              await apiPost("/api/admin/reservations/update-workflow", {
+                reservation_id: id,
+                workflow_status: current.next,
+                workflow_updated_by: "owner_ipad",
+                source_screen: "owner-ipad.html",
+                workflow_note: `${current.label}から${next.label}へ更新`,
+              });
+              toast(`${customerName}：${next.label}へ更新しました。`, 3000);
+              await loadAll();
+            }catch(err){
+              toast(`進捗更新エラー：${err.message}`, 4200);
+            }
+          }
+
+          '''
+
+          sub_once(
+              r'''function renderAll\(\)\{''',
+              workflow_helpers + 'function renderAll(){',
+              "ipad workflow helpers"
+          )
+
+          replace_once(
+              '''function renderAll(){
+            renderHeader();''',
+              '''function renderAll(){
+            renderHeader();
+            renderWorkflowSummary();''',
+              "ipad summary render call"
+          )
+
+          reservation_card = r'''function reservationCard(row, idx, kind){
+            const key = `${kind}_${idx}`;
+            window.__reservationRows = window.__reservationRows || {};
+            window.__reservationRows[key] = row;
+            const progress = workflowMeta(row.workflow_status);
+            return `
+              <article class="rounded-[26px] bg-white/82 border border-slate-100 p-4 shadow-sm">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">${statusBadge(row.status)}${workflowBadge(progress.status)}<span class="badge bg-white text-slate-600 border border-slate-200">${esc(normalizeTime(row.reservation_time || ""))}</span></div>
+                    <h3 class="mt-2 text-xl font-black text-slate-800">${esc(row.customer_name || "お客様")}</h3>
+                    <p class="mt-1 text-sm text-slate-500">${esc(row.service_name || "メニュー未設定")} / ${esc(reservationDateTime(row))}</p>
+                    ${workflowProgress(progress.status)}
+                  </div>
+                  <button onclick="selectReservation('${key}')" class="touch rounded-2xl bg-white border border-slate-200 text-slate-700 px-4 py-2.5 text-sm font-black">選択</button>
+                </div>
+                ${row.request_note || row.memo ? `<p class="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">${esc(row.request_note || row.memo)}</p>` : ""}
+                <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                  ${workflowButton(row, key)}
+                  <button onclick="copyText('${esc(row.customer_name || '')}','名前をコピーしました')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">名前</button>
+                  <button onclick="selectReservation('${key}');makeQuickMessage('reservation_confirm')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">確認文</button>
+                  <button onclick="selectReservation('${key}');makeQuickMessage('short')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">短文</button>
+                </div>
+              </article>`;
+          }
+
+          async function selectReservation'''
+
+          sub_once(
+              r'''function reservationCard\(row, idx, kind\)\{.*?\n\}\nasync function selectReservation''',
+              reservation_card,
+              "ipad reservation workflow card",
+              flags=re.S
+          )
+
+          path.write_text(text, encoding="utf-8")
+          print("owner-ipad.html YOGA-NEXT-4 patch applied")
+          PY
+
+      - name: "8. HTML・JavaScript・ID重複・既存機能検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import collections
+          import datetime as dt
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+
+          class Inspector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.ids = []
+                  self.scripts = []
+                  self._in_script = False
+                  self._parts = []
+
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if attrs.get("id"):
+                      self.ids.append(attrs["id"])
+                  if tag.lower() == "script" and not attrs.get("src"):
+                      self._in_script = True
+                      self._parts = []
+
+              def handle_data(self, data):
+                  if self._in_script:
+                      self._parts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self._in_script:
+                      self.scripts.append("\n".join(self._parts))
+                      self._in_script = False
+                      self._parts = []
+
+          def inspect_html(file_name):
+              path = Path(file_name)
+              text = path.read_text(encoding="utf-8")
+              inspector = Inspector()
+              inspector.feed(text)
+              inspector.close()
+
+              duplicates = sorted(k for k, v in collections.Counter(inspector.ids).items() if v > 1)
+              if duplicates:
+                  raise SystemExit(f"{file_name} HTML ID重複: {duplicates}")
+
+              for i, script in enumerate(inspector.scripts, 1):
+                  if not script.strip():
+                      continue
+                  with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+                      tmp.write(script)
+                      temp_name = tmp.name
+                  try:
+                      check = subprocess.run(["node", "--check", temp_name], text=True, capture_output=True)
+                      if check.returncode != 0:
+                          raise SystemExit(f"{file_name} JavaScript構文NG inline-{i}: {check.stderr}")
+                  finally:
+                      Path(temp_name).unlink(missing_ok=True)
+
+              return {"text": text, "bytes": path.stat().st_size}
+
+          owner = inspect_html("owner.html")
+          ipad = inspect_html("owner-ipad.html")
+          index = inspect_html("index.html")
+          member = inspect_html("member.html")
+
+          if owner["bytes"] > 150000:
+              raise SystemExit(f"owner.html容量超過: {owner['bytes']} bytes")
+          if ipad["bytes"] > 110000:
+              raise SystemExit(f"owner-ipad.html容量超過: {ipad['bytes']} bytes")
+
+          owner_required = {
+              "version": "YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723",
+              "summary": 'id="workflow-summary"',
+              "workflow_steps": 'const WORKFLOW_STEPS = ["reserved","checked_in","in_session","completed","recorded","followup_done"]',
+              "normalize": "function normalizeWorkflowStatus(value)",
+              "progress": "function workflowProgressHtml(value)",
+              "update": "async function advanceReservationWorkflow",
+              "api": '"/api/admin/reservations/update-workflow"',
+              "confirm": "window.confirm",
+              "future_guard": "当日から操作",
+              "detail_badge": "workflowBadge(row.workflow_status)",
+          }
+          ipad_required = {
+              "version": "YOGA-NEXT-4-IPAD-WORKFLOW-20260723",
+              "summary": 'id="workflow-summary"',
+              "workflow_steps": 'const WORKFLOW_STEPS = ["reserved","checked_in","in_session","completed","recorded","followup_done"]',
+              "normalize": "function normalizeWorkflowStatus(value)",
+              "progress": "function workflowProgress(value)",
+              "update": "async function advanceWorkflowByKey",
+              "api": '"/api/admin/reservations/update-workflow"',
+              "confirm": "window.confirm",
+              "future_guard": "当日から",
+          }
+
+          missing_owner = [name for name, marker in owner_required.items() if marker not in owner["text"]]
+          missing_ipad = [name for name, marker in ipad_required.items() if marker not in ipad["text"]]
+          if missing_owner:
+              raise SystemExit(f"owner.html必要機能不足: {missing_owner}")
+          if missing_ipad:
+              raise SystemExit(f"owner-ipad.html必要機能不足: {missing_ipad}")
+
+          for file_name, content in [("owner.html", owner["text"]), ("owner-ipad.html", ipad["text"])]:
+              if re.search(r"(?<!workflow_)\bstatus\s*:\s*(current\.next|workflow_status)", content):
+                  raise SystemExit(f"{file_name}で既存予約statusへの進捗上書き疑いを検出しました。")
+
+          if "/api/admin/" in index["text"] or "admin-code" in index["text"] or "管理コード" in index["text"]:
+              raise SystemExit("index.htmlに管理情報が混入しています。")
+
+          unchanged = {}
+          for file_name in ["index.html", "member.html"]:
+              current = Path(file_name).read_bytes()
+              before = subprocess.run(
+                  ["git", "show", f"{os.environ['BEFORE_TAG']}:{file_name}"],
+                  capture_output=True,
+                  check=True,
+              ).stdout
+              unchanged[file_name] = hashlib.sha256(current).hexdigest() == hashlib.sha256(before).hexdigest()
+              if not unchanged[file_name]:
+                  raise SystemExit(f"{file_name}が変更されています。")
+
+          changed = subprocess.run(
+              ["git", "diff", "--name-only", os.environ["BEFORE_SHA"]],
+              text=True,
+              capture_output=True,
+              check=True,
+          ).stdout.splitlines()
+
+          forbidden_patterns = [
+              re.compile(r"(^|/)worker\.js$", re.I),
+              re.compile(r"\.sql$", re.I),
+              re.compile(r"supabase", re.I),
+              re.compile(r"wrangler", re.I),
+          ]
+          forbidden = [p for p in changed if any(rx.search(p) for rx in forbidden_patterns)]
+          if forbidden:
+              raise SystemExit(f"GitHub側にWorker・SQLを誤配置しています: {forbidden}")
+
+          health = json.loads(Path("/tmp/yoga_next4_health.json").read_text(encoding="utf-8"))
+          schema = json.loads(Path("/tmp/yoga_next4_schema.json").read_text(encoding="utf-8"))
+
+          result = {
+              "ok": True,
+              "overall": "OK",
+              "step": "YOGA-NEXT-4",
+              "checked_at_jst": dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(),
+              "repository": os.environ.get("GITHUB_REPOSITORY", ""),
+              "branch": os.environ.get("GITHUB_REF_NAME", ""),
+              "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "before_sha": os.environ["BEFORE_SHA"],
+              "before_tag": os.environ["BEFORE_TAG"],
+              "target_files": ["owner.html", "owner-ipad.html"],
+              "html_syntax": "OK",
+              "javascript_syntax": "OK",
+              "html_id_duplicates": "OK",
+              "existing_function_preservation": "OK",
+              "workflow_business_logic": "OK",
+              "reservation_status_separated": True,
+              "future_reservation_guard": True,
+              "confirmation_guard": True,
+              "public_admin_information": "OK",
+              "unchanged_customer_screens": unchanged,
+              "owner_bytes": owner["bytes"],
+              "ipad_bytes": ipad["bytes"],
+              "worker_version": health.get("worker_version"),
+              "worker_source_sha256": os.environ["WORKER_SOURCE_SHA256"],
+              "supabase_schema_ok": schema.get("schema_ok"),
+              "worker_changed": True,
+              "supabase_changed": True,
+              "api_changed": True,
+              "new_api_paths": [
+                  "GET /api/admin/workflow/check",
+                  "POST /api/admin/reservations/update-workflow"
+              ],
+              "changed_files_before_ledger": changed,
+          }
+
+          Path(os.environ["RESULT_FILE"]).write_text(
+              json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+
+      - name: "9. 進捗業務ロジック検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          class ScriptParser(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.scripts = []
+                  self.in_script = False
+                  self.parts = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "script" and not dict(attrs).get("src"):
+                      self.in_script = True
+                      self.parts = []
+
+              def handle_data(self, data):
+                  if self.in_script:
+                      self.parts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.in_script:
+                      self.scripts.append("\n".join(self.parts))
+                      self.in_script = False
+                      self.parts = []
+
+          def largest_script(file_name):
+              parser = ScriptParser()
+              parser.feed(Path(file_name).read_text(encoding="utf-8"))
+              scripts = [s for s in parser.scripts if s.strip()]
+              if not scripts:
+                  raise SystemExit(f"{file_name}のJavaScriptがありません。")
+              return max(scripts, key=len)
+
+          prelude = r'''
+          globalThis.window = {
+            location:{search:"",hostname:"example.com"},
+            setTimeout:()=>0,
+            clearTimeout:()=>{},
+            matchMedia:()=>({matches:false}),
+            confirm:()=>false,
+            open:()=>{},
+            scrollTo:()=>{}
+          };
+          globalThis.location = {href:"https://example.com/owner.html"};
+          globalThis.document = {
+            getElementById:()=>null,
+            addEventListener:()=>{},
+            createElement:()=>({
+              className:"",innerHTML:"",textContent:"",value:"",style:{},
+              appendChild:()=>{},remove:()=>{},
+              querySelector:()=>({addEventListener:()=>{}})
+            }),
+            body:{appendChild:()=>{}},
+            querySelectorAll:()=>[]
+          };
+          globalThis.localStorage = {getItem:()=>null,setItem:()=>{},removeItem:()=>{}};
+          globalThis.navigator = {clipboard:{writeText:async()=>{}}};
+          globalThis.fetch = async()=>{throw new Error("fetch disabled");};
+          globalThis.confirm = ()=>false;
+          globalThis.alert = ()=>{};
+          globalThis.prompt = ()=>"";
+          globalThis.lucide = {createIcons:()=>{}};
+          '''
+
+          tests = r'''
+          if(normalizeWorkflowStatus("") !== "reserved") throw new Error("default reserved");
+          if(normalizeWorkflowStatus("受付済み") !== "checked_in") throw new Error("checked in");
+          if(normalizeWorkflowStatus("レッスン中") !== "in_session") throw new Error("in session");
+          if(normalizeWorkflowStatus("レッスン完了") !== "completed") throw new Error("completed");
+          if(normalizeWorkflowStatus("記録済み") !== "recorded") throw new Error("recorded");
+          if(normalizeWorkflowStatus("次回案内済み") !== "followup_done") throw new Error("followup done");
+          if(workflowMeta("reserved").next !== "checked_in") throw new Error("reserved next");
+          if(workflowMeta("recorded").next !== "followup_done") throw new Error("recorded next");
+          if(workflowMeta("followup_done").next !== null) throw new Error("final next");
+          console.log("WORKFLOW_UI_LOGIC_OK");
+          '''
+
+          for file_name in ["owner.html", "owner-ipad.html"]:
+              script = largest_script(file_name)
+              with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+                  tmp.write(prelude + "\n" + script + "\n" + tests)
+                  temp_name = tmp.name
+              try:
+                  run = subprocess.run(["node", temp_name], text=True, capture_output=True)
+                  print(run.stdout)
+                  if run.returncode != 0:
+                      print(run.stderr)
+                      raise SystemExit(f"{file_name}進捗ロジック検査NG")
+                  if "WORKFLOW_UI_LOGIC_OK" not in run.stdout:
+                      raise SystemExit(f"{file_name}進捗ロジックPASSを確認できません。")
+              finally:
+                  Path(temp_name).unlink(missing_ok=True)
+          PY
+
+      - name: "10. NEXT-4完成台帳更新"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          completed_at="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %z')"
+          owner_blob="$(git hash-object owner.html)"
+          ipad_blob="$(git hash-object owner-ipad.html)"
+          owner_bytes="$(wc -c < owner.html | tr -d ' ')"
+          ipad_bytes="$(wc -c < owner-ipad.html | tr -d ' ')"
+
+          cat > "$LEDGER_FILE" <<EOF
+          system_name: "DPRO ヨガ LINE"
+          standard: "DPRO NEXT"
+          step_name: "業務進捗・ステータス見える化"
+          current_step: "YOGA-NEXT-4-COMPLETE"
+          previous_step: "YOGA-NEXT-3-COMPLETE"
+          next_step: "YOGA-NEXT-5"
+          completed_at_jst: "$completed_at"
+          before_sha: "$BEFORE_SHA"
+          before_tag: "$BEFORE_TAG"
+          before_tag_status: "$BEFORE_TAG_STATUS"
+          target_files:
+            - "owner.html"
+            - "owner-ipad.html"
+          external_deployment:
+            sql:
+              executed: true
+              file: "YOGA-NEXT-4.sql"
+              migration_type: "non_destructive"
+              columns:
+                - "workflow_status"
+                - "workflow_updated_at"
+                - "workflow_updated_by"
+                - "workflow_note"
+            worker:
+              deployed: true
+              version: "$EXPECTED_WORKER_VERSION"
+              source_sha256: "$WORKER_SOURCE_SHA256"
+          implementation:
+            workflow_steps:
+              - "reserved"
+              - "checked_in"
+              - "in_session"
+              - "completed"
+              - "recorded"
+              - "followup_done"
+            workflow_labels:
+              - "受付待ち"
+              - "受付済み"
+              - "レッスン中"
+              - "レッスン完了"
+              - "記録済み"
+              - "次回案内済み"
+            existing_reservation_status_separated: true
+            one_step_transition: true
+            backward_transition_api_guard: true
+            future_reservation_guard: true
+            confirmation_guard: true
+            owner_progress_summary: true
+            ipad_progress_summary: true
+            owner_next_action_button: true
+            ipad_next_action_button: true
+            followup_auto_close_on_followup_done: true
+          checks:
+            required_files: "OK"
+            previous_step: "OK"
+            yml_syntax: "OK"
+            worker_live_version: "OK"
+            supabase_workflow_schema: "OK"
+            html_syntax: "OK"
+            javascript_syntax: "OK"
+            html_id_duplicates: "OK"
+            existing_function_preservation: "OK"
+            workflow_business_logic: "OK"
+            reservation_status_separation: "OK"
+            public_admin_information: "OK"
+            customer_screen_hash_preservation: "OK"
+            overall: "OK"
+          change_record:
+            worker_changed: true
+            supabase_changed: true
+            api_changed: true
+            api_path_changed: true
+            screen_function_changed: true
+            owner_html_changed: true
+            owner_ipad_html_changed: true
+            index_html_changed: false
+            member_html_changed: false
+            existing_reservation_data_deleted: false
+          new_api_paths:
+            - "GET /api/admin/workflow/check"
+            - "POST /api/admin/reservations/update-workflow"
+          file_result:
+            owner:
+              path: "owner.html"
+              blob_sha: "$owner_blob"
+              bytes: $owner_bytes
+              version: "YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723"
+            owner_ipad:
+              path: "owner-ipad.html"
+              blob_sha: "$ipad_blob"
+              bytes: $ipad_bytes
+              version: "YOGA-NEXT-4-IPAD-WORKFLOW-20260723"
+          generated_files:
+            - "dpro-next-ledger.yml"
+            - "dpro-next-yoga-next-4-result.json"
+          known_attention:
+            - "レッスン実施メモの構造化はYOGA-NEXT-5で行う"
+            - "進捗修正はWorker APIで直前段階への戻しだけ許可し、通常画面には戻すボタンを表示しない"
+            - "WorkerソースはCloudflareへDeployし、GitHubリポジトリには配置しない"
+          rollback:
+            github_tag: "$BEFORE_TAG"
+            worker: "添付の旧Worker完全版を再Deploy"
+            sql: "YOGA-NEXT-4-ROLLBACK.sql"
+          workflow_self_delete_after_success: true
+          auto_commit_push: true
+          EOF
+
+      - name: "11. 最終変更範囲・完了状態検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          grep -q 'current_step: "YOGA-NEXT-4-COMPLETE"' "$LEDGER_FILE"
+          grep -q 'next_step: "YOGA-NEXT-5"' "$LEDGER_FILE"
+          grep -q '"overall": "OK"' "$RESULT_FILE"
+          grep -q 'YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723' owner.html
+          grep -q 'YOGA-NEXT-4-IPAD-WORKFLOW-20260723' owner-ipad.html
+          grep -q 'id="workflow-summary"' owner.html
+          grep -q 'id="workflow-summary"' owner-ipad.html
+          grep -q '/api/admin/reservations/update-workflow' owner.html
+          grep -q '/api/admin/reservations/update-workflow' owner-ipad.html
+
+          allowed_regex='^(owner\.html|owner-ipad\.html|dpro-next-ledger\.yml|dpro-next-yoga-next-4-result\.json|\.github/workflows/STEP-YOGA-NEXT-4\.yml)$'
+          unexpected="$(git diff --name-only "$BEFORE_SHA" | grep -Ev "$allowed_regex" || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "::error::想定外の変更ファイルがあります:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+          {
+            echo ""
+            echo "### YOGA-NEXT-4 検査結果"
+            echo "- Worker live version: OK"
+            echo "- Supabase workflow columns: OK"
+            echo "- PC進捗表示・次へ操作: OK"
+            echo "- iPad進捗表示・次へ操作: OK"
+            echo "- 1段階更新・未来日・確認ガード: OK"
+            echo "- 既存予約status分離: OK"
+            echo "- お客様画面変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "12. 成功後YML自身を削除"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f "$WORKFLOW_PATH"
+          test ! -f "$WORKFLOW_PATH"
+
+      - name: "13. 自動Commit・Push"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add owner.html owner-ipad.html "$LEDGER_FILE" "$RESULT_FILE"
+          git add -u "$WORKFLOW_PATH"
+
+          if git diff --cached --quiet; then
+            echo "::error::Commit対象がありません。"
+            exit 1
+          fi
+
+          git commit -m "feat(yoga-next): complete YOGA-NEXT-4 workflow visibility [skip ci]"
+          git push origin HEAD:main
+
+          {
+            echo ""
+            echo "### 完了"
+            echo "- current_step: \`YOGA-NEXT-4-COMPLETE\`"
+            echo "- next_step: \`YOGA-NEXT-5\`"
+            echo "- Worker / Supabase / API変更: あり・稼働確認済み"
+            echo "- 実行YML: 削除済み"
+            echo "- 自動Commit・Push: 完了"
+          } >> "$GITHUB_STEP_SUMMARY"
