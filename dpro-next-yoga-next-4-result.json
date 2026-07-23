@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "overall": "OK",
+  "step": "YOGA-NEXT-4-R2",
+  "completed_step": "YOGA-NEXT-4",
+  "applied_revision": "R2",
+  "r1_result": "FAILED_BEFORE_COMMIT",
+  "r1_failure_reason": "window_addEventListener_missing_in_node_test_mock",
+  "checked_at_jst": "2026-07-23T21:37:22.805634+09:00",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "branch": "main",
+  "run_id": "30007711871",
+  "before_sha": "a9044ebc9e4cccd0a35cab5d40af387bd5afc0c8",
+  "before_tag": "dpro-yoga-next-4-before-20260723",
+  "target_files": [
+    "owner.html",
+    "owner-ipad.html"
+  ],
+  "html_syntax": "OK",
+  "javascript_syntax": "OK",
+  "html_id_duplicates": "OK",
+  "existing_function_preservation": "OK",
+  "workflow_business_logic": "OK",
+  "reservation_status_separated": true,
+  "future_reservation_guard": true,
+  "confirmation_guard": true,
+  "public_admin_information": "OK",
+  "unchanged_customer_screens": {
+    "index.html": true,
+    "member.html": true
+  },
+  "owner_bytes": 113979,
+  "ipad_bytes": 54515,
+  "worker_version": "YOGA-NEXT-4-WORKFLOW-STATUS-20260723",
+  "worker_source_sha256": "86b9577a6549f67f031071ee82398472175055494f5a64879234b0aa554424f7",
+  "supabase_schema_ok": true,
+  "worker_changed": true,
+  "supabase_changed": true,
+  "api_changed": true,
+  "new_api_paths": [
+    "GET /api/admin/workflow/check",
+    "POST /api/admin/reservations/update-workflow"
+  ],
+  "changed_files_before_ledger": [
+    ".github/workflows/STEP-YOGA-NEXT-4-R2.yml",
+    ".github/workflows/STEP-YOGA-NEXT-4.yml",
+    "owner-ipad.html",
+    "owner.html"
+  ]
+}

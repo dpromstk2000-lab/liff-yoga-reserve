@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-NEXT-3</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-NEXT-4</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,9 +36,9 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-NEXT-3</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-NEXT-4</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
-            <p class="text-sm text-slate-500 mt-2">LINE・電話・店頭の予約を同じ一覧で管理し、受付経路を一目で確認できます。</p>
+            <p class="text-sm text-slate-500 mt-2">受付待ちから次回案内済みまで、今日のレッスン進捗を1操作ずつ安全に進めます。</p>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2.5">
@@ -61,6 +61,20 @@
         <div class="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3"><span class="font-black text-sky-800">3</span><span class="ml-2 font-bold text-slate-700">文面・詳細・対応済み</span></div>
       </div>
     </header>
+
+    <section class="glass rounded-[30px] p-5 lg:p-6 mb-5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div>
+          <p class="section-label">Today Workflow</p>
+          <h2 class="text-xl lg:text-2xl font-black text-slate-800 mt-1">本日のレッスン進捗</h2>
+          <p class="text-sm text-slate-500 mt-2">予約カードの「次へ」を押すと、受付待ちから次回案内済みまで1段階ずつ進みます。</p>
+        </div>
+        <span class="badge bg-white text-slate-600 border border-slate-200">予約状態とは別管理</span>
+      </div>
+      <div id="workflow-summary" class="mt-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div class="rounded-2xl bg-white/70 p-4 text-sm text-slate-500 xl:col-span-6">進捗を読み込み中...</div>
+      </div>
+    </section>
 
     <section class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-5">
       <button onclick="setMainFilter('tasks')" class="soft-card rounded-[26px] p-5 text-left">
@@ -325,7 +339,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-NEXT-3-RECEPTION-UNIFIED-20260723";
+const STEP_VERSION = "YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723";
 const OWNER_PAGE_PARAMS = new URLSearchParams(window.location.search);
 const IS_DEMO_OWNER = OWNER_PAGE_PARAMS.get("demo") === "1" || window.location.hostname.endsWith("github.io");
 
@@ -802,8 +816,118 @@ function findManualDuplicate({ lineId, phone, name, date, time, serviceCode }){
   }) || null;
 }
 
+const WORKFLOW_STEPS = ["reserved","checked_in","in_session","completed","recorded","followup_done"];
+const WORKFLOW_VIEW = {
+  reserved: { label:"受付待ち", next:"checked_in", nextLabel:"受付済みにする", badge:"bg-slate-100 text-slate-700", card:"bg-slate-50" },
+  checked_in: { label:"受付済み", next:"in_session", nextLabel:"レッスン開始", badge:"bg-sky-50 text-sky-700", card:"bg-sky-50/70" },
+  in_session: { label:"レッスン中", next:"completed", nextLabel:"レッスン完了", badge:"bg-amber-50 text-amber-800", card:"bg-amber-50/70" },
+  completed: { label:"レッスン完了", next:"recorded", nextLabel:"記録済みにする", badge:"bg-emerald-50 text-emerald-700", card:"bg-emerald-50/70" },
+  recorded: { label:"記録済み", next:"followup_done", nextLabel:"次回案内済みにする", badge:"bg-purple-50 text-purple-700", card:"bg-purple-50/70" },
+  followup_done: { label:"次回案内済み", next:null, nextLabel:"完了済み", badge:"bg-[var(--sage-100)] text-[var(--sage-800)]", card:"bg-[var(--sage-50)]" },
+};
+
+function normalizeWorkflowStatus(value){
+  const raw = compact(value).toLowerCase();
+  const aliases = {
+    "":"reserved",
+    "受付待ち":"reserved",
+    "reserved":"reserved",
+    "booked":"reserved",
+    "受付済み":"checked_in",
+    "受付済":"checked_in",
+    "checked_in":"checked_in",
+    "checkin":"checked_in",
+    "来店":"checked_in",
+    "レッスン中":"in_session",
+    "in_session":"in_session",
+    "started":"in_session",
+    "実施中":"in_session",
+    "レッスン完了":"completed",
+    "completed":"completed",
+    "終了":"completed",
+    "記録済み":"recorded",
+    "記録済":"recorded",
+    "recorded":"recorded",
+    "次回案内済み":"followup_done",
+    "次回案内済":"followup_done",
+    "followup_done":"followup_done",
+  };
+  return aliases[raw] || "reserved";
+}
+
+function workflowMeta(value){
+  const status = normalizeWorkflowStatus(value);
+  const index = WORKFLOW_STEPS.indexOf(status);
+  return { status, index, total:WORKFLOW_STEPS.length, ...(WORKFLOW_VIEW[status] || WORKFLOW_VIEW.reserved) };
+}
+
+function workflowBadge(value){
+  const meta = workflowMeta(value);
+  return `<span class="badge ${meta.badge}">${meta.label}</span>`;
+}
+
+function workflowProgressHtml(value){
+  const meta = workflowMeta(value);
+  return `<div class="mt-3 flex items-center gap-1.5" aria-label="進捗 ${meta.label}">
+    ${WORKFLOW_STEPS.map((step, index) => `<span class="h-2 flex-1 rounded-full ${index <= meta.index ? "bg-[var(--sage-600)]" : "bg-slate-200"}"></span>`).join("")}
+  </div>`;
+}
+
+function todayWorkflowRows(){
+  return (state.day?.today_reservations || []).map(normalizeEvent);
+}
+
+function renderWorkflowSummary(){
+  const wrap = $("workflow-summary");
+  if(!wrap) return;
+  const rows = todayWorkflowRows();
+  const counts = Object.fromEntries(WORKFLOW_STEPS.map(step => [step, 0]));
+  rows.forEach(row => { counts[normalizeWorkflowStatus(row.workflow_status)] += 1; });
+  wrap.innerHTML = WORKFLOW_STEPS.map(step => {
+    const meta = workflowMeta(step);
+    return `<div class="rounded-[22px] ${meta.card} border border-white/80 p-4">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs font-black text-slate-500">${meta.label}</span>
+        <span class="text-2xl font-black text-slate-800">${counts[step] || 0}</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function workflowActionButton(row){
+  const meta = workflowMeta(row.workflow_status);
+  const id = compact(row.id || row.event_id || "");
+  if(!id) return `<button type="button" disabled class="rounded-full bg-slate-100 text-slate-400 px-4 py-2 text-xs font-black">予約ID確認中</button>`;
+  if(!meta.next) return `<button type="button" disabled class="rounded-full bg-[var(--sage-100)] text-[var(--sage-800)] px-4 py-2 text-xs font-black">進捗完了</button>`;
+  if(row.reservation_date && row.reservation_date > todayJst()) return `<button type="button" disabled class="rounded-full bg-slate-100 text-slate-400 px-4 py-2 text-xs font-black">当日から操作</button>`;
+  return `<button type="button" onclick="advanceReservationWorkflow('${escapeHtml(id)}','${escapeHtml(meta.status)}','${escapeHtml(row.customer_name || row.name || "お客様")}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">${meta.nextLabel}</button>`;
+}
+
+async function advanceReservationWorkflow(reservationId, currentStatus, customerName){
+  const current = workflowMeta(currentStatus);
+  if(!current.next) return toast("この予約の進捗は完了しています。");
+  const next = workflowMeta(current.next);
+  const ok = window.confirm(`${customerName || "お客様"}の進捗を\n「${current.label}」→「${next.label}」へ進めますか？`);
+  if(!ok) return;
+
+  try{
+    await apiPost("/api/admin/reservations/update-workflow", {
+      reservation_id: reservationId,
+      workflow_status: current.next,
+      workflow_updated_by: "owner_pc",
+      source_screen: "owner.html",
+      workflow_note: `${current.label}から${next.label}へ更新`,
+    });
+    toast(`${customerName || "お客様"}：${next.label}へ更新しました。`);
+    await loadAll();
+  }catch(err){
+    toast(`進捗更新に失敗しました。\n${err.message}`);
+  }
+}
+
 function renderAll(){
   renderKpis();
+  renderWorkflowSummary();
   renderTasks();
   renderMainList();
   renderManualServices();
@@ -983,17 +1107,20 @@ function renderReservationRow(row){
   const rawLine = row.raw_line_id || row.line_user_id || row.line_id || customer?.raw_line_id || customer?.line_id || "";
   const sourceText = row.reception_source || row.source || status || "";
   const messageLabel = realLineId(rawLine) ? "LINE文面" : "LINE登録案内";
+  const progress = workflowMeta(row.workflow_status);
   return `<article class="rounded-[24px] bg-white/82 border border-slate-100 p-5 hover:bg-white transition">
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-      <div class="min-w-0">
-        <div class="flex flex-wrap items-center gap-2"><span class="badge bg-slate-50 text-slate-600">レッスン予定</span>${intakeChannelBadge(row)}<span class="badge ${statusBadgeClass(status)}">${escapeHtml(status)}</span>${lineConnectionBadge(rawLine, sourceText)}</div>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2"><span class="badge bg-slate-50 text-slate-600">レッスン予定</span>${intakeChannelBadge(row)}<span class="badge ${statusBadgeClass(status)}">${escapeHtml(status)}</span>${workflowBadge(progress.status)}${lineConnectionBadge(rawLine, sourceText)}</div>
         <h3 class="text-lg font-black text-slate-800 mt-2">${escapeHtml(name)}</h3>
         <p class="text-sm text-slate-500 mt-1">${escapeHtml(formatDate(row.reservation_date))} ${escapeHtml(normalizeTime(row.reservation_time || "", ""))} / ${escapeHtml(row.service_name || "レッスン")}</p>
+        ${workflowProgressHtml(progress.status)}
         <p class="text-sm text-slate-600 mt-2 leading-7 whitespace-pre-wrap">${escapeHtml(row.request_note || row.memo || customer?.owner_memo || "")}</p>
       </div>
       <div class="flex flex-wrap lg:justify-end gap-2">
+        ${workflowActionButton(row)}
         <button onclick="selectReservation('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">詳細</button>
-        <button onclick="openMessageFromRow('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">${messageLabel}</button>
+        <button onclick="openMessageFromRow('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">${messageLabel}</button>
         ${phone ? `<button onclick="copyText('${escapeHtml(phone)}','電話番号をコピーしました。')" class="rounded-full bg-[var(--sage-50)] text-[var(--sage-800)] px-4 py-2 text-xs font-black">電話コピー</button>` : ""}
       </div>
     </div>
@@ -1075,7 +1202,7 @@ function showDetail(row, customer){
   $("detail-line").textContent = lineDisplayText(rawLine, row?.source || row?.status || base.source || base.customer_status || "");
   $("detail-goals").textContent = (base.goals || parseGoal(base.primary_goal)).join("・") || "-";
   $("detail-pace").textContent = base.target_pace || "-";
-  $("detail-badges").innerHTML = `${row ? intakeChannelBadge(row) : ""}${lineConnectionBadge(rawLine, row?.reception_source || row?.source || row?.status || base.source || base.customer_status || "")}<span class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">${escapeHtml(base.customer_status || row?.status || "顧客")}</span>`;
+  $("detail-badges").innerHTML = `${row ? `${intakeChannelBadge(row)}${workflowBadge(row.workflow_status)}` : ""}${lineConnectionBadge(rawLine, row?.reception_source || row?.source || row?.status || base.source || base.customer_status || "")}<span class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">${escapeHtml(base.customer_status || row?.status || "顧客")}</span>`;
   const reservations = relatedReservations(base, row);
   $("detail-reservations").innerHTML = reservations.length ? reservations.slice(0,5).map(r => `<div class="rounded-2xl bg-slate-50 px-4 py-3"><p class="font-black text-slate-800">${escapeHtml(formatDate(r.reservation_date))} ${escapeHtml(normalizeTime(r.reservation_time || "", ""))}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(r.status || "予約")} / ${escapeHtml(r.service_name || "レッスン")}</p></div>`).join("") : `<p class="text-sm text-slate-500">現在表示できる予約はありません。</p>`;
   $("detail-note").value = base.owner_memo || base.memo || row?.request_note || row?.memo || "";

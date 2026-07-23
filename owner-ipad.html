@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-PHONE-3</title>
+  <title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-NEXT-4</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -43,9 +43,9 @@
             <i data-lucide="tablet-smartphone" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-PHONE-3</p>
+            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-4</p>
             <h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE iPad店頭画面</h1>
-            <p class="text-sm text-slate-500 mt-2">店頭受付・本日の予約・次営業日・フォロー・LINE文面コピーに絞った操作画面です。</p>
+            <p class="text-sm text-slate-500 mt-2">本日の予約を受付待ちから次回案内済みまで、タップ操作で1段階ずつ進めます。</p>
           </div>
         </div>
         <div class="grid grid-cols-2 md:flex md:flex-wrap gap-2">
@@ -60,6 +60,19 @@
       </div>
       <div id="system-status" class="mt-4 rounded-2xl bg-white/75 border border-slate-100 px-4 py-3 text-sm text-slate-600">読み込み中...</div>
     </header>
+
+    <section class="glass rounded-[30px] p-4 md:p-5 mb-4">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="section-label">Today Workflow</p>
+          <h2 class="text-xl font-black text-slate-800 mt-1">本日の進捗</h2>
+        </div>
+        <span class="badge bg-white text-slate-600 border border-slate-200">1段階ずつ更新</span>
+      </div>
+      <div id="workflow-summary" class="mt-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
+        <div class="rounded-2xl bg-white/70 p-4 text-sm text-slate-500 md:col-span-3 xl:col-span-6">進捗を読み込み中...</div>
+      </div>
+    </section>
 
     <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       <button onclick="showScreen('today')" class="soft-card rounded-[24px] p-4 text-left touch">
@@ -221,7 +234,7 @@
 
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
-const STEP_VERSION = "YOGA-PHONE-3-CUSTOMER-PAGES-PHONE-NORMALIZED-20260709";
+const STEP_VERSION = "YOGA-NEXT-4-IPAD-WORKFLOW-20260723";
 const state = {
   status: null,
   services: [],
@@ -386,8 +399,113 @@ function setStatus(text, mode){
   el.textContent = text;
   el.className = "mt-4 rounded-2xl px-4 py-3 text-sm font-bold border " + (mode === "error" ? "bg-red-50 text-red-700 border-red-100" : mode === "ok" ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-white/75 text-slate-600 border-slate-100");
 }
+const WORKFLOW_STEPS = ["reserved","checked_in","in_session","completed","recorded","followup_done"];
+const WORKFLOW_VIEW = {
+  reserved: { label:"受付待ち", next:"checked_in", nextLabel:"受付済み", badge:"bg-slate-100 text-slate-700", card:"bg-slate-50" },
+  checked_in: { label:"受付済み", next:"in_session", nextLabel:"開始", badge:"bg-sky-50 text-sky-700", card:"bg-sky-50/70" },
+  in_session: { label:"レッスン中", next:"completed", nextLabel:"完了", badge:"bg-amber-50 text-amber-800", card:"bg-amber-50/70" },
+  completed: { label:"レッスン完了", next:"recorded", nextLabel:"記録済み", badge:"bg-emerald-50 text-emerald-700", card:"bg-emerald-50/70" },
+  recorded: { label:"記録済み", next:"followup_done", nextLabel:"案内済み", badge:"bg-purple-50 text-purple-700", card:"bg-purple-50/70" },
+  followup_done: { label:"次回案内済み", next:null, nextLabel:"完了済み", badge:"bg-[var(--sage-100)] text-[var(--sage-800)]", card:"bg-[var(--sage-50)]" },
+};
+
+function normalizeWorkflowStatus(value){
+  const raw = clean(value).toLowerCase();
+  const aliases = {
+    "":"reserved",
+    "受付待ち":"reserved",
+    "reserved":"reserved",
+    "booked":"reserved",
+    "受付済み":"checked_in",
+    "受付済":"checked_in",
+    "checked_in":"checked_in",
+    "checkin":"checked_in",
+    "来店":"checked_in",
+    "レッスン中":"in_session",
+    "in_session":"in_session",
+    "started":"in_session",
+    "実施中":"in_session",
+    "レッスン完了":"completed",
+    "completed":"completed",
+    "終了":"completed",
+    "記録済み":"recorded",
+    "記録済":"recorded",
+    "recorded":"recorded",
+    "次回案内済み":"followup_done",
+    "次回案内済":"followup_done",
+    "followup_done":"followup_done",
+  };
+  return aliases[raw] || "reserved";
+}
+
+function workflowMeta(value){
+  const status = normalizeWorkflowStatus(value);
+  const index = WORKFLOW_STEPS.indexOf(status);
+  return { status, index, ...(WORKFLOW_VIEW[status] || WORKFLOW_VIEW.reserved) };
+}
+
+function workflowBadge(value){
+  const meta = workflowMeta(value);
+  return `<span class="badge ${meta.badge}">${meta.label}</span>`;
+}
+
+function workflowProgress(value){
+  const meta = workflowMeta(value);
+  return `<div class="mt-3 flex gap-1.5">${WORKFLOW_STEPS.map((_, index) => `<span class="h-2 flex-1 rounded-full ${index <= meta.index ? "bg-[var(--sage-600)]" : "bg-slate-200"}"></span>`).join("")}</div>`;
+}
+
+function renderWorkflowSummary(){
+  const wrap = $("workflow-summary");
+  if(!wrap) return;
+  const rows = state.day?.today_reservations || [];
+  const counts = Object.fromEntries(WORKFLOW_STEPS.map(step => [step, 0]));
+  rows.forEach(row => { counts[normalizeWorkflowStatus(row.workflow_status)] += 1; });
+  wrap.innerHTML = WORKFLOW_STEPS.map(step => {
+    const meta = workflowMeta(step);
+    return `<div class="rounded-[20px] ${meta.card} border border-white/80 p-3">
+      <p class="text-[11px] font-black text-slate-500">${meta.label}</p>
+      <p class="mt-1 text-2xl font-black text-slate-800">${counts[step] || 0}</p>
+    </div>`;
+  }).join("");
+}
+
+function workflowButton(row, key){
+  const meta = workflowMeta(row.workflow_status);
+  const id = clean(row.id || row.event_id || "");
+  if(!id) return `<button type="button" disabled class="touch rounded-2xl bg-slate-100 text-slate-400 px-3 py-2 text-sm font-black">ID確認中</button>`;
+  if(!meta.next) return `<button type="button" disabled class="touch rounded-2xl bg-[var(--sage-100)] text-[var(--sage-800)] px-3 py-2 text-sm font-black">進捗完了</button>`;
+  if(row.reservation_date && row.reservation_date > todayIso()) return `<button type="button" disabled class="touch rounded-2xl bg-slate-100 text-slate-400 px-3 py-2 text-sm font-black">当日から</button>`;
+  return `<button type="button" onclick="advanceWorkflowByKey('${esc(key)}')" class="touch rounded-2xl yoga-gradient text-white px-3 py-2 text-sm font-black">${meta.nextLabel}</button>`;
+}
+
+async function advanceWorkflowByKey(key){
+  const row = window.__reservationRows?.[key];
+  if(!row) return toast("予約データを更新して再度お試しください。", 3200);
+  const id = clean(row.id || row.event_id || "");
+  const current = workflowMeta(row.workflow_status);
+  if(!id || !current.next) return;
+  const next = workflowMeta(current.next);
+  const customerName = row.customer_name || "お客様";
+  if(!window.confirm(`${customerName}の進捗を\n「${current.label}」→「${next.label}」へ進めますか？`)) return;
+
+  try{
+    await apiPost("/api/admin/reservations/update-workflow", {
+      reservation_id: id,
+      workflow_status: current.next,
+      workflow_updated_by: "owner_ipad",
+      source_screen: "owner-ipad.html",
+      workflow_note: `${current.label}から${next.label}へ更新`,
+    });
+    toast(`${customerName}：${next.label}へ更新しました。`, 3000);
+    await loadAll();
+  }catch(err){
+    toast(`進捗更新エラー：${err.message}`, 4200);
+  }
+}
+
 function renderAll(){
   renderHeader();
+  renderWorkflowSummary();
   renderKpis();
   renderServices();
   renderTasks();
@@ -481,24 +599,28 @@ function reservationCard(row, idx, kind){
   const key = `${kind}_${idx}`;
   window.__reservationRows = window.__reservationRows || {};
   window.__reservationRows[key] = row;
+  const progress = workflowMeta(row.workflow_status);
   return `
     <article class="rounded-[26px] bg-white/82 border border-slate-100 p-4 shadow-sm">
       <div class="flex items-start justify-between gap-3">
-        <div>
-          <div class="flex flex-wrap items-center gap-2">${statusBadge(row.status)}<span class="badge bg-white text-slate-600 border border-slate-200">${esc(normalizeTime(row.reservation_time || ""))}</span></div>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">${statusBadge(row.status)}${workflowBadge(progress.status)}<span class="badge bg-white text-slate-600 border border-slate-200">${esc(normalizeTime(row.reservation_time || ""))}</span></div>
           <h3 class="mt-2 text-xl font-black text-slate-800">${esc(row.customer_name || "お客様")}</h3>
           <p class="mt-1 text-sm text-slate-500">${esc(row.service_name || "メニュー未設定")} / ${esc(reservationDateTime(row))}</p>
+          ${workflowProgress(progress.status)}
         </div>
-        <button onclick="selectReservation('${key}')" class="touch rounded-2xl bg-[var(--sage-700)] text-white px-4 py-2.5 text-sm font-black">選択</button>
+        <button onclick="selectReservation('${key}')" class="touch rounded-2xl bg-white border border-slate-200 text-slate-700 px-4 py-2.5 text-sm font-black">選択</button>
       </div>
       ${row.request_note || row.memo ? `<p class="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">${esc(row.request_note || row.memo)}</p>` : ""}
-      <div class="mt-3 grid grid-cols-3 gap-2">
+      <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+        ${workflowButton(row, key)}
         <button onclick="copyText('${esc(row.customer_name || '')}','名前をコピーしました')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">名前</button>
         <button onclick="selectReservation('${key}');makeQuickMessage('reservation_confirm')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">確認文</button>
         <button onclick="selectReservation('${key}');makeQuickMessage('short')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">短文</button>
       </div>
     </article>`;
 }
+
 async function selectReservation(key){
   const row = window.__reservationRows?.[key];
   if(!row) return;

@@ -1,92 +1,109 @@
 system_name: "DPRO ヨガ LINE"
 standard: "DPRO NEXT"
-step_name: "LINE・電話・店頭予約データ統合"
-current_step: "YOGA-NEXT-3-COMPLETE"
-previous_step: "YOGA-NEXT-2-COMPLETE"
-next_step: "YOGA-NEXT-4"
-completed_at_jst: "2026-07-23 19:58:47 +0900"
+step_name: "業務進捗・ステータス見える化"
+current_step: "YOGA-NEXT-4-COMPLETE"
+previous_step: "YOGA-NEXT-3-COMPLETE"
+next_step: "YOGA-NEXT-5"
+completed_at_jst: "2026-07-23 21:37:22 +0900"
 applied_revision: "R2"
 r1_result: "FAILED_BEFORE_COMMIT"
-r1_failure_reason: "channel_filter_ui_exact_match_count_0"
-before_sha: "6508582337c64e3989b844e66b19cdcc37d0dc4d"
-before_tag: "dpro-yoga-next-3-before-20260723"
+r1_failure_reason: "window_addEventListener_missing_in_node_test_mock"
+before_sha: "a9044ebc9e4cccd0a35cab5d40af387bd5afc0c8"
+before_tag: "dpro-yoga-next-4-before-20260723"
 before_tag_status: "existing_same_sha"
 target_files:
-  - "index.html"
   - "owner.html"
+  - "owner-ipad.html"
+external_deployment:
+  sql:
+    executed: true
+    file: "YOGA-NEXT-4.sql"
+    migration_type: "non_destructive"
+    columns:
+      - "workflow_status"
+      - "workflow_updated_at"
+      - "workflow_updated_by"
+      - "workflow_note"
+  worker:
+    deployed: true
+    version: "YOGA-NEXT-4-WORKFLOW-STATUS-20260723"
+    source_sha256: "86b9577a6549f67f031071ee82398472175055494f5a64879234b0aa554424f7"
 implementation:
-  reception_channels:
-    - "line"
-    - "phone"
-    - "store"
-    - "unknown"
-  existing_source_values_preserved: true
-  line_source_value: "liff"
-  manual_source_value: "owner_manual"
-  compatibility_metadata_added: true
-  owner_channel_filter: true
-  owner_channel_badge: true
-  manual_channel_select: true
-  manual_phone_store_status_split: true
-  new_legacy_display_merge: true
-  manual_duplicate_warning: true
-  phone_normalization_preserved: true
-  past_datetime_guard_preserved: true
+  workflow_steps:
+    - "reserved"
+    - "checked_in"
+    - "in_session"
+    - "completed"
+    - "recorded"
+    - "followup_done"
+  workflow_labels:
+    - "受付待ち"
+    - "受付済み"
+    - "レッスン中"
+    - "レッスン完了"
+    - "記録済み"
+    - "次回案内済み"
+  existing_reservation_status_separated: true
+  one_step_transition: true
+  backward_transition_api_guard: true
+  future_reservation_guard: true
+  confirmation_guard: true
+  owner_progress_summary: true
+  ipad_progress_summary: true
+  owner_next_action_button: true
+  ipad_next_action_button: true
+  followup_auto_close_on_followup_done: true
 checks:
   required_files: "OK"
   previous_step: "OK"
   yml_syntax: "OK"
+  worker_live_version: "OK"
+  supabase_workflow_schema: "OK"
   html_syntax: "OK"
   javascript_syntax: "OK"
   html_id_duplicates: "OK"
   existing_function_preservation: "OK"
-  reception_business_logic: "OK"
-  api_path_preservation: "OK"
+  workflow_business_logic: "OK"
+  reservation_status_separation: "OK"
   public_admin_information: "OK"
-  other_screen_hash_preservation: "OK"
+  customer_screen_hash_preservation: "OK"
   overall: "OK"
 change_record:
-  worker_changed: false
-  supabase_changed: false
-  api_changed: false
-  api_path_changed: false
+  worker_changed: true
+  supabase_changed: true
+  api_changed: true
+  api_path_changed: true
   screen_function_changed: true
-  index_html_changed: true
   owner_html_changed: true
-  owner_ipad_html_changed: false
+  owner_ipad_html_changed: true
+  index_html_changed: false
   member_html_changed: false
-  existing_data_changed: false
-compatibility:
-  existing_records:
-    line_detection: "source・LIFF・LINE IDから判定"
-    manual_detection: "source・statusから電話または店頭を判定"
-    unknown_records: "その他・旧データとして表示"
-  new_records:
-    line: "source=liffを維持し互換項目を追加"
-    phone: "source=owner_manualを維持しstatus=電話予約"
-    store: "source=owner_manualを維持しstatus=店頭予約"
+  existing_reservation_data_deleted: false
+new_api_paths:
+  - "GET /api/admin/workflow/check"
+  - "POST /api/admin/reservations/update-workflow"
 file_result:
   owner:
     path: "owner.html"
-    blob_sha: "eef557757ce6e1c39451d833cbb0649117e82922"
-    bytes: 107509
-    version: "YOGA-NEXT-3-RECEPTION-UNIFIED-20260723"
-  customer:
-    path: "index.html"
-    blob_sha: "df33c788e773bd1417d5e75cd9d4a15a90595573"
-    bytes: 67501
-    version: "YOGA-NEXT-3-LINE-RECEPTION-20260723"
+    blob_sha: "095136473e929be3d3ee37e21f014dc69a501a9a"
+    bytes: 113979
+    version: "YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723"
+  owner_ipad:
+    path: "owner-ipad.html"
+    blob_sha: "470754f86081cd6c99eed24f41f7ac41c9cc8ce9"
+    bytes: 54515
+    version: "YOGA-NEXT-4-IPAD-WORKFLOW-20260723"
 generated_files:
   - "dpro-next-ledger.yml"
-  - "dpro-next-yoga-next-3-result.json"
+  - "dpro-next-yoga-next-4-result.json"
 known_attention:
-  - "受付・来店・実施・完了の進捗ステータス更新はYOGA-NEXT-4で実装する"
-  - "過去の電話・店頭共通表記は推定分類し、明確に判定できないデータはその他・旧データとする"
-  - "Workerソースは本リポジトリ外のため、このSTEPでは変更していない"
+  - "レッスン実施メモの構造化はYOGA-NEXT-5で行う"
+  - "進捗修正はWorker APIで直前段階への戻しだけ許可し、通常画面には戻すボタンを表示しない"
+  - "WorkerソースはCloudflareへDeployし、GitHubリポジトリには配置しない"
 rollback:
-  method: "backup_tag"
-  tag: "dpro-yoga-next-3-before-20260723"
-  command_reference: "git checkout dpro-yoga-next-3-before-20260723 -- index.html owner.html dpro-next-ledger.yml"
+  github_tag: "dpro-yoga-next-4-before-20260723"
+  worker: "添付の旧Worker完全版を再Deploy"
+  sql: "YOGA-NEXT-4-ROLLBACK.sql"
 workflow_self_delete_after_success: true
 failed_workflow_self_delete_after_success: true
 auto_commit_push: true
