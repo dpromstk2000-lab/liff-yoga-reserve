@@ -1,0 +1,947 @@
+name: "STEP YOGA-NEXT-6 | iPad・現場スタッフ画面最適化"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/STEP-YOGA-NEXT-6.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yoga-next-6-ipad-staff-optimization
+  cancel-in-progress: false
+
+jobs:
+  ipad-staff-optimization:
+    name: "YOGA-NEXT-6 iPad and staff role optimization"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      STEP_NAME: "YOGA-NEXT-6"
+      WORKFLOW_PATH: ".github/workflows/STEP-YOGA-NEXT-6.yml"
+      LEDGER_FILE: "dpro-next-ledger.yml"
+      RESULT_FILE: "dpro-next-yoga-next-6-result.json"
+      BEFORE_TAG: "dpro-yoga-next-6-before-20260723"
+      EXPECTED_IPAD_BLOB_SHA: "2f8f17d22cd662f834eeccb650e6e52e7b56b37a"
+      EXPECTED_OWNER_BLOB_SHA: "fc0df37d9d782dcab18ef35fa7a808f6f500f354"
+      EXPECTED_INDEX_BLOB_SHA: "df33c788e773bd1417d5e75cd9d4a15a90595573"
+      EXPECTED_MEMBER_BLOB_SHA: "caceca635815dcc21699b2bedb88e3f948ceeba4"
+      EXPECTED_LEDGER_BLOB_SHA: "520b94b2c88c848721f2f9d0235598c28e95f693"
+
+    steps:
+      - name: "1. Checkout full repository history"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "2. 前STEP・対象ファイル・基準状態確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          for file in \
+            owner-ipad.html \
+            owner.html \
+            index.html \
+            member.html \
+            dpro-next-ledger.yml \
+            dpro-next-yoga-next-5-result.json \
+            "$WORKFLOW_PATH"
+          do
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::YOGA-NEXT-6の必須ファイルがありません。"
+              exit 1
+            fi
+          done
+
+          grep -q 'current_step: "YOGA-NEXT-5-COMPLETE"' "$LEDGER_FILE" || {
+            echo "::error file=$LEDGER_FILE::前STEP YOGA-NEXT-5-COMPLETEを確認できません。"
+            exit 1
+          }
+
+          declare -A expected=(
+            ["owner-ipad.html"]="$EXPECTED_IPAD_BLOB_SHA"
+            ["owner.html"]="$EXPECTED_OWNER_BLOB_SHA"
+            ["index.html"]="$EXPECTED_INDEX_BLOB_SHA"
+            ["member.html"]="$EXPECTED_MEMBER_BLOB_SHA"
+            ["$LEDGER_FILE"]="$EXPECTED_LEDGER_BLOB_SHA"
+          )
+
+          for file in "${!expected[@]}"; do
+            current="$(git hash-object "$file")"
+            if [[ "$current" != "${expected[$file]}" ]]; then
+              echo "::error file=$file::確認済み基準版から変更されています。期待=${expected[$file]} / 現在=$current"
+              exit 1
+            fi
+          done
+
+          mapfile -t head_changed < <(git diff-tree --no-commit-id --name-only -r HEAD)
+          before_sha="$(git rev-parse HEAD)"
+          before_reason="current_head"
+
+          if [[ "${#head_changed[@]}" -eq 1 && "${head_changed[0]}" == "$WORKFLOW_PATH" ]]; then
+            before_sha="$(git rev-parse HEAD^)"
+            before_reason="workflow_upload_parent"
+          fi
+
+          echo "BEFORE_SHA=$before_sha" >> "$GITHUB_ENV"
+          echo "BEFORE_REASON=$before_reason" >> "$GITHUB_ENV"
+
+          {
+            echo "## STEP YOGA-NEXT-6"
+            echo ""
+            echo "- STEP名: iPad・現場スタッフ画面最適化"
+            echo "- 前STEP: YOGA-NEXT-5-COMPLETE"
+            echo "- 対象: owner-ipad.htmlのみ"
+            echo "- 別staff.html: 追加しない"
+            echo "- Worker / Supabase / API変更: なし"
+            echo "- 変更前SHA: \`$before_sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "3. 変更前バックアップタグ作成"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$BEFORE_TAG" >/dev/null 2>&1; then
+            tag_sha="$(git rev-list -n 1 "$BEFORE_TAG")"
+            if [[ "$tag_sha" != "$BEFORE_SHA" ]]; then
+              echo "::error::既存タグ $BEFORE_TAG が別SHAを指しています。既存=$tag_sha / 今回=$BEFORE_SHA"
+              exit 1
+            fi
+            tag_status="existing_same_sha"
+          else
+            git tag -a "$BEFORE_TAG" "$BEFORE_SHA" -m "DPRO ヨガ LINE before YOGA-NEXT-6"
+            git push origin "$BEFORE_TAG"
+            tag_status="created"
+          fi
+
+          echo "BEFORE_TAG_STATUS=$tag_status" >> "$GITHUB_ENV"
+
+      - name: "4. YML構文検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ruby -e 'require "yaml"; YAML.load_file(ARGV[0], aliases: true); puts "YAML syntax OK"' "$WORKFLOW_PATH"
+
+      - name: "5. owner-ipad.html 現場スタッフ最適化"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("owner-ipad.html")
+          text = path.read_text(encoding="utf-8")
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: 置換対象が1件ではありません。count={count}")
+              text = text.replace(old, new, 1)
+
+          def replace_regex(pattern: str, replacement: str, label: str, flags=0) -> None:
+              global text
+              updated, count = re.subn(pattern, lambda _: replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"{label}: 正規表現対象が1件ではありません。count={count}")
+              text = updated
+
+          replace_once(
+              "<title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-NEXT-5</title>",
+              "<title>DPRO YOGA LINE | Staff iPad STEP YOGA-NEXT-6</title>",
+              "title"
+          )
+          replace_once(
+              '<p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-5</p>',
+              '<p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-6</p>',
+              "step label"
+          )
+          replace_once(
+              '<h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE iPad店頭画面</h1>',
+              '<h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE 店頭・スタッフ画面</h1>',
+              "header title"
+          )
+          replace_once(
+              '<p class="text-sm text-slate-500 mt-2">レッスン完了後、その場で実施内容・注意事項・引継ぎ・次回おすすめを記録します。</p>',
+              '<p class="text-sm text-slate-500 mt-2">最初に「次に対応」を確認し、受付・進捗・記録を現場3操作以内で行います。</p>',
+              "header help"
+          )
+          replace_once(
+              'const STEP_VERSION = "YOGA-NEXT-5-IPAD-LESSON-RECORD-20260723";',
+              'const STEP_VERSION = "YOGA-NEXT-6-IPAD-STAFF-FOCUS-20260723";',
+              "step version"
+          )
+
+          replace_regex(
+              r'''(?P<indent>^[ \t]*)<div class="grid grid-cols-2 md:flex md:flex-wrap gap-2">\s*<div\b(?=[^>]*\bcol-span-2)[^>]*>\s*<span[^>]*>管理コード</span>\s*<input\b(?=[^>]*\bid="admin-code-input")[^>]*?/?>\s*</div>\s*<button\b(?=[^>]*onclick="goPcOwner\(\)")[^>]*>.*?</button>\s*<button\b(?=[^>]*onclick="prepareDemoData\(\)")[^>]*>.*?</button>\s*<button\b(?=[^>]*onclick="loadAll\(\)")[^>]*>.*?</button>\s*</div>''',
+              '''        <div class="grid grid-cols-1 md:grid-cols-[minmax(230px,1fr)_auto] gap-2 w-full md:w-auto">
+          <label class="flex items-center gap-2 rounded-2xl bg-white/85 border border-slate-200 px-3 py-2 shadow-sm">
+            <span class="text-xs font-black text-slate-500 shrink-0">担当</span>
+            <input id="staff-name-input" class="min-w-0 w-full bg-transparent outline-none text-base font-black text-slate-700" placeholder="担当スタッフ名" oninput="saveStaffName()" />
+          </label>
+          <button onclick="loadAll()" class="touch rounded-2xl yoga-gradient px-5 py-3 text-sm font-black text-white shadow-lg flex items-center justify-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i>更新</button>
+                  </div>''',
+              "daily header controls",
+              flags=re.M | re.S
+          )
+
+          replace_once(
+              '''      <div id="system-status" class="mt-4 rounded-2xl bg-white/75 border border-slate-100 px-4 py-3 text-sm text-slate-600">読み込み中...</div>''',
+              '''      <div id="system-status" class="mt-4 rounded-2xl bg-white/75 border border-slate-100 px-4 py-3 text-sm text-slate-600">読み込み中...</div>
+                <details id="management-tools" class="mt-3 rounded-2xl bg-white/55 border border-slate-100 px-4 py-3">
+                  <summary class="cursor-pointer text-sm font-black text-slate-600 select-none">管理操作（通常は開きません）</summary>
+                  <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div class="flex items-center gap-2 rounded-2xl bg-white border border-slate-200 px-3 py-2">
+            <span class="text-xs font-black text-slate-500">管理コード</span>
+            <input id="admin-code-input" type="password" autocomplete="off" class="w-24 bg-transparent outline-none text-base font-black text-slate-700" inputmode="numeric" oninput="saveAdminCode()" />
+            <button id="admin-code-clear-btn" type="button" onclick="clearAdminCode()" class="touch min-h-0 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">削除</button>
+          </div>
+          <button onclick="goPcOwner()" class="touch rounded-2xl bg-white border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 flex items-center justify-center gap-2"><i data-lucide="monitor" class="w-4 h-4"></i>PC管理画面</button>
+          <button onclick="prepareDemoData()" class="touch rounded-2xl bg-amber-600 px-4 py-3 text-sm font-black text-white flex items-center justify-center gap-2"><i data-lucide="sparkles" class="w-4 h-4"></i>DEMO準備</button>
+                  </div>
+                </details>''',
+              "management tools"
+          )
+
+          replace_once(
+              '''    </header>
+
+              <section class="glass rounded-[30px] p-4 md:p-5 mb-4">''',
+              '''    </header>
+
+              <section id="next-action-section" class="glass rounded-[30px] p-4 md:p-5 mb-4 border-2 border-[var(--sage-200)]">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+          <p class="section-label">Next Action</p>
+          <h2 class="text-xl md:text-2xl font-black text-slate-800 mt-1">次に対応</h2>
+          <p class="text-sm text-slate-500 mt-1">本日の予約から、現場で次に行う操作を1件だけ表示します。</p>
+                  </div>
+                  <span id="staff-role-badge" class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">担当スタッフ</span>
+                </div>
+                <div id="next-action-card" class="mt-4">
+                  <div class="rounded-[24px] bg-white/70 p-5 text-sm text-slate-500">次の対応を確認しています...</div>
+                </div>
+              </section>
+
+              <section class="glass rounded-[30px] p-4 md:p-5 mb-4">''',
+              "next action section"
+          )
+
+          replace_once(
+              '''  customers: [],
+            selectedCustomer: null,''',
+              '''  customers: [],
+            customersLoaded: false,
+            customersLoading: false,
+            selectedCustomer: null,''',
+              "customer lazy state"
+          )
+
+          replace_regex(
+              r'''function adminCode\(\)\{[^\n]*\}\nfunction saveAdminCode\(\)\{[^\n]*\}''',
+              '''function defaultAdminCode(){
+            return localStorage.getItem("yoga_ipad_admin_code_cleared") === "1" ? "" : "1234";
+          }
+          function adminCode(){
+            return clean($("admin-code-input")?.value || localStorage.getItem("yoga_admin_code") || defaultAdminCode());
+          }
+          function saveAdminCode(){
+            const value = clean($("admin-code-input")?.value || "");
+            if(value){
+              localStorage.setItem("yoga_admin_code", value);
+              localStorage.removeItem("yoga_ipad_admin_code_cleared");
+            }else{
+              localStorage.removeItem("yoga_admin_code");
+            }
+          }
+          function clearAdminCode(){
+            localStorage.removeItem("yoga_admin_code");
+            localStorage.setItem("yoga_ipad_admin_code_cleared", "1");
+            if($("admin-code-input")) $("admin-code-input").value = "";
+            toast("保存した管理コードを削除しました。", 3000);
+          }
+          function staffName(){
+            return clean($("staff-name-input")?.value || localStorage.getItem("yoga_ipad_staff_name") || "担当スタッフ");
+          }
+          function saveStaffName(){
+            const value = clean($("staff-name-input")?.value || "");
+            if(value) localStorage.setItem("yoga_ipad_staff_name", value);
+            else localStorage.removeItem("yoga_ipad_staff_name");
+            if($("staff-role-badge")) $("staff-role-badge").textContent = value || "担当スタッフ";
+          }
+          function staffActor(){
+            return `owner_ipad:${staffName() || "担当スタッフ"}`;
+          }''',
+              "admin and staff functions"
+          )
+
+          replace_regex(
+              r'''function showScreen\(name\)\{\n.*?\n\}\nfunction openPage''',
+              '''async function showScreen(name){
+            state.currentScreen = name;
+            ["today","next","booking","follow","customer"].forEach(key=>{
+              const screen = $(`screen-${key}`);
+              const nav = $(`nav-${key}`);
+              if(screen) screen.classList.toggle("active", key === name || (window.matchMedia("(min-width:1180px)").matches && key === "customer"));
+              if(nav) nav.classList.toggle("active", key === name);
+            });
+            if(name === "booking") setTimeout(()=>$("manual-name")?.focus(), 120);
+            if(name === "customer") await ensureCustomersLoaded();
+          }
+          function openPage''',
+              "screen role and customer lazy load",
+              flags=re.S
+          )
+
+          replace_once(
+              '''    await loadManualTimes();
+              await searchCustomers();
+              toast("更新しました");''',
+              '''    await loadManualTimes();
+              toast("更新しました");''',
+              "remove initial customer load"
+          )
+
+          replace_once(
+              '''function renderAll(){
+            renderHeader();
+            renderWorkflowSummary();''',
+              '''function renderAll(){
+            renderHeader();
+            renderWorkflowSummary();
+            renderNextActionFocus();''',
+              "render next action"
+          )
+
+          replace_regex(
+              r'''function renderWorkflowSummary\(\)\{\n.*?\n\}\n\nfunction workflowButton''',
+              '''function renderWorkflowSummary(){
+            const wrap = $("workflow-summary");
+            if(!wrap) return;
+            const rows = state.day?.today_reservations || [];
+            const counts = Object.fromEntries(WORKFLOW_STEPS.map(step => [step, 0]));
+            rows.forEach(row => { counts[normalizeWorkflowStatus(row.workflow_status)] += 1; });
+            wrap.innerHTML = WORKFLOW_STEPS.map(step => {
+              const meta = workflowMeta(step);
+              return `<div class="rounded-[20px] ${meta.card} border border-white/80 p-3">
+                <p class="text-[11px] font-black text-slate-500">${meta.label}</p>
+                <p class="mt-1 text-2xl font-black text-slate-800">${counts[step] || 0}</p>
+              </div>`;
+            }).join("");
+          }
+
+          function workflowActionPriority(row){
+            const status = normalizeWorkflowStatus(row?.workflow_status);
+            const map = { in_session:0, checked_in:1, completed:2, reserved:3, recorded:4, followup_done:5 };
+            return map[status] ?? 9;
+          }
+
+          function nextActionReservation(){
+            return [...(state.day?.today_reservations || [])]
+              .filter(row => !clean(row?.status).includes("キャンセル"))
+              .sort((a,b) =>
+                workflowActionPriority(a) - workflowActionPriority(b) ||
+                normalizeTime(a?.reservation_time || "").localeCompare(normalizeTime(b?.reservation_time || ""))
+              )[0] || null;
+          }
+
+          function renderNextActionFocus(){
+            const wrap = $("next-action-card");
+            if(!wrap) return;
+            if($("staff-role-badge")) $("staff-role-badge").textContent = staffName() || "担当スタッフ";
+
+            const row = nextActionReservation();
+            if(!row){
+              wrap.innerHTML = `<div class="rounded-[24px] bg-emerald-50 border border-emerald-100 p-5 text-emerald-800"><p class="text-lg font-black">本日の予約対応はありません</p><p class="mt-1 text-sm">電話・店頭受付やフォロー対象を確認してください。</p></div>`;
+              return;
+            }
+
+            const key = "focus_next_action";
+            window.__reservationRows = window.__reservationRows || {};
+            window.__reservationRows[key] = row;
+            const meta = workflowMeta(row.workflow_status);
+            const actionText = meta.status === "completed"
+              ? "レッスン記録を入力"
+              : meta.next
+                ? `「${meta.nextLabel}」へ進める`
+                : "本日の対応は完了";
+
+            wrap.innerHTML = `<article class="rounded-[26px] ${meta.card} border border-white/90 p-5 shadow-sm">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap gap-2">${workflowBadge(meta.status)}<span class="badge bg-white text-slate-700 border border-slate-200">${esc(normalizeTime(row.reservation_time || ""))}</span></div>
+                  <h3 class="mt-2 text-2xl font-black text-slate-800">${esc(row.customer_name || "お客様")}</h3>
+                  <p class="mt-1 text-sm text-slate-600">${esc(row.service_name || "レッスン")} / 次の操作：${esc(actionText)}</p>
+                  ${workflowProgress(meta.status)}
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-[220px]">
+                  ${workflowButton(row, key)}
+                  ${lessonRecordSecondaryButton(row, key)}
+                </div>
+              </div>
+            </article>`;
+          }
+
+          function workflowButton''',
+              "next action functions",
+              flags=re.S
+          )
+
+          replace_once(
+              'workflow_updated_by: "owner_ipad",',
+              'workflow_updated_by: staffActor(),',
+              "workflow actor"
+          )
+          replace_once(
+              'lesson_recorded_by: "owner_ipad",',
+              'lesson_recorded_by: staffActor(),',
+              "lesson record actor"
+          )
+          replace_once(
+              'handled_note:"iPad店頭画面で対応済み"',
+              'handled_note:`${staffName()}がiPad店頭画面で対応済み`',
+              "followup actor"
+          )
+
+          replace_once(
+              '''function debouncedSearchCustomers(){
+            clearTimeout(state.searchTimer);
+            state.searchTimer = setTimeout(searchCustomers, 320);
+          }
+          async function searchCustomers(){''',
+              '''async function ensureCustomersLoaded(){
+            if(state.customersLoaded || state.customersLoading) return;
+            state.customersLoading = true;
+            try{
+              await searchCustomers();
+            }finally{
+              state.customersLoading = false;
+            }
+          }
+          function debouncedSearchCustomers(){
+            clearTimeout(state.searchTimer);
+            state.searchTimer = setTimeout(searchCustomers, 320);
+          }
+          async function searchCustomers(){''',
+              "ensure customer load"
+          )
+
+          replace_once(
+              '''    const data = await apiGet("/api/admin/customers/search", { q });
+              state.customers = data.customers || [];
+              renderCustomers();''',
+              '''    const data = await apiGet("/api/admin/customers/search", { q });
+              state.customers = data.customers || [];
+              state.customersLoaded = true;
+              renderCustomers();''',
+              "customer loaded flag"
+          )
+
+          replace_once(
+              '''window.addEventListener("DOMContentLoaded", () => {
+            const saved = localStorage.getItem("yoga_admin_code") || "1234";
+            if($("admin-code-input")) $("admin-code-input").value = saved;
+            if($("manual-date")) $("manual-date").value = todayIso();
+            lucide?.createIcons?.();
+            showScreen("today");
+            loadAll();
+          });''',
+              '''window.addEventListener("DOMContentLoaded", () => {
+            const saved = localStorage.getItem("yoga_admin_code") || defaultAdminCode();
+            if($("admin-code-input")) $("admin-code-input").value = saved;
+            if($("staff-name-input")) $("staff-name-input").value = localStorage.getItem("yoga_ipad_staff_name") || "担当スタッフ";
+            if($("staff-role-badge")) $("staff-role-badge").textContent = staffName();
+            if($("manual-date")) $("manual-date").value = todayIso();
+            lucide?.createIcons?.();
+            showScreen("today");
+            loadAll();
+          });''',
+              "DOMContentLoaded staff mode"
+          )
+
+          path.write_text(text, encoding="utf-8")
+          print("owner-ipad.html YOGA-NEXT-6 patch applied")
+          PY
+
+      - name: "6. HTML・JavaScript・ID重複・既存API維持検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import collections
+          import datetime as dt
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+
+          class Inspector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.ids = []
+                  self.scripts = []
+                  self.in_script = False
+                  self.parts = []
+
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if attrs.get("id"):
+                      self.ids.append(attrs["id"])
+                  if tag.lower() == "script" and not attrs.get("src"):
+                      self.in_script = True
+                      self.parts = []
+
+              def handle_data(self, data):
+                  if self.in_script:
+                      self.parts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.in_script:
+                      self.scripts.append("\n".join(self.parts))
+                      self.in_script = False
+                      self.parts = []
+
+          path = Path("owner-ipad.html")
+          text = path.read_text(encoding="utf-8")
+          inspector = Inspector()
+          inspector.feed(text)
+          inspector.close()
+
+          duplicates = sorted(k for k,v in collections.Counter(inspector.ids).items() if v > 1)
+          if duplicates:
+              raise SystemExit(f"HTML ID重複: {duplicates}")
+
+          for i, script in enumerate(inspector.scripts, 1):
+              if not script.strip():
+                  continue
+              with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+                  tmp.write(script)
+                  temp_name = tmp.name
+              try:
+                  check = subprocess.run(["node", "--check", temp_name], text=True, capture_output=True)
+                  if check.returncode != 0:
+                      raise SystemExit(f"JavaScript構文NG inline-{i}: {check.stderr}")
+              finally:
+                  Path(temp_name).unlink(missing_ok=True)
+
+          required = {
+              "version": "YOGA-NEXT-6-IPAD-STAFF-FOCUS-20260723",
+              "staff_input": 'id="staff-name-input"',
+              "staff_actor": "function staffActor()",
+              "next_action": 'id="next-action-card"',
+              "next_action_logic": "function nextActionReservation()",
+              "management_details": 'id="management-tools"',
+              "admin_clear": 'id="admin-code-clear-btn"',
+              "customer_lazy": "async function ensureCustomersLoaded()",
+              "customer_loaded_state": "customersLoaded: false",
+              "workflow_api": '"/api/admin/reservations/update-workflow"',
+              "lesson_api": '"/api/admin/reservations/save-lesson-record"',
+              "manual_api": '"/api/admin/reservations/manual-create"',
+              "followup_api": '"/api/admin/followups/update-status"',
+              "phone_normalize": "normalizePhone",
+              "past_guard": "isPastDate",
+          }
+          missing = [name for name, marker in required.items() if marker not in text]
+          if missing:
+              raise SystemExit(f"必要機能不足: {missing}")
+
+          load_all = re.search(r"async function loadAll\(\)\{(.*?)\n\}\nfunction setStatus", text, re.S)
+          if not load_all:
+              raise SystemExit("loadAll関数を確認できません。")
+          if "await searchCustomers();" in load_all.group(1):
+              raise SystemExit("初期表示で顧客検索を実行しています。")
+
+          api_pattern = re.compile(r'''["'](/api/[A-Za-z0-9_./-]+)["']''')
+          before_text = subprocess.run(
+              ["git", "show", f"{os.environ['BEFORE_TAG']}:owner-ipad.html"],
+              text=True,
+              capture_output=True,
+              check=True,
+          ).stdout
+          before_paths = sorted(set(api_pattern.findall(before_text)))
+          after_paths = sorted(set(api_pattern.findall(text)))
+          if before_paths != after_paths:
+              raise SystemExit(f"既存APIパスが変化しています。before={before_paths} after={after_paths}")
+
+          unchanged = {}
+          for file_name in ["owner.html","index.html","member.html"]:
+              current = Path(file_name).read_bytes()
+              baseline = subprocess.run(
+                  ["git", "show", f"{os.environ['BEFORE_TAG']}:{file_name}"],
+                  capture_output=True,
+                  check=True,
+              ).stdout
+              unchanged[file_name] = hashlib.sha256(current).hexdigest() == hashlib.sha256(baseline).hexdigest()
+              if not unchanged[file_name]:
+                  raise SystemExit(f"{file_name}が変更されています。")
+
+          size = path.stat().st_size
+          if size > 75000:
+              raise SystemExit(f"owner-ipad.html容量超過: {size} bytes")
+
+          changed = subprocess.run(
+              ["git", "diff", "--name-only", os.environ["BEFORE_SHA"]],
+              text=True,
+              capture_output=True,
+              check=True,
+          ).stdout.splitlines()
+
+          forbidden_patterns = [
+              re.compile(r"(^|/)worker\.js$", re.I),
+              re.compile(r"\.sql$", re.I),
+              re.compile(r"supabase", re.I),
+              re.compile(r"wrangler", re.I),
+          ]
+          forbidden = [p for p in changed if any(rx.search(p) for rx in forbidden_patterns)]
+          if forbidden:
+              raise SystemExit(f"WorkerまたはSupabase変更を検出: {forbidden}")
+
+          result = {
+              "ok": True,
+              "overall": "OK",
+              "step": "YOGA-NEXT-6",
+              "checked_at_jst": dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(),
+              "repository": os.environ.get("GITHUB_REPOSITORY", ""),
+              "branch": os.environ.get("GITHUB_REF_NAME", ""),
+              "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "before_sha": os.environ["BEFORE_SHA"],
+              "before_tag": os.environ["BEFORE_TAG"],
+              "target_files": ["owner-ipad.html"],
+              "html_syntax": "OK",
+              "javascript_syntax": "OK",
+              "html_id_duplicates": "OK",
+              "existing_api_paths_preserved": True,
+              "initial_customer_search_removed": True,
+              "next_action_focus": "ADDED",
+              "staff_actor": "ADDED",
+              "management_tools_collapsed": "ADDED",
+              "admin_code_clear": "ADDED",
+              "separate_staff_html": False,
+              "staff_screen": "owner-ipad.html",
+              "unchanged_other_screens": unchanged,
+              "owner_ipad_bytes": size,
+              "worker_changed": False,
+              "supabase_changed": False,
+              "api_changed": False,
+              "changed_files_before_ledger": changed,
+          }
+
+          Path(os.environ["RESULT_FILE"]).write_text(
+              json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+
+      - name: "7. iPad・スタッフ業務ロジック検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          class ScriptParser(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.scripts = []
+                  self.in_script = False
+                  self.parts = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "script" and not dict(attrs).get("src"):
+                      self.in_script = True
+                      self.parts = []
+
+              def handle_data(self, data):
+                  if self.in_script:
+                      self.parts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.in_script:
+                      self.scripts.append("\n".join(self.parts))
+                      self.in_script = False
+                      self.parts = []
+
+          parser = ScriptParser()
+          parser.feed(Path("owner-ipad.html").read_text(encoding="utf-8"))
+          script = max((s for s in parser.scripts if s.strip()), key=len)
+
+          prelude = r'''
+          const elements = {
+            "staff-name-input": { value:"山田スタッフ" },
+            "staff-role-badge": { textContent:"" },
+            "admin-code-input": { value:"1234" },
+          };
+          globalThis.window = {
+            location:{search:"",hostname:"example.com"},
+            matchMedia:()=>({matches:false}),
+            addEventListener:()=>{},
+            removeEventListener:()=>{},
+            dispatchEvent:()=>true,
+            setTimeout:()=>0,
+            clearTimeout:()=>{},
+            confirm:()=>false,
+            open:()=>{},
+            scrollTo:()=>{}
+          };
+          globalThis.location = { href:"https://example.com/owner-ipad.html" };
+          globalThis.document = {
+            getElementById:(id)=>elements[id] || null,
+            querySelectorAll:()=>[],
+            addEventListener:()=>{},
+            createElement:()=>({classList:{add:()=>{},remove:()=>{},toggle:()=>{}},style:{},appendChild:()=>{},remove:()=>{}}),
+            body:{appendChild:()=>{}}
+          };
+          globalThis.localStorage = {
+            values:{"yoga_ipad_staff_name":"山田スタッフ","yoga_admin_code":"1234"},
+            getItem(key){ return this.values[key] ?? null; },
+            setItem(key,value){ this.values[key]=String(value); },
+            removeItem(key){ delete this.values[key]; }
+          };
+          globalThis.navigator = {clipboard:{writeText:async()=>{}}};
+          globalThis.fetch = async()=>{throw new Error("fetch disabled");};
+          globalThis.confirm = ()=>false;
+          globalThis.alert = ()=>{};
+          globalThis.prompt = ()=>"";
+          globalThis.lucide = {createIcons:()=>{}};
+          window.document = document;
+          window.localStorage = localStorage;
+          window.navigator = navigator;
+          '''
+
+          tests = r'''
+          if(staffName() !== "山田スタッフ") throw new Error("staffName");
+          if(staffActor() !== "owner_ipad:山田スタッフ") throw new Error("staffActor");
+
+          state.day = {today_reservations:[
+            {customer_name:"予約A", reservation_time:"10:00", workflow_status:"reserved", status:"新規予約"},
+            {customer_name:"実施中B", reservation_time:"11:00", workflow_status:"in_session", status:"予約"},
+            {customer_name:"受付済C", reservation_time:"09:30", workflow_status:"checked_in", status:"予約"}
+          ]};
+          const next = nextActionReservation();
+          if(next.customer_name !== "実施中B") throw new Error(`next action priority: ${next.customer_name}`);
+
+          state.day = {today_reservations:[
+            {customer_name:"取消", reservation_time:"09:00", workflow_status:"in_session", status:"キャンセル"},
+            {customer_name:"有効", reservation_time:"10:00", workflow_status:"reserved", status:"予約"}
+          ]};
+          if(nextActionReservation().customer_name !== "有効") throw new Error("cancel filter");
+
+          if(typeof ensureCustomersLoaded !== "function") throw new Error("lazy customer function");
+          if(typeof clearAdminCode !== "function") throw new Error("admin clear function");
+          console.log("IPAD_STAFF_LOGIC_OK");
+          '''
+
+          with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+              tmp.write(prelude + "\n" + script + "\n" + tests)
+              temp_name = tmp.name
+
+          try:
+              run = subprocess.run(["node", temp_name], text=True, capture_output=True)
+              print(run.stdout)
+              if run.returncode != 0:
+                  print(run.stderr)
+                  raise SystemExit("iPad・スタッフ業務ロジック検査NG")
+              if "IPAD_STAFF_LOGIC_OK" not in run.stdout:
+                  raise SystemExit("iPad・スタッフ業務ロジックPASSを確認できません。")
+          finally:
+              Path(temp_name).unlink(missing_ok=True)
+          PY
+
+      - name: "8. NEXT-6完成台帳更新"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          completed_at="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %z')"
+          ipad_blob="$(git hash-object owner-ipad.html)"
+          ipad_bytes="$(wc -c < owner-ipad.html | tr -d ' ')"
+
+          cat > "$LEDGER_FILE" <<EOF
+          system_name: "DPRO ヨガ LINE"
+          standard: "DPRO NEXT"
+          step_name: "iPad・現場スタッフ画面最適化"
+          current_step: "YOGA-NEXT-6-COMPLETE"
+          previous_step: "YOGA-NEXT-5-COMPLETE"
+          next_step: "YOGA-NEXT-7"
+          completed_at_jst: "$completed_at"
+          before_sha: "$BEFORE_SHA"
+          before_tag: "$BEFORE_TAG"
+          before_tag_status: "$BEFORE_TAG_STATUS"
+          target_files:
+            - "owner-ipad.html"
+          role_separation:
+            owner_pc:
+              file: "owner.html"
+              role: "全体管理・設定・詳細確認"
+              changed: false
+            store_staff:
+              file: "owner-ipad.html"
+              role: "本日受付・進捗・レッスン記録・フォロー"
+              changed: true
+            separate_staff_html:
+              added: false
+              reason: "小規模ヨガ運用ではiPad画面と機能が重複し、保守と操作を複雑にするため"
+            customer:
+              files:
+                - "index.html"
+                - "member.html"
+              changed: false
+          implementation:
+            next_action_focus: true
+            next_action_single_item: true
+            staff_name_local_save: true
+            staff_actor_on_workflow: true
+            staff_actor_on_lesson_record: true
+            staff_name_on_followup_handled: true
+            management_tools_collapsed: true
+            admin_code_password: true
+            admin_code_delete_button: true
+            initial_customer_search_removed: true
+            customer_search_lazy_load: true
+            daily_main_operations_within_three_actions: true
+          checks:
+            required_files: "OK"
+            previous_step: "OK"
+            yml_syntax: "OK"
+            html_syntax: "OK"
+            javascript_syntax: "OK"
+            html_id_duplicates: "OK"
+            existing_api_paths: "OK"
+            ipad_staff_business_logic: "OK"
+            next_action_priority: "OK"
+            cancelled_reservation_exclusion: "OK"
+            other_screen_hash_preservation: "OK"
+            overall: "OK"
+          change_record:
+            worker_changed: false
+            supabase_changed: false
+            api_changed: false
+            api_path_changed: false
+            owner_ipad_html_changed: true
+            owner_html_changed: false
+            index_html_changed: false
+            member_html_changed: false
+            existing_data_changed: false
+          performance:
+            initial_load:
+              today_data: true
+              next_business_data: true
+              followups: true
+              customer_search: false
+            customer_search_trigger:
+              - "顧客検索画面を初めて開いた時"
+              - "検索欄へ入力した時"
+          file_result:
+            path: "owner-ipad.html"
+            blob_sha: "$ipad_blob"
+            bytes: $ipad_bytes
+            version: "YOGA-NEXT-6-IPAD-STAFF-FOCUS-20260723"
+          generated_files:
+            - "dpro-next-ledger.yml"
+            - "dpro-next-yoga-next-6-result.json"
+          known_attention:
+            - "会員ページの履歴・前回内容・再予約導線はYOGA-NEXT-7で実装する"
+            - "担当者名は現場操作の識別用であり、スタッフ権限管理やログイン機能ではない"
+            - "本格的な複数スタッフ権限は将来追加とし、NEXT-6では画面を重くしない"
+          rollback:
+            method: "backup_tag"
+            tag: "$BEFORE_TAG"
+            command_reference: "git checkout $BEFORE_TAG -- owner-ipad.html dpro-next-ledger.yml"
+          workflow_self_delete_after_success: true
+          auto_commit_push: true
+          EOF
+
+      - name: "9. 最終変更範囲・完了状態検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          grep -q 'current_step: "YOGA-NEXT-6-COMPLETE"' "$LEDGER_FILE"
+          grep -q 'next_step: "YOGA-NEXT-7"' "$LEDGER_FILE"
+          grep -q '"overall": "OK"' "$RESULT_FILE"
+          grep -q 'YOGA-NEXT-6-IPAD-STAFF-FOCUS-20260723' owner-ipad.html
+          grep -q 'id="next-action-card"' owner-ipad.html
+          grep -q 'id="staff-name-input"' owner-ipad.html
+          grep -q 'id="management-tools"' owner-ipad.html
+          grep -q 'function staffActor()' owner-ipad.html
+          grep -q 'async function ensureCustomersLoaded()' owner-ipad.html
+
+          allowed_regex='^(owner-ipad\.html|dpro-next-ledger\.yml|dpro-next-yoga-next-6-result\.json|\.github/workflows/STEP-YOGA-NEXT-6\.yml)$'
+          unexpected="$(git diff --name-only "$BEFORE_SHA" | grep -Ev "$allowed_regex" || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "::error::想定外の変更ファイルがあります:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+          {
+            echo ""
+            echo "### YOGA-NEXT-6 検査結果"
+            echo "- 次に対応1件表示: OK"
+            echo "- 担当スタッフ識別: OK"
+            echo "- 管理操作折りたたみ: OK"
+            echo "- 顧客検索遅延読込: OK"
+            echo "- 管理コード削除: OK"
+            echo "- 既存API維持: OK"
+            echo "- Worker / Supabase / API変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "10. 成功後YML自身を削除"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f "$WORKFLOW_PATH"
+          test ! -f "$WORKFLOW_PATH"
+
+      - name: "11. 自動Commit・Push"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add owner-ipad.html "$LEDGER_FILE" "$RESULT_FILE"
+          git add -u "$WORKFLOW_PATH"
+
+          if git diff --cached --quiet; then
+            echo "::error::Commit対象がありません。"
+            exit 1
+          fi
+
+          git commit -m "feat(yoga-next): complete YOGA-NEXT-6 iPad staff optimization [skip ci]"
+          git push origin HEAD:main
+
+          {
+            echo ""
+            echo "### 完了"
+            echo "- current_step: \`YOGA-NEXT-6-COMPLETE\`"
+            echo "- next_step: \`YOGA-NEXT-7\`"
+            echo "- Worker / Supabase / API変更: なし"
+            echo "- 実行YML: 削除済み"
+            echo "- 自動Commit・Push: 完了"
+          } >> "$GITHUB_STEP_SUMMARY"
