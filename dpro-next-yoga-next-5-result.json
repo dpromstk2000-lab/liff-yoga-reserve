@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "overall": "OK",
+  "step": "YOGA-NEXT-5",
+  "checked_at_jst": "2026-07-23T22:11:11.508681+09:00",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "branch": "main",
+  "run_id": "30010091455",
+  "before_sha": "aeead93c8c1df765beea3a77b87845ffeddfa270",
+  "before_tag": "dpro-yoga-next-5-before-20260723",
+  "target_files": [
+    "owner.html",
+    "owner-ipad.html"
+  ],
+  "html_syntax": "OK",
+  "javascript_syntax": "OK",
+  "html_id_duplicates": "OK",
+  "existing_function_preservation": "OK",
+  "api_checks": {
+    "owner.html": {
+      "existing_paths_preserved": true,
+      "added_paths": [
+        "/api/admin/reservations/save-lesson-record"
+      ]
+    },
+    "owner-ipad.html": {
+      "existing_paths_preserved": true,
+      "added_paths": [
+        "/api/admin/reservations/save-lesson-record"
+      ]
+    }
+  },
+  "lesson_record_fields": [
+    "lesson_condition",
+    "lesson_content",
+    "lesson_attention",
+    "lesson_handoff",
+    "next_recommended_date"
+  ],
+  "customer_screens_unchanged": {
+    "index.html": true,
+    "member.html": true
+  },
+  "public_admin_information": "OK",
+  "owner_bytes": 124144,
+  "ipad_bytes": 61635,
+  "worker_version": "YOGA-NEXT-5-LESSON-RECORD-20260723",
+  "worker_source_sha256": "0d06037bd9956e97efc60c97639ab65ac231e354821f1c4bd5c7788054e56658",
+  "worker_changed": true,
+  "supabase_changed": true,
+  "api_changed": true,
+  "new_api_paths": [
+    "GET /api/admin/lesson-record/check",
+    "POST /api/admin/reservations/save-lesson-record"
+  ],
+  "changed_files_before_ledger": [
+    ".github/workflows/STEP-YOGA-NEXT-5.yml",
+    "owner-ipad.html",
+    "owner.html"
+  ]
+}

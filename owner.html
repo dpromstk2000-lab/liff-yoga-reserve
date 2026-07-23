@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-NEXT-4</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-NEXT-5</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,9 +36,9 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-NEXT-4</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-NEXT-5</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
-            <p class="text-sm text-slate-500 mt-2">受付待ちから次回案内済みまで、今日のレッスン進捗を1操作ずつ安全に進めます。</p>
+            <p class="text-sm text-slate-500 mt-2">レッスン完了後に、体調・実施内容・注意事項・引継ぎ・次回おすすめを1回の記録として保存します。</p>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2.5">
@@ -202,6 +202,7 @@
             <div class="rounded-[22px] bg-white/80 border border-slate-100 p-4">
               <p class="section-label">Reservation / Note</p>
               <div id="detail-reservations" class="mt-3 space-y-2 text-sm"></div>
+              <div id="detail-lesson-record" class="mt-4 rounded-2xl bg-[var(--sage-50)] border border-[var(--sage-100)] p-4 text-sm text-[var(--sage-800)]">予約を選ぶとレッスン記録を確認できます。</div>
               <textarea id="detail-note" class="textarea-ui mt-4" placeholder="カルテメモ・前回内容・次回提案など"></textarea>
               <div class="grid grid-cols-2 gap-2 mt-3">
                 <button onclick="saveDetailNote()" class="rounded-2xl yoga-gradient text-white py-3 text-sm font-black">カルテ保存</button>
@@ -310,6 +311,62 @@
     </div>
   </div>
 
+  <!-- Lesson Record Modal -->
+  <div id="lesson-record-modal" class="hidden fixed inset-0 z-[70] bg-slate-900/45 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="modal-shell max-w-4xl mx-auto my-6 glass rounded-[30px] p-5 lg:p-7">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="section-label">Lesson Record</p>
+          <h2 class="text-2xl font-black text-slate-800 mt-1">レッスン記録</h2>
+          <p id="lesson-record-target" class="text-sm text-slate-500 mt-2">対象の予約を確認しています。</p>
+        </div>
+        <button type="button" onclick="closeLessonRecordModal()" class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div id="lesson-record-existing" class="mt-5 rounded-[22px] bg-[var(--sage-50)] border border-[var(--sage-100)] p-4 text-sm leading-7 text-[var(--sage-800)]">
+        保存すると、この予約の進捗が「レッスン完了」から「記録済み」へ自動で進みます。
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+        <label class="text-sm font-bold text-slate-700">
+          当日の体調
+          <select id="lesson-condition" class="select-ui mt-1">
+            <option>良好</option>
+            <option selected>普通</option>
+            <option>疲れあり</option>
+            <option>痛み・違和感あり</option>
+            <option>要注意</option>
+          </select>
+        </label>
+        <label class="text-sm font-bold text-slate-700">
+          次回おすすめ日
+          <input id="lesson-next-date" type="date" class="input-ui mt-1" />
+        </label>
+        <label class="text-sm font-bold text-slate-700 md:col-span-2">
+          実施内容<span class="text-rose-600 ml-1">必須</span>
+          <textarea id="lesson-content" class="textarea-ui mt-1 min-h-[150px]" placeholder="呼吸、ポーズ、重点部位、強度、できたことなど"></textarea>
+        </label>
+        <label class="text-sm font-bold text-slate-700 md:col-span-2">
+          注意事項・痛み・制限
+          <textarea id="lesson-attention" class="textarea-ui mt-1" placeholder="無理をしない動き、痛みが出た部位、次回も確認すること"></textarea>
+        </label>
+        <label class="text-sm font-bold text-slate-700 md:col-span-2">
+          次回への引継ぎ
+          <textarea id="lesson-handoff" class="textarea-ui mt-1" placeholder="次回の重点、確認事項、提案したい内容"></textarea>
+        </label>
+      </div>
+
+      <div class="mt-5 rounded-[22px] bg-white/75 border border-slate-100 p-4 text-sm text-slate-600 leading-7">
+        次回おすすめ日を設定すると、自動配信は行わず、オーナー画面のフォロー対象に「次回レッスン案内」を作成します。
+      </div>
+
+      <div class="flex flex-wrap justify-end gap-2 mt-5">
+        <button type="button" onclick="closeLessonRecordModal()" class="rounded-full bg-white border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700">閉じる</button>
+        <button id="lesson-record-save-btn" type="button" onclick="saveLessonRecord()" class="rounded-full yoga-gradient px-5 py-3 text-sm font-black text-white">記録を保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Message Modal -->
   <div id="message-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm p-4 overflow-y-auto">
     <div class="modal-shell max-w-3xl mx-auto my-6 glass rounded-[30px] p-5 lg:p-7">
@@ -339,7 +396,7 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723";
+const STEP_VERSION = "YOGA-NEXT-5-LESSON-RECORD-20260723";
 const OWNER_PAGE_PARAMS = new URLSearchParams(window.location.search);
 const IS_DEMO_OWNER = OWNER_PAGE_PARAMS.get("demo") === "1" || window.location.hostname.endsWith("github.io");
 
@@ -358,6 +415,7 @@ const state = {
   selected: null,
   manualSelectedCustomer: null,
   messageTarget: null,
+  lessonRecordTarget: null,
 };
 
 const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
@@ -897,7 +955,11 @@ function renderWorkflowSummary(){
 function workflowActionButton(row){
   const meta = workflowMeta(row.workflow_status);
   const id = compact(row.id || row.event_id || "");
+  const key = compact(row._key || eventKey(row));
   if(!id) return `<button type="button" disabled class="rounded-full bg-slate-100 text-slate-400 px-4 py-2 text-xs font-black">予約ID確認中</button>`;
+  if(meta.status === "completed"){
+    return `<button type="button" onclick="openLessonRecordByKey('${escapeHtml(key)}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">記録を入力</button>`;
+  }
   if(!meta.next) return `<button type="button" disabled class="rounded-full bg-[var(--sage-100)] text-[var(--sage-800)] px-4 py-2 text-xs font-black">進捗完了</button>`;
   if(row.reservation_date && row.reservation_date > todayJst()) return `<button type="button" disabled class="rounded-full bg-slate-100 text-slate-400 px-4 py-2 text-xs font-black">当日から操作</button>`;
   return `<button type="button" onclick="advanceReservationWorkflow('${escapeHtml(id)}','${escapeHtml(meta.status)}','${escapeHtml(row.customer_name || row.name || "お客様")}')" class="rounded-full yoga-gradient px-4 py-2 text-xs font-black text-white">${meta.nextLabel}</button>`;
@@ -922,6 +984,119 @@ async function advanceReservationWorkflow(reservationId, currentStatus, customer
     await loadAll();
   }catch(err){
     toast(`進捗更新に失敗しました。\n${err.message}`);
+  }
+}
+
+
+function lessonRecordExists(row){
+  return Boolean(compact(row?.lesson_content || "") || row?.lesson_recorded_at);
+}
+
+function lessonRecordBrief(row){
+  if(!lessonRecordExists(row)) return "";
+  const nextDate = row.next_recommended_date ? ` / 次回目安 ${formatDate(row.next_recommended_date)}` : "";
+  return `<div class="mt-3 rounded-2xl bg-[var(--sage-50)] border border-[var(--sage-100)] px-4 py-3 text-sm text-[var(--sage-800)]">
+    <p class="font-black">レッスン記録あり${escapeHtml(nextDate)}</p>
+    <p class="mt-1 line-clamp-2">${escapeHtml(row.lesson_content || "")}</p>
+  </div>`;
+}
+
+function lessonRecordPreviewHtml(row){
+  if(!row) return `予約を選ぶとレッスン記録を確認できます。`;
+  if(!lessonRecordExists(row)){
+    const meta = workflowMeta(row.workflow_status);
+    const guide = meta.index < WORKFLOW_STEPS.indexOf("completed")
+      ? "レッスン完了後に記録できます。"
+      : "記録はまだありません。";
+    return `<div class="flex flex-col gap-3"><p>${escapeHtml(guide)}</p>${meta.index >= WORKFLOW_STEPS.indexOf("completed") ? `<button type="button" onclick="openLessonRecordForSelected()" class="rounded-2xl yoga-gradient text-white px-4 py-3 text-sm font-black">レッスン記録を入力</button>` : ""}</div>`;
+  }
+  return `<div class="space-y-2">
+    <div class="flex flex-wrap gap-2"><span class="badge bg-white text-slate-700 border border-slate-200">体調：${escapeHtml(row.lesson_condition || "普通")}</span>${row.next_recommended_date ? `<span class="badge bg-white text-slate-700 border border-slate-200">次回：${escapeHtml(formatDate(row.next_recommended_date))}</span>` : ""}</div>
+    <p><span class="font-black">実施：</span>${escapeHtml(row.lesson_content || "-")}</p>
+    ${row.lesson_attention ? `<p><span class="font-black">注意：</span>${escapeHtml(row.lesson_attention)}</p>` : ""}
+    ${row.lesson_handoff ? `<p><span class="font-black">引継ぎ：</span>${escapeHtml(row.lesson_handoff)}</p>` : ""}
+    <button type="button" onclick="openLessonRecordForSelected()" class="mt-2 rounded-2xl bg-white border border-[var(--sage-200)] px-4 py-3 text-sm font-black text-[var(--sage-800)]">記録を確認・編集</button>
+  </div>`;
+}
+
+function lessonRecordSecondaryButton(row){
+  if(!lessonRecordExists(row)) return "";
+  const key = compact(row._key || eventKey(row));
+  return `<button type="button" onclick="openLessonRecordByKey('${escapeHtml(key)}')" class="rounded-full bg-purple-50 text-purple-700 px-4 py-2 text-xs font-black">記録を見る</button>`;
+}
+
+function openLessonRecordByKey(key){
+  const row = findEventByKey(key);
+  if(!row) return toast("予約データを更新して再度お試しください。");
+  openLessonRecord(row);
+}
+
+function openLessonRecordForSelected(){
+  const row = state.selected?.row || null;
+  if(!row) return toast("レッスン記録を開く予約を選択してください。");
+  openLessonRecord(row);
+}
+
+function openLessonRecord(row){
+  const meta = workflowMeta(row.workflow_status);
+  if(meta.index < WORKFLOW_STEPS.indexOf("completed")){
+    return toast("レッスン完了後に記録を入力できます。");
+  }
+  state.lessonRecordTarget = row;
+  $("lesson-record-target").textContent = `${row.customer_name || row.name || "お客様"} / ${formatDate(row.reservation_date)} ${normalizeTime(row.reservation_time || "", "")} / ${row.service_name || "レッスン"}`;
+  $("lesson-condition").value = row.lesson_condition || "普通";
+  $("lesson-content").value = row.lesson_content || "";
+  $("lesson-attention").value = row.lesson_attention || "";
+  $("lesson-handoff").value = row.lesson_handoff || "";
+  $("lesson-next-date").min = row.reservation_date || todayJst();
+  $("lesson-next-date").value = row.next_recommended_date || "";
+  $("lesson-record-existing").innerHTML = lessonRecordExists(row)
+    ? `保存済みの記録を表示しています。更新すると保存日時と操作履歴が更新されます。`
+    : `保存すると進捗が「レッスン完了」から「記録済み」へ自動で進みます。`;
+  $("lesson-record-modal").classList.remove("hidden");
+  safeIcons();
+  window.setTimeout(() => $("lesson-content")?.focus(), 80);
+}
+
+function closeLessonRecordModal(){
+  $("lesson-record-modal").classList.add("hidden");
+  state.lessonRecordTarget = null;
+}
+
+async function saveLessonRecord(){
+  const row = state.lessonRecordTarget;
+  if(!row) return toast("対象の予約が見つかりません。");
+  const content = compact($("lesson-content").value);
+  const nextDate = compact($("lesson-next-date").value);
+  if(!content) return toast("実施内容を入力してください。");
+  if(nextDate && row.reservation_date && nextDate < row.reservation_date) return toast("次回おすすめ日は今回のレッスン日以降を選択してください。");
+
+  const btn = $("lesson-record-save-btn");
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "保存中...";
+
+  try{
+    const ok = window.confirm(`${row.customer_name || row.name || "お客様"}のレッスン記録を保存しますか？`);
+    if(!ok) return;
+    const result = await apiPost("/api/admin/reservations/save-lesson-record", {
+      reservation_id: row.id || row.event_id,
+      lesson_condition: $("lesson-condition").value,
+      lesson_content: content,
+      lesson_attention: compact($("lesson-attention").value),
+      lesson_handoff: compact($("lesson-handoff").value),
+      next_recommended_date: nextDate || null,
+      lesson_recorded_by: "owner_pc",
+      source_screen: "owner.html",
+    });
+    closeLessonRecordModal();
+    toast(result.workflow_advanced_to_recorded ? "レッスン記録を保存し、進捗を「記録済み」へ更新しました。" : "レッスン記録を更新しました。");
+    await loadAll();
+  }catch(err){
+    toast(`レッスン記録の保存に失敗しました。\n${err.message}`);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = old;
   }
 }
 
@@ -1115,10 +1290,12 @@ function renderReservationRow(row){
         <h3 class="text-lg font-black text-slate-800 mt-2">${escapeHtml(name)}</h3>
         <p class="text-sm text-slate-500 mt-1">${escapeHtml(formatDate(row.reservation_date))} ${escapeHtml(normalizeTime(row.reservation_time || "", ""))} / ${escapeHtml(row.service_name || "レッスン")}</p>
         ${workflowProgressHtml(progress.status)}
+        ${lessonRecordBrief(row)}
         <p class="text-sm text-slate-600 mt-2 leading-7 whitespace-pre-wrap">${escapeHtml(row.request_note || row.memo || customer?.owner_memo || "")}</p>
       </div>
       <div class="flex flex-wrap lg:justify-end gap-2">
         ${workflowActionButton(row)}
+        ${lessonRecordSecondaryButton(row)}
         <button onclick="selectReservation('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">詳細</button>
         <button onclick="openMessageFromRow('${escapeHtml(row._key || eventKey(row))}')" class="rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-black text-slate-700">${messageLabel}</button>
         ${phone ? `<button onclick="copyText('${escapeHtml(phone)}','電話番号をコピーしました。')" class="rounded-full bg-[var(--sage-50)] text-[var(--sage-800)] px-4 py-2 text-xs font-black">電話コピー</button>` : ""}
@@ -1205,6 +1382,7 @@ function showDetail(row, customer){
   $("detail-badges").innerHTML = `${row ? `${intakeChannelBadge(row)}${workflowBadge(row.workflow_status)}` : ""}${lineConnectionBadge(rawLine, row?.reception_source || row?.source || row?.status || base.source || base.customer_status || "")}<span class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">${escapeHtml(base.customer_status || row?.status || "顧客")}</span>`;
   const reservations = relatedReservations(base, row);
   $("detail-reservations").innerHTML = reservations.length ? reservations.slice(0,5).map(r => `<div class="rounded-2xl bg-slate-50 px-4 py-3"><p class="font-black text-slate-800">${escapeHtml(formatDate(r.reservation_date))} ${escapeHtml(normalizeTime(r.reservation_time || "", ""))}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(r.status || "予約")} / ${escapeHtml(r.service_name || "レッスン")}</p></div>`).join("") : `<p class="text-sm text-slate-500">現在表示できる予約はありません。</p>`;
+  $("detail-lesson-record").innerHTML = lessonRecordPreviewHtml(row);
   $("detail-note").value = base.owner_memo || base.memo || row?.request_note || row?.memo || "";
   safeIcons();
 }

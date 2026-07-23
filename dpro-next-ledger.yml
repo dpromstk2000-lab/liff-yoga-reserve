@@ -1,69 +1,59 @@
 system_name: "DPRO ヨガ LINE"
 standard: "DPRO NEXT"
-step_name: "業務進捗・ステータス見える化"
-current_step: "YOGA-NEXT-4-COMPLETE"
-previous_step: "YOGA-NEXT-3-COMPLETE"
-next_step: "YOGA-NEXT-5"
-completed_at_jst: "2026-07-23 21:37:22 +0900"
-applied_revision: "R2"
-r1_result: "FAILED_BEFORE_COMMIT"
-r1_failure_reason: "window_addEventListener_missing_in_node_test_mock"
-before_sha: "a9044ebc9e4cccd0a35cab5d40af387bd5afc0c8"
-before_tag: "dpro-yoga-next-4-before-20260723"
-before_tag_status: "existing_same_sha"
+step_name: "レッスン記録・引継ぎ・次回おすすめ"
+current_step: "YOGA-NEXT-5-COMPLETE"
+previous_step: "YOGA-NEXT-4-COMPLETE"
+next_step: "YOGA-NEXT-6"
+completed_at_jst: "2026-07-23 22:11:12 +0900"
+before_sha: "aeead93c8c1df765beea3a77b87845ffeddfa270"
+before_tag: "dpro-yoga-next-5-before-20260723"
+before_tag_status: "created"
 target_files:
   - "owner.html"
   - "owner-ipad.html"
 external_deployment:
   sql:
     executed: true
-    file: "YOGA-NEXT-4.sql"
+    file: "YOGA-NEXT-5.sql"
     migration_type: "non_destructive"
     columns:
-      - "workflow_status"
-      - "workflow_updated_at"
-      - "workflow_updated_by"
-      - "workflow_note"
+      - "lesson_condition"
+      - "lesson_content"
+      - "lesson_attention"
+      - "lesson_handoff"
+      - "next_recommended_date"
+      - "lesson_recorded_at"
+      - "lesson_recorded_by"
   worker:
     deployed: true
-    version: "YOGA-NEXT-4-WORKFLOW-STATUS-20260723"
-    source_sha256: "86b9577a6549f67f031071ee82398472175055494f5a64879234b0aa554424f7"
+    version: "YOGA-NEXT-5-LESSON-RECORD-20260723"
+    source_sha256: "0d06037bd9956e97efc60c97639ab65ac231e354821f1c4bd5c7788054e56658"
 implementation:
-  workflow_steps:
-    - "reserved"
-    - "checked_in"
-    - "in_session"
-    - "completed"
-    - "recorded"
-    - "followup_done"
-  workflow_labels:
-    - "受付待ち"
-    - "受付済み"
-    - "レッスン中"
-    - "レッスン完了"
-    - "記録済み"
-    - "次回案内済み"
+  one_reservation_one_lesson_record: true
+  lesson_condition: true
+  lesson_content_required: true
+  lesson_attention: true
+  lesson_handoff: true
+  next_recommended_date: true
+  owner_record_modal: true
+  ipad_record_modal: true
+  record_edit_supported: true
+  workflow_completed_to_recorded_on_save: true
+  workflow_skip_record_guard: true
+  next_recommendation_followup_task: true
+  automatic_line_delivery: false
   existing_reservation_status_separated: true
-  one_step_transition: true
-  backward_transition_api_guard: true
-  future_reservation_guard: true
-  confirmation_guard: true
-  owner_progress_summary: true
-  ipad_progress_summary: true
-  owner_next_action_button: true
-  ipad_next_action_button: true
-  followup_auto_close_on_followup_done: true
 checks:
   required_files: "OK"
   previous_step: "OK"
   yml_syntax: "OK"
   worker_live_version: "OK"
-  supabase_workflow_schema: "OK"
+  supabase_lesson_record_schema: "OK"
   html_syntax: "OK"
   javascript_syntax: "OK"
   html_id_duplicates: "OK"
   existing_function_preservation: "OK"
-  workflow_business_logic: "OK"
+  lesson_record_business_logic: "OK"
   reservation_status_separation: "OK"
   public_admin_information: "OK"
   customer_screen_hash_preservation: "OK"
@@ -80,30 +70,30 @@ change_record:
   member_html_changed: false
   existing_reservation_data_deleted: false
 new_api_paths:
-  - "GET /api/admin/workflow/check"
-  - "POST /api/admin/reservations/update-workflow"
+  - "GET /api/admin/lesson-record/check"
+  - "POST /api/admin/reservations/save-lesson-record"
 file_result:
   owner:
     path: "owner.html"
-    blob_sha: "095136473e929be3d3ee37e21f014dc69a501a9a"
-    bytes: 113979
-    version: "YOGA-NEXT-4-WORKFLOW-VISIBLE-20260723"
+    blob_sha: "fc0df37d9d782dcab18ef35fa7a808f6f500f354"
+    bytes: 124144
+    version: "YOGA-NEXT-5-LESSON-RECORD-20260723"
   owner_ipad:
     path: "owner-ipad.html"
-    blob_sha: "470754f86081cd6c99eed24f41f7ac41c9cc8ce9"
-    bytes: 54515
-    version: "YOGA-NEXT-4-IPAD-WORKFLOW-20260723"
+    blob_sha: "2f8f17d22cd662f834eeccb650e6e52e7b56b37a"
+    bytes: 61635
+    version: "YOGA-NEXT-5-IPAD-LESSON-RECORD-20260723"
 generated_files:
   - "dpro-next-ledger.yml"
-  - "dpro-next-yoga-next-4-result.json"
+  - "dpro-next-yoga-next-5-result.json"
 known_attention:
-  - "レッスン実施メモの構造化はYOGA-NEXT-5で行う"
-  - "進捗修正はWorker APIで直前段階への戻しだけ許可し、通常画面には戻すボタンを表示しない"
+  - "LINE会員ページへの履歴公開範囲はYOGA-NEXT-7で決定する"
+  - "次回おすすめ日はフォロータスクを作るが、自動LINE配信は行わない"
+  - "写真・動画は重さと運用負担を避けるためNEXT-5では追加しない"
   - "WorkerソースはCloudflareへDeployし、GitHubリポジトリには配置しない"
 rollback:
-  github_tag: "dpro-yoga-next-4-before-20260723"
-  worker: "添付の旧Worker完全版を再Deploy"
-  sql: "YOGA-NEXT-4-ROLLBACK.sql"
+  github_tag: "dpro-yoga-next-5-before-20260723"
+  worker: "YOGA-NEXT-4-WORKFLOW-STATUS-20260723のWorkerを再Deploy"
+  sql: "YOGA-NEXT-5-ROLLBACK.sql"
 workflow_self_delete_after_success: true
-failed_workflow_self_delete_after_success: true
 auto_commit_push: true
