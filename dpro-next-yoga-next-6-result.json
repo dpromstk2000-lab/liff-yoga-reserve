@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "overall": "OK",
+  "step": "YOGA-NEXT-6",
+  "checked_at_jst": "2026-07-23T22:29:56.589402+09:00",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "branch": "main",
+  "run_id": "30011445448",
+  "before_sha": "1d6e07fe655e5adc78aa755950f9029bf5d7531b",
+  "before_tag": "dpro-yoga-next-6-before-20260723",
+  "target_files": [
+    "owner-ipad.html"
+  ],
+  "html_syntax": "OK",
+  "javascript_syntax": "OK",
+  "html_id_duplicates": "OK",
+  "existing_api_paths_preserved": true,
+  "initial_customer_search_removed": true,
+  "next_action_focus": "ADDED",
+  "staff_actor": "ADDED",
+  "management_tools_collapsed": "ADDED",
+  "admin_code_clear": "ADDED",
+  "separate_staff_html": false,
+  "staff_screen": "owner-ipad.html",
+  "unchanged_other_screens": {
+    "owner.html": true,
+    "index.html": true,
+    "member.html": true
+  },
+  "owner_ipad_bytes": 67369,
+  "worker_changed": false,
+  "supabase_changed": false,
+  "api_changed": false,
+  "changed_files_before_ledger": [
+    ".github/workflows/STEP-YOGA-NEXT-6.yml",
+    "owner-ipad.html"
+  ]
+}

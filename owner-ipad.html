@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>DPRO YOGA LINE | iPad Dashboard STEP YOGA-NEXT-5</title>
+  <title>DPRO YOGA LINE | Staff iPad STEP YOGA-NEXT-6</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -43,23 +43,47 @@
             <i data-lucide="tablet-smartphone" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-5</p>
-            <h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE iPad店頭画面</h1>
-            <p class="text-sm text-slate-500 mt-2">レッスン完了後、その場で実施内容・注意事項・引継ぎ・次回おすすめを記録します。</p>
+            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-6</p>
+            <h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE 店頭・スタッフ画面</h1>
+            <p class="text-sm text-slate-500 mt-2">最初に「次に対応」を確認し、受付・進捗・記録を現場3操作以内で行います。</p>
           </div>
         </div>
-        <div class="grid grid-cols-2 md:flex md:flex-wrap gap-2">
-          <div class="flex items-center gap-2 rounded-2xl bg-white/85 border border-slate-200 px-3 py-2 shadow-sm col-span-2 md:col-span-1">
-            <span class="text-xs font-black text-slate-500">管理コード</span>
-            <input id="admin-code-input" class="w-24 bg-transparent outline-none text-base font-black text-slate-700" value="1234" inputmode="numeric" oninput="saveAdminCode()" />
-          </div>
-          <button onclick="goPcOwner()" class="touch rounded-2xl bg-white border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 shadow-sm flex items-center justify-center gap-2"><i data-lucide="monitor" class="w-4 h-4"></i>PC管理画面</button>
-          <button onclick="prepareDemoData()" class="touch rounded-2xl bg-amber-600 px-4 py-3 text-sm font-black text-white shadow-lg flex items-center justify-center gap-2"><i data-lucide="sparkles" class="w-4 h-4"></i>DEMO準備</button>
-          <button onclick="loadAll()" class="touch rounded-2xl yoga-gradient px-4 py-3 text-sm font-black text-white shadow-lg flex items-center justify-center gap-2 col-span-2 md:col-span-1"><i data-lucide="refresh-cw" class="w-4 h-4"></i>更新</button>
+        <div class="grid grid-cols-1 md:grid-cols-[minmax(230px,1fr)_auto] gap-2 w-full md:w-auto">
+<label class="flex items-center gap-2 rounded-2xl bg-white/85 border border-slate-200 px-3 py-2 shadow-sm">
+  <span class="text-xs font-black text-slate-500 shrink-0">担当</span>
+  <input id="staff-name-input" class="min-w-0 w-full bg-transparent outline-none text-base font-black text-slate-700" placeholder="担当スタッフ名" oninput="saveStaffName()" />
+</label>
+<button onclick="loadAll()" class="touch rounded-2xl yoga-gradient px-5 py-3 text-sm font-black text-white shadow-lg flex items-center justify-center gap-2"><i data-lucide="refresh-cw" class="w-4 h-4"></i>更新</button>
         </div>
       </div>
       <div id="system-status" class="mt-4 rounded-2xl bg-white/75 border border-slate-100 px-4 py-3 text-sm text-slate-600">読み込み中...</div>
+      <details id="management-tools" class="mt-3 rounded-2xl bg-white/55 border border-slate-100 px-4 py-3">
+        <summary class="cursor-pointer text-sm font-black text-slate-600 select-none">管理操作（通常は開きません）</summary>
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
+<div class="flex items-center gap-2 rounded-2xl bg-white border border-slate-200 px-3 py-2">
+  <span class="text-xs font-black text-slate-500">管理コード</span>
+  <input id="admin-code-input" type="password" autocomplete="off" class="w-24 bg-transparent outline-none text-base font-black text-slate-700" inputmode="numeric" oninput="saveAdminCode()" />
+  <button id="admin-code-clear-btn" type="button" onclick="clearAdminCode()" class="touch min-h-0 rounded-xl bg-slate-100 px-3 py-2 text-xs font-black text-slate-600">削除</button>
+</div>
+<button onclick="goPcOwner()" class="touch rounded-2xl bg-white border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 flex items-center justify-center gap-2"><i data-lucide="monitor" class="w-4 h-4"></i>PC管理画面</button>
+<button onclick="prepareDemoData()" class="touch rounded-2xl bg-amber-600 px-4 py-3 text-sm font-black text-white flex items-center justify-center gap-2"><i data-lucide="sparkles" class="w-4 h-4"></i>DEMO準備</button>
+        </div>
+      </details>
     </header>
+
+    <section id="next-action-section" class="glass rounded-[30px] p-4 md:p-5 mb-4 border-2 border-[var(--sage-200)]">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+<p class="section-label">Next Action</p>
+<h2 class="text-xl md:text-2xl font-black text-slate-800 mt-1">次に対応</h2>
+<p class="text-sm text-slate-500 mt-1">本日の予約から、現場で次に行う操作を1件だけ表示します。</p>
+        </div>
+        <span id="staff-role-badge" class="badge bg-[var(--sage-50)] text-[var(--sage-800)]">担当スタッフ</span>
+      </div>
+      <div id="next-action-card" class="mt-4">
+        <div class="rounded-[24px] bg-white/70 p-5 text-sm text-slate-500">次の対応を確認しています...</div>
+      </div>
+    </section>
 
     <section class="glass rounded-[30px] p-4 md:p-5 mb-4">
       <div class="flex items-center justify-between gap-3">
@@ -264,7 +288,7 @@
 
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
-const STEP_VERSION = "YOGA-NEXT-5-IPAD-LESSON-RECORD-20260723";
+const STEP_VERSION = "YOGA-NEXT-6-IPAD-STAFF-FOCUS-20260723";
 const state = {
   status: null,
   services: [],
@@ -272,6 +296,8 @@ const state = {
   day: null,
   followups: [],
   customers: [],
+  customersLoaded: false,
+  customersLoading: false,
   selectedCustomer: null,
   selectedCustomerDetail: null,
   selectedReservation: null,
@@ -337,8 +363,39 @@ function fmtDate(dateStr){
 function reservationDateTime(row){
   return `${fmtDate(row?.reservation_date)} ${normalizeTime(row?.reservation_time || "")}`.trim();
 }
-function adminCode(){ return clean($("admin-code-input")?.value || localStorage.getItem("yoga_admin_code") || "1234"); }
-function saveAdminCode(){ localStorage.setItem("yoga_admin_code", adminCode()); }
+function defaultAdminCode(){
+  return localStorage.getItem("yoga_ipad_admin_code_cleared") === "1" ? "" : "1234";
+}
+function adminCode(){
+  return clean($("admin-code-input")?.value || localStorage.getItem("yoga_admin_code") || defaultAdminCode());
+}
+function saveAdminCode(){
+  const value = clean($("admin-code-input")?.value || "");
+  if(value){
+    localStorage.setItem("yoga_admin_code", value);
+    localStorage.removeItem("yoga_ipad_admin_code_cleared");
+  }else{
+    localStorage.removeItem("yoga_admin_code");
+  }
+}
+function clearAdminCode(){
+  localStorage.removeItem("yoga_admin_code");
+  localStorage.setItem("yoga_ipad_admin_code_cleared", "1");
+  if($("admin-code-input")) $("admin-code-input").value = "";
+  toast("保存した管理コードを削除しました。", 3000);
+}
+function staffName(){
+  return clean($("staff-name-input")?.value || localStorage.getItem("yoga_ipad_staff_name") || "担当スタッフ");
+}
+function saveStaffName(){
+  const value = clean($("staff-name-input")?.value || "");
+  if(value) localStorage.setItem("yoga_ipad_staff_name", value);
+  else localStorage.removeItem("yoga_ipad_staff_name");
+  if($("staff-role-badge")) $("staff-role-badge").textContent = value || "担当スタッフ";
+}
+function staffActor(){
+  return `owner_ipad:${staffName() || "担当スタッフ"}`;
+}
 function toast(message, ms=2200){
   const el = $("toast");
   if(!el) return;
@@ -382,7 +439,7 @@ async function publicGet(path, params={}){
   return await fetchJson(apiPath(path, params));
 }
 
-function showScreen(name){
+async function showScreen(name){
   state.currentScreen = name;
   ["today","next","booking","follow","customer"].forEach(key=>{
     const screen = $(`screen-${key}`);
@@ -391,6 +448,7 @@ function showScreen(name){
     if(nav) nav.classList.toggle("active", key === name);
   });
   if(name === "booking") setTimeout(()=>$("manual-name")?.focus(), 120);
+  if(name === "customer") await ensureCustomersLoaded();
 }
 function openPage(file){ window.open(file, "_blank"); }
 function goPcOwner(){ location.href = "owner.html"; }
@@ -417,7 +475,6 @@ async function loadAll(){
     setStatus(`${status?.shop_name || "DPRO YOGA"} / ${status?.open_time || "10:00"}〜${status?.close_time || "19:00"} / ${health?.worker_version || STEP_VERSION}`, "ok");
     renderAll();
     await loadManualTimes();
-    await searchCustomers();
     toast("更新しました");
   }catch(err){
     setStatus(`読み込みエラー：${err.message}`, "error");
@@ -500,6 +557,58 @@ function renderWorkflowSummary(){
   }).join("");
 }
 
+function workflowActionPriority(row){
+  const status = normalizeWorkflowStatus(row?.workflow_status);
+  const map = { in_session:0, checked_in:1, completed:2, reserved:3, recorded:4, followup_done:5 };
+  return map[status] ?? 9;
+}
+
+function nextActionReservation(){
+  return [...(state.day?.today_reservations || [])]
+    .filter(row => !clean(row?.status).includes("キャンセル"))
+    .sort((a,b) =>
+      workflowActionPriority(a) - workflowActionPriority(b) ||
+      normalizeTime(a?.reservation_time || "").localeCompare(normalizeTime(b?.reservation_time || ""))
+    )[0] || null;
+}
+
+function renderNextActionFocus(){
+  const wrap = $("next-action-card");
+  if(!wrap) return;
+  if($("staff-role-badge")) $("staff-role-badge").textContent = staffName() || "担当スタッフ";
+
+  const row = nextActionReservation();
+  if(!row){
+    wrap.innerHTML = `<div class="rounded-[24px] bg-emerald-50 border border-emerald-100 p-5 text-emerald-800"><p class="text-lg font-black">本日の予約対応はありません</p><p class="mt-1 text-sm">電話・店頭受付やフォロー対象を確認してください。</p></div>`;
+    return;
+  }
+
+  const key = "focus_next_action";
+  window.__reservationRows = window.__reservationRows || {};
+  window.__reservationRows[key] = row;
+  const meta = workflowMeta(row.workflow_status);
+  const actionText = meta.status === "completed"
+    ? "レッスン記録を入力"
+    : meta.next
+      ? `「${meta.nextLabel}」へ進める`
+      : "本日の対応は完了";
+
+  wrap.innerHTML = `<article class="rounded-[26px] ${meta.card} border border-white/90 p-5 shadow-sm">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="min-w-0">
+        <div class="flex flex-wrap gap-2">${workflowBadge(meta.status)}<span class="badge bg-white text-slate-700 border border-slate-200">${esc(normalizeTime(row.reservation_time || ""))}</span></div>
+        <h3 class="mt-2 text-2xl font-black text-slate-800">${esc(row.customer_name || "お客様")}</h3>
+        <p class="mt-1 text-sm text-slate-600">${esc(row.service_name || "レッスン")} / 次の操作：${esc(actionText)}</p>
+        ${workflowProgress(meta.status)}
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 min-w-[220px]">
+        ${workflowButton(row, key)}
+        ${lessonRecordSecondaryButton(row, key)}
+      </div>
+    </div>
+  </article>`;
+}
+
 function workflowButton(row, key){
   const meta = workflowMeta(row.workflow_status);
   const id = clean(row.id || row.event_id || "");
@@ -526,7 +635,7 @@ async function advanceWorkflowByKey(key){
     await apiPost("/api/admin/reservations/update-workflow", {
       reservation_id: id,
       workflow_status: current.next,
-      workflow_updated_by: "owner_ipad",
+      workflow_updated_by: staffActor(),
       source_screen: "owner-ipad.html",
       workflow_note: `${current.label}から${next.label}へ更新`,
     });
@@ -609,7 +718,7 @@ async function saveLessonRecord(){
       lesson_attention: clean($("lesson-attention").value),
       lesson_handoff: clean($("lesson-handoff").value),
       next_recommended_date: nextDate || null,
-      lesson_recorded_by: "owner_ipad",
+      lesson_recorded_by: staffActor(),
       source_screen: "owner-ipad.html",
     });
     closeLessonRecordModal();
@@ -626,6 +735,7 @@ async function saveLessonRecord(){
 function renderAll(){
   renderHeader();
   renderWorkflowSummary();
+  renderNextActionFocus();
   renderKpis();
   renderServices();
   renderTasks();
@@ -788,7 +898,7 @@ function selectFollowup(key){
 async function markFollowupHandled(id){
   if(!id) return;
   try{
-    await apiPost("/api/admin/followups/update-status", { followup_id:id, status:"handled", handled_note:"iPad店頭画面で対応済み" });
+    await apiPost("/api/admin/followups/update-status", { followup_id:id, status:"handled", handled_note:`${staffName()}がiPad店頭画面で対応済み` });
     toast("フォローを対応済みにしました");
     await loadAll();
   }catch(err){ toast(`対応済みエラー：${err.message}`, 3500); }
@@ -877,6 +987,15 @@ async function submitManualBooking(){
   }
 }
 
+async function ensureCustomersLoaded(){
+  if(state.customersLoaded || state.customersLoading) return;
+  state.customersLoading = true;
+  try{
+    await searchCustomers();
+  }finally{
+    state.customersLoading = false;
+  }
+}
 function debouncedSearchCustomers(){
   clearTimeout(state.searchTimer);
   state.searchTimer = setTimeout(searchCustomers, 320);
@@ -889,6 +1008,7 @@ async function searchCustomers(){
   try{
     const data = await apiGet("/api/admin/customers/search", { q });
     state.customers = data.customers || [];
+    state.customersLoaded = true;
     renderCustomers();
   }catch(err){
     if(el) el.innerHTML = emptyCard(`顧客検索エラー：${err.message}`);
@@ -1028,8 +1148,10 @@ async function prepareDemoData(){
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  const saved = localStorage.getItem("yoga_admin_code") || "1234";
+  const saved = localStorage.getItem("yoga_admin_code") || defaultAdminCode();
   if($("admin-code-input")) $("admin-code-input").value = saved;
+  if($("staff-name-input")) $("staff-name-input").value = localStorage.getItem("yoga_ipad_staff_name") || "担当スタッフ";
+  if($("staff-role-badge")) $("staff-role-badge").textContent = staffName();
   if($("manual-date")) $("manual-date").value = todayIso();
   lucide?.createIcons?.();
   showScreen("today");
