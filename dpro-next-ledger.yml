@@ -1,31 +1,37 @@
 system_name: "DPRO ヨガ LINE"
 standard: "DPRO NEXT"
-step_name: "PCオーナー画面・今日やること整理"
-current_step: "YOGA-NEXT-2-COMPLETE"
-previous_step: "YOGA-NEXT-1-COMPLETE"
-next_step: "YOGA-NEXT-3"
-completed_at_jst: "2026-07-23 19:18:11 +0900"
+step_name: "LINE・電話・店頭予約データ統合"
+current_step: "YOGA-NEXT-3-COMPLETE"
+previous_step: "YOGA-NEXT-2-COMPLETE"
+next_step: "YOGA-NEXT-4"
+completed_at_jst: "2026-07-23 19:58:47 +0900"
 applied_revision: "R2"
-r1_result: "FAILED_BEFORE_FILE_CHANGE"
-r1_failure_reason: "admin_code_ui_exact_match_count_0"
-before_sha: "c860139375b5e86e8ce96606dc7821951776636e"
-before_tag: "dpro-yoga-next-2-before-20260723"
+r1_result: "FAILED_BEFORE_COMMIT"
+r1_failure_reason: "channel_filter_ui_exact_match_count_0"
+before_sha: "6508582337c64e3989b844e66b19cdcc37d0dc4d"
+before_tag: "dpro-yoga-next-3-before-20260723"
 before_tag_status: "existing_same_sha"
 target_files:
+  - "index.html"
   - "owner.html"
 implementation:
-  owner_today_first: true
-  owner_main_operations_within_three_actions: true
-  task_priority_sort: true
-  first_task_next_badge: true
-  initial_customer_full_load_removed: true
-  customer_lazy_load: true
-  legacy_history_lazy_load: true
-  manual_booking_customer_lazy_load: true
-  admin_code_delete_button: true
-  admin_code_delete_persistent: true
-  demo_admin_code_guard: true
-  production_admin_code_blank_start: true
+  reception_channels:
+    - "line"
+    - "phone"
+    - "store"
+    - "unknown"
+  existing_source_values_preserved: true
+  line_source_value: "liff"
+  manual_source_value: "owner_manual"
+  compatibility_metadata_added: true
+  owner_channel_filter: true
+  owner_channel_badge: true
+  manual_channel_select: true
+  manual_phone_store_status_split: true
+  new_legacy_display_merge: true
+  manual_duplicate_warning: true
+  phone_normalization_preserved: true
+  past_datetime_guard_preserved: true
 checks:
   required_files: "OK"
   previous_step: "OK"
@@ -34,50 +40,53 @@ checks:
   javascript_syntax: "OK"
   html_id_duplicates: "OK"
   existing_function_preservation: "OK"
-  yoga_business_logic: "OK"
+  reception_business_logic: "OK"
+  api_path_preservation: "OK"
+  public_admin_information: "OK"
   other_screen_hash_preservation: "OK"
-  performance_initial_load: "OK"
   overall: "OK"
 change_record:
   worker_changed: false
   supabase_changed: false
   api_changed: false
+  api_path_changed: false
   screen_function_changed: true
+  index_html_changed: true
   owner_html_changed: true
-  index_html_changed: false
   owner_ipad_html_changed: false
   member_html_changed: false
   existing_data_changed: false
-performance:
-  initial_load:
-    settings: true
-    services: true
-    summary: true
-    today_data: true
-    customers: false
-    legacy_history: false
-  customer_load_trigger:
-    - "顧客検索タブを初めて開いた時"
-    - "電話・店頭予約を初めて開いた時"
-  history_load_trigger:
-    - "すべての予定・履歴を初めて開いた時"
+compatibility:
+  existing_records:
+    line_detection: "source・LIFF・LINE IDから判定"
+    manual_detection: "source・statusから電話または店頭を判定"
+    unknown_records: "その他・旧データとして表示"
+  new_records:
+    line: "source=liffを維持し互換項目を追加"
+    phone: "source=owner_manualを維持しstatus=電話予約"
+    store: "source=owner_manualを維持しstatus=店頭予約"
 file_result:
-  path: "owner.html"
-  blob_sha: "ec8ebcaad11ebc3ed00e000244ad720f58403660"
-  bytes: 100847
-  version: "YOGA-NEXT-2-OWNER-TODAY-LAZY-LOAD-20260723"
+  owner:
+    path: "owner.html"
+    blob_sha: "eef557757ce6e1c39451d833cbb0649117e82922"
+    bytes: 107509
+    version: "YOGA-NEXT-3-RECEPTION-UNIFIED-20260723"
+  customer:
+    path: "index.html"
+    blob_sha: "df33c788e773bd1417d5e75cd9d4a15a90595573"
+    bytes: 67501
+    version: "YOGA-NEXT-3-LINE-RECEPTION-20260723"
 generated_files:
   - "dpro-next-ledger.yml"
-  - "dpro-next-yoga-next-2-result.json"
+  - "dpro-next-yoga-next-3-result.json"
 known_attention:
-  - "受付から完了までの正式な進捗ステータスはYOGA-NEXT-4で実装する"
-  - "設定画面の左メニュー化は、既存設定保存を守りながら後続STEPで行う"
-  - "system-check.htmlとconfig.jsはYOGA-NEXT-9で追加する"
+  - "受付・来店・実施・完了の進捗ステータス更新はYOGA-NEXT-4で実装する"
+  - "過去の電話・店頭共通表記は推定分類し、明確に判定できないデータはその他・旧データとする"
   - "Workerソースは本リポジトリ外のため、このSTEPでは変更していない"
 rollback:
   method: "backup_tag"
-  tag: "dpro-yoga-next-2-before-20260723"
-  command_reference: "git checkout dpro-yoga-next-2-before-20260723 -- owner.html dpro-next-ledger.yml"
+  tag: "dpro-yoga-next-3-before-20260723"
+  command_reference: "git checkout dpro-yoga-next-3-before-20260723 -- index.html owner.html dpro-next-ledger.yml"
 workflow_self_delete_after_success: true
 failed_workflow_self_delete_after_success: true
 auto_commit_push: true

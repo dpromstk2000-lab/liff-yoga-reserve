@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>DPRO YOGA LINE 予約フォーム</title>
+  <title>DPRO YOGA LINE 予約フォーム | YOGA-NEXT-3</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -304,6 +304,7 @@
 
   const LIFF_ID = "2010377734-4tHMhUx6";
   const SHOP_CODE = "yoga_demo";
+  const STEP_VERSION = "YOGA-NEXT-3-LINE-RECEPTION-20260723";
 
   let lineUserId = "";
   let lineDisplayName = "";
@@ -1160,6 +1161,12 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function lineReceptionType() {
+    if (isChangeMode) return "change";
+    if (isExisting) return "additional";
+    return "new";
+  }
+
   function buildPayload() {
     const bookingDate = document.getElementById("booking_date").value;
     const bookingTime = normalizeTime(document.getElementById("booking_time").value, "");
@@ -1177,6 +1184,14 @@
       service_name: service?.service_name || "",
       request_note: document.getElementById("request_note").value.trim(),
       source: "liff",
+      intake_channel: "line",
+      booking_channel: "line",
+      reception_channel: "line",
+      reception_source: "line_liff",
+      reservation_origin: "customer_line",
+      contact_channel: "line",
+      reception_type: lineReceptionType(),
+      client_step_version: STEP_VERSION,
       is_existing: isExisting,
       is_change: isChangeMode,
       today: getLocalDateString(0)
@@ -1323,6 +1338,10 @@
         reservation_time: payload.booking_time,
         service_code: payload.service_code,
         service_name: payload.service_name,
+        source: "liff",
+        intake_channel: "line",
+        reception_source: "line_liff",
+        reception_type: payload.reception_type,
         service_minutes: selectedService?.base_minutes || 60,
         service_price: selectedService?.base_price || 0
       };
@@ -1428,6 +1447,15 @@
         line_user_id: lineUserId,
         phone: normalizePhone(existingCustomerData?.phone || ""),
         customer_name: existingCustomerData?.name || lineDisplayName || "",
+        source: "liff",
+        intake_channel: "line",
+        booking_channel: "line",
+        reception_channel: "line",
+        reception_source: "line_liff",
+        reservation_origin: "customer_line",
+        contact_channel: "line",
+        reception_type: "cancel",
+        client_step_version: STEP_VERSION,
         reservation_id: target.id || "",
         reservation_date: target.reservation_date,
         reservation_time: normalizeTime(target.reservation_time || "", ""),

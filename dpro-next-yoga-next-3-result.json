@@ -1,0 +1,83 @@
+{
+  "ok": true,
+  "overall": "OK",
+  "step": "YOGA-NEXT-3-R2",
+  "completed_step": "YOGA-NEXT-3",
+  "r1_failure_effect": "NO_PRODUCT_FILE_CHANGE",
+  "checked_at_jst": "2026-07-23T19:58:47.685188+09:00",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "branch": "main",
+  "run_id": "30001353813",
+  "before_sha": "6508582337c64e3989b844e66b19cdcc37d0dc4d",
+  "before_tag": "dpro-yoga-next-3-before-20260723",
+  "target_files": [
+    "index.html",
+    "owner.html"
+  ],
+  "html_syntax": "OK",
+  "javascript_syntax": "OK",
+  "html_id_duplicates": "OK",
+  "existing_function_preservation": "OK",
+  "api_path_preservation": {
+    "owner.html": {
+      "unchanged": true,
+      "paths": [
+        "/api/admin/customers/search",
+        "/api/admin/day",
+        "/api/admin/demo/prepare",
+        "/api/admin/followups/update-status",
+        "/api/admin/reservations/manual-create",
+        "/api/admin/services",
+        "/api/admin/services/save",
+        "/api/admin/settings",
+        "/api/admin/settings/update",
+        "/api/admin/summary",
+        "/api/line/log-copy",
+        "/api/public/available-times",
+        "/api/public/services",
+        "/api/public/status"
+      ]
+    },
+    "index.html": {
+      "unchanged": true,
+      "paths": [
+        "/api/public/available-days",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status",
+        "/api/reservations/cancel",
+        "/api/reservations/change",
+        "/api/reservations/create"
+      ]
+    }
+  },
+  "public_admin_information": "OK",
+  "reception_channels": [
+    "line",
+    "phone",
+    "store",
+    "unknown"
+  ],
+  "line_payload_aliases": "ADDED",
+  "manual_channel_select": "ADDED",
+  "channel_filter": "ADDED",
+  "new_legacy_display_merge": "ADDED",
+  "manual_duplicate_warning": "ADDED",
+  "unchanged_other_screens": {
+    "owner-ipad.html": true,
+    "member.html": true
+  },
+  "owner_bytes": 107509,
+  "index_bytes": 67501,
+  "worker_changed": false,
+  "supabase_changed": false,
+  "api_changed": false,
+  "new_api_paths": [],
+  "changed_files_before_ledger": [
+    ".github/workflows/STEP-YOGA-NEXT-3-R2.yml",
+    ".github/workflows/STEP-YOGA-NEXT-3.yml",
+    "index.html",
+    "owner.html"
+  ]
+}
