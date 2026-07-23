@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-PHONE-2</title>
+  <title>DPRO YOGA LINE | Owner Dashboard STEP YOGA-NEXT-2</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -36,16 +36,17 @@
             <i data-lucide="flower-2" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-PHONE-2</p>
+            <p class="text-xs tracking-[.28em] text-slate-500 font-bold uppercase">STEP YOGA-NEXT-2</p>
             <h1 id="header-title" class="text-2xl lg:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE オーナー管理画面</h1>
-            <p class="text-sm text-slate-500 mt-2">未対応タスク・本日のレッスン予定・顧客カルテ・LINEフォローを1画面で管理します。</p>
+            <p class="text-sm text-slate-500 mt-2">最初に今日やることだけを表示し、顧客・全履歴は必要な時だけ読み込みます。</p>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2.5">
           <div class="flex items-center gap-2 rounded-full bg-white/80 border border-slate-200 px-3 py-2 shadow-sm">
-            <span class="text-xs font-bold text-slate-500">管理コード</span>
-            <input id="admin-code-input" class="w-20 bg-transparent outline-none text-sm font-black text-slate-700" value="1234" oninput="saveAdminCode()" />
-          </div>
+  <span class="text-xs font-bold text-slate-500">管理コード</span>
+  <input id="admin-code-input" type="password" inputmode="numeric" autocomplete="off" aria-label="管理コード" class="w-20 bg-transparent outline-none text-sm font-black text-slate-700" oninput="saveAdminCode()" />
+  <button id="admin-code-clear-btn" type="button" onclick="clearAdminCode()" class="rounded-full bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-700 px-2.5 py-1.5 text-xs font-black transition" aria-label="保存した管理コードを削除">削除</button>
+</div>
           <button onclick="openManualBookingModal()" class="pill inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 shadow-sm"><i data-lucide="phone-call" class="w-4 h-4"></i>電話・店頭予約</button>
           <button onclick="openServicesModal()" class="pill inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 shadow-sm"><i data-lucide="list-plus" class="w-4 h-4"></i>メニュー料金</button>
           <button onclick="openSettingsModal()" class="pill inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 border border-slate-200 shadow-sm"><i data-lucide="settings-2" class="w-4 h-4"></i>店舗設定</button>
@@ -54,6 +55,11 @@
         </div>
       </div>
       <div id="system-status" class="mt-5 rounded-2xl bg-white/70 border border-slate-100 px-4 py-3 text-sm text-slate-600">読み込み中...</div>
+      <div id="today-focus-guide" class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+        <div class="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3"><span class="font-black text-amber-800">1</span><span class="ml-2 font-bold text-slate-700">今日やることを確認</span></div>
+        <div class="rounded-2xl bg-[var(--sage-50)] border border-[var(--sage-100)] px-4 py-3"><span class="font-black text-[var(--sage-800)]">2</span><span class="ml-2 font-bold text-slate-700">対象のお客様を開く</span></div>
+        <div class="rounded-2xl bg-sky-50 border border-sky-100 px-4 py-3"><span class="font-black text-sky-800">3</span><span class="ml-2 font-bold text-slate-700">文面・詳細・対応済み</span></div>
+      </div>
     </header>
 
     <section class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-5">
@@ -309,7 +315,9 @@
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE = "yoga_demo";
-const STEP_VERSION = "YOGA-PHONE-2-PHONE-NORMALIZED-OWNER-SEARCH-20260709";
+const STEP_VERSION = "YOGA-NEXT-2-OWNER-TODAY-LAZY-LOAD-20260723";
+const OWNER_PAGE_PARAMS = new URLSearchParams(window.location.search);
+const IS_DEMO_OWNER = OWNER_PAGE_PARAMS.get("demo") === "1" || window.location.hostname.endsWith("github.io");
 
 const state = {
   settings: null,
@@ -318,6 +326,10 @@ const state = {
   day: null,
   customers: [],
   legacyEvents: [],
+  customersLoaded: false,
+  customersLoading: false,
+  customersLoadPromise: null,
+  historyLoaded: false,
   currentFilter: "today",
   selected: null,
   manualSelectedCustomer: null,
@@ -328,8 +340,29 @@ const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
 function $(id){ return document.getElementById(id); }
 function safeIcons(){ try { if (window.lucide) lucide.createIcons(); } catch(_){} }
-function adminCode(){ return ($("admin-code-input")?.value || localStorage.getItem("yogaOwnerAdminCode") || "1234").trim(); }
-function saveAdminCode(){ localStorage.setItem("yogaOwnerAdminCode", adminCode()); }
+function defaultAdminCode(){
+  if(localStorage.getItem("yogaOwnerAdminCodeCleared") === "1") return "";
+  return IS_DEMO_OWNER ? "1234" : "";
+}
+function adminCode(){
+  return ($("admin-code-input")?.value || localStorage.getItem("yogaOwnerAdminCode") || defaultAdminCode()).trim();
+}
+function saveAdminCode(){
+  const value = ($("admin-code-input")?.value || "").trim();
+  if(value){
+    localStorage.setItem("yogaOwnerAdminCode", value);
+    localStorage.removeItem("yogaOwnerAdminCodeCleared");
+  }else{
+    localStorage.removeItem("yogaOwnerAdminCode");
+  }
+}
+function clearAdminCode(){
+  localStorage.removeItem("yogaOwnerAdminCode");
+  localStorage.setItem("yogaOwnerAdminCodeCleared", "1");
+  if($("admin-code-input")) $("admin-code-input").value = "";
+  setStatus("管理コードを削除しました。再入力後に更新してください。", "loading");
+  toast("保存した管理コードを削除しました。");
+}
 function dedupeServicesForOwner(services){
   const map = new Map();
   (services || []).forEach((raw, index) => {
@@ -480,15 +513,20 @@ async function legacyPost(action, body={}){
 }
 
 async function loadAll(){
-  setStatus("読み込み中...", "loading");
+  setStatus("今日の情報を読み込み中...", "loading");
   try{
     const saved = localStorage.getItem("yogaOwnerAdminCode");
-    if(saved) $("admin-code-input").value = saved;
+    if(saved && $("admin-code-input")) $("admin-code-input").value = saved;
 
     await loadSettings();
-    await Promise.allSettled([loadServices(), loadSummary(), loadDay(), loadCustomers()]);
+    await Promise.allSettled([loadServices(), loadSummary(), loadDay()]);
+
+    if(state.customersLoaded){
+      await loadCustomers({ includeLegacy: state.historyLoaded });
+    }
+
     renderAll();
-    setStatus(`${STEP_VERSION} / ${state.settings?.shop_name || "DPRO YOGA"} / API接続OK`, "ok");
+    setStatus(`${STEP_VERSION} / ${state.settings?.shop_name || "DPRO YOGA"} / 今日の情報を優先表示`, "ok");
   }catch(err){
     setStatus(`読み込みエラー：${err.message}`, "error");
     console.error(err);
@@ -545,30 +583,52 @@ async function loadDay(){
   }
 }
 
-async function loadCustomers(){
-  try{
-    const data = await apiGet("/api/admin/customers/search", { q: "" });
-    state.customers = normalizeCustomers(data.customers || []);
-  }catch(err){
-    console.warn("customer search fallback", err);
-    try{
-      const data = await legacyGet("get_customers");
-      state.customers = normalizeCustomers(data.customers || []);
-      state.legacyEvents = (data.events || []).map(normalizeEvent);
-      return;
-    }catch(e){
-      state.customers = [];
-    }
-  }
+async function loadLegacyCustomerHistory(){
+  const data = await legacyGet("get_customers");
+  state.legacyEvents = (data.events || []).map(normalizeEvent);
+  const legacyCustomers = normalizeCustomers(data.customers || []);
+  const map = new Map(state.customers.map(c => [customerKey(c), c]));
+  legacyCustomers.forEach(c => { if(!map.has(customerKey(c))) map.set(customerKey(c), c); });
+  state.customers = [...map.values()];
+  state.historyLoaded = true;
+}
 
+async function loadCustomers({ includeLegacy = false } = {}){
+  state.customersLoading = true;
   try{
-    const data = await legacyGet("get_customers");
-    state.legacyEvents = (data.events || []).map(normalizeEvent);
-    const legacyCustomers = normalizeCustomers(data.customers || []);
-    const map = new Map(state.customers.map(c => [customerKey(c), c]));
-    legacyCustomers.forEach(c => { if(!map.has(customerKey(c))) map.set(customerKey(c), c); });
-    state.customers = [...map.values()];
-  }catch(_){ }
+    try{
+      const data = await apiGet("/api/admin/customers/search", { q: "" });
+      state.customers = normalizeCustomers(data.customers || []);
+      state.customersLoaded = true;
+    }catch(err){
+      console.warn("customer search fallback", err);
+      await loadLegacyCustomerHistory();
+      state.customersLoaded = true;
+      return;
+    }
+
+    if(includeLegacy){
+      try{
+        await loadLegacyCustomerHistory();
+      }catch(err){
+        console.warn("legacy customer history fallback", err);
+      }
+    }
+  }finally{
+    state.customersLoading = false;
+  }
+}
+
+async function ensureCustomersLoaded(){
+  if(state.customersLoaded || state.customersLoading) return;
+  await loadCustomers({ includeLegacy: false });
+  renderKpis();
+}
+
+async function ensureHistoryLoaded(){
+  if(state.historyLoaded) return;
+  await loadCustomers({ includeLegacy: true });
+  renderKpis();
 }
 
 function normalizeCustomers(rows){
@@ -667,8 +727,16 @@ function renderKpis(){
   $("kpi-next-label").textContent = day.next_business_date ? `${formatDate(day.next_business_date)} 予約` : "次営業日";
 }
 
+function taskDueValue(task){
+  return String(task?.due_date || task?.date || task?.created_at || "9999-12-31");
+}
+function compareTaskPriority(a, b){
+  const priority = value => value === "high" ? 0 : value === "medium" ? 1 : 2;
+  return priority(a?.priority) - priority(b?.priority) || taskDueValue(a).localeCompare(taskDueValue(b));
+}
+
 function renderTasks(){
-  const tasks = (state.day?.today_tasks || []).slice();
+  const tasks = (state.day?.today_tasks || []).slice().sort(compareTaskPriority);
   const wrap = $("task-list");
   if(!tasks.length){
     wrap.innerHTML = `<div class="rounded-[24px] bg-white/70 p-6 text-sm text-slate-500 xl:col-span-3">本日の未対応はありません。予約予定は下の「本日のレッスン予定」で確認できます。営業前DEMO準備を押すと、商談用の予約・フォロー対象を作成できます。</div>`;
@@ -680,23 +748,44 @@ function renderTasks(){
 function renderTaskCard(task, i){
   const priorityClass = task.priority === "high" ? "bg-amber-50 text-amber-800 border-amber-100" : "bg-[var(--sage-50)] text-[var(--sage-800)] border-[var(--sage-100)]";
   const icon = task.type === "reservation" ? "calendar-check" : task.type === "followup" ? "heart-handshake" : "message-square-text";
+  const nextBadge = i === 0 ? `<span class="badge bg-rose-50 text-rose-700">次にやる</span>` : "";
   const action = task.type === "followup" ? `<button onclick="openMessageFromFollowup('${escapeHtml(task.followup_id || "")}', '${escapeHtml(task.title || "フォロー")}', '${escapeHtml(task.detail || "")}' )" class="rounded-full yoga-gradient text-white px-3 py-2 text-xs font-black">文面</button><button onclick="markFollowupHandled('${escapeHtml(task.followup_id || "")}')" class="rounded-full bg-white border border-slate-200 text-slate-700 px-3 py-2 text-xs font-black">対応済み</button>` : task.type === "line_message" ? `<button onclick="openLineMessageModalById('${escapeHtml(task.message_id || "")}')" class="rounded-full yoga-gradient text-white px-3 py-2 text-xs font-black">文面を確認・コピー</button>` : `<button onclick="selectEventById('${escapeHtml(task.related_event_id || "")}')" class="rounded-full bg-white border border-slate-200 text-slate-700 px-3 py-2 text-xs font-black">詳細</button>`;
   return `<article class="rounded-[24px] bg-white/82 border border-slate-100 p-5">
     <div class="flex items-start justify-between gap-3">
       <div class="flex items-center gap-3 min-w-0"><div class="w-11 h-11 rounded-2xl ${priorityClass} border flex items-center justify-center"><i data-lucide="${icon}" class="w-5 h-5"></i></div><div class="min-w-0"><p class="text-sm font-black text-slate-800 truncate">${escapeHtml(task.title || "タスク")}</p><p class="text-xs text-slate-500 mt-1">${escapeHtml(task.type || "task")}</p></div></div>
-      <span class="badge ${priorityClass}">${task.priority === "high" ? "重要" : "通常"}</span>
+      <div class="flex flex-wrap justify-end gap-2">${nextBadge}<span class="badge ${priorityClass}">${task.priority === "high" ? "重要" : "通常"}</span></div>
     </div>
     <p class="text-sm text-slate-600 leading-7 mt-4 whitespace-pre-wrap">${escapeHtml(task.detail || "内容を確認してください。")}</p>
     <div class="flex flex-wrap gap-2 mt-4">${action}</div>
   </article>`;
 }
 
-function setMainFilter(filter){
+async function setMainFilter(filter){
   state.currentFilter = filter;
   ["today","next","followups","customers","all"].forEach(name => {
     const btn = $(`tab-${name}`);
     if(btn) btn.className = `rounded-full px-4 py-2 text-sm font-bold ${name === filter ? "tab-active" : "tab-inactive"}`;
   });
+
+  const wrap = $("main-list");
+  try{
+    if(filter === "customers" && !state.customersLoaded){
+      $("main-list-title").textContent = "顧客検索";
+      $("main-list-help").textContent = "顧客情報を必要な時だけ読み込んでいます。";
+      wrap.innerHTML = emptyCard("顧客情報を読み込み中です...");
+      await ensureCustomersLoaded();
+    }else if(filter === "all" && !state.historyLoaded){
+      $("main-list-title").textContent = "すべての予定・履歴";
+      $("main-list-help").textContent = "過去履歴を必要な時だけ読み込んでいます。";
+      wrap.innerHTML = emptyCard("予約・変更・キャンセル履歴を読み込み中です...");
+      await ensureHistoryLoaded();
+    }
+  }catch(err){
+    wrap.innerHTML = emptyCard(`読み込みに失敗しました：${err.message}`);
+    setStatus(`追加データの読み込みエラー：${err.message}`, "error");
+    return;
+  }
+
   renderMainList();
 }
 
@@ -710,7 +799,7 @@ function renderMainList(){
   if(filter === "tasks"){
     title.textContent = "今日やること（未対応のみ）";
     if(help) help.textContent = "フォロー・未コピーLINE文面など、対応が必要なものだけを表示します。";
-    const tasks = state.day?.today_tasks || [];
+    const tasks = (state.day?.today_tasks || []).slice().sort(compareTaskPriority);
     wrap.innerHTML = tasks.length ? tasks.map(renderTaskWide).join("") : emptyCard("今日やることはありません。予約予定は「本日のレッスン予定」で確認できます。");
     safeIcons();
     return;
@@ -943,14 +1032,25 @@ async function scheduleSelectedFollowup(days){
   }catch(err){ toast(`フォロー予定の保存に失敗しました。\n${err.message}`); }
 }
 
-function openManualBookingModal(){
+async function openManualBookingModal(){
   state.manualSelectedCustomer = null;
   ["manual-search","manual-name","manual-phone","manual-goals","manual-date","manual-note"].forEach(id => { const el=$(id); if(el) el.value=""; });
   $("manual-experience").value = "初めて"; $("manual-pace").value = "月2回"; $("manual-status").value = "電話・店頭予約";
   const today = todayJst(); $("manual-date").min = today; $("manual-date").value = today;
   $("manual-selected").classList.add("hidden");
-  renderManualSuggestions(); renderManualServices(); loadManualTimes();
-  $("manual-booking-modal").classList.remove("hidden"); safeIcons();
+  $("manual-suggestions").innerHTML = `<div class="rounded-2xl bg-white border border-slate-100 px-4 py-4 text-sm text-slate-500">顧客候補を読み込み中です...</div>`;
+  renderManualServices();
+  loadManualTimes();
+  $("manual-booking-modal").classList.remove("hidden");
+  safeIcons();
+
+  try{
+    await ensureCustomersLoaded();
+    renderManualSuggestions();
+  }catch(err){
+    $("manual-suggestions").innerHTML = `<div class="rounded-2xl bg-rose-50 border border-rose-100 px-4 py-4 text-sm text-rose-700">顧客候補を読み込めませんでした。新規のお客様として予約登録は続けられます。</div>`;
+    console.warn(err);
+  }
 }
 function closeManualBookingModal(){ $("manual-booking-modal").classList.add("hidden"); }
 
@@ -1483,7 +1583,7 @@ async function prepareDemoData(){
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  $("admin-code-input").value = localStorage.getItem("yogaOwnerAdminCode") || "1234";
+  $("admin-code-input").value = localStorage.getItem("yogaOwnerAdminCode") || defaultAdminCode();
   loadAll();
 });
 </script>

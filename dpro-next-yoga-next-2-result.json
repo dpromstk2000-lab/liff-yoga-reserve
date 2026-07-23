@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "overall": "OK",
+  "step": "YOGA-NEXT-2-R2",
+  "completed_step": "YOGA-NEXT-2",
+  "checked_at_jst": "2026-07-23T19:18:11.730645+09:00",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "branch": "main",
+  "run_id": "29998777745",
+  "before_sha": "c860139375b5e86e8ce96606dc7821951776636e",
+  "before_tag": "dpro-yoga-next-2-before-20260723",
+  "target_file": "owner.html",
+  "owner_bytes": 100847,
+  "html_syntax": "OK",
+  "javascript_syntax": "OK",
+  "html_id_duplicates": "OK",
+  "existing_function_preservation": "OK",
+  "yoga_business_logic": "OK",
+  "initial_customer_full_load": "REMOVED",
+  "customer_load_timing": "ON_CUSTOMER_OR_MANUAL_BOOKING_OPEN",
+  "history_load_timing": "ON_ALL_HISTORY_OPEN",
+  "admin_code_clear_button": "ADDED",
+  "admin_code_demo_guard": "ADDED",
+  "task_priority_sort": "ADDED",
+  "unchanged_other_screens": {
+    "index.html": true,
+    "owner-ipad.html": true,
+    "member.html": true
+  },
+  "worker_changed": false,
+  "supabase_changed": false,
+  "api_changed": false,
+  "new_api_paths": [],
+  "changed_files_before_ledger": [
+    ".github/workflows/STEP-YOGA-NEXT-2-R2.yml",
+    ".github/workflows/STEP-YOGA-NEXT-2.yml",
+    "owner.html"
+  ],
+  "r1_failure_effect": "NO_OWNER_CHANGE"
+}
