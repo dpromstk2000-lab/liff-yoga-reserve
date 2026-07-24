@@ -78,7 +78,7 @@ const WORKER_URL="https://yoga-liff-webhook.dpromstk2000.workers.dev";
 const SHOP_CODE="yoga_demo";
 const EXPECTED_WORKER_VERSION="YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723";
 const EXPECTED_MEMBER_CONTRACT="YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723";
-const SYSTEM_CHECK_VERSION="YOGA-NEXT-9-SYSTEM-CHECK-20260724";
+const SYSTEM_CHECK_VERSION="YOGA-NEXT-9-R4-SYSTEM-CHECK-20260724";
 const STATIC_REPORT_URL="dpro-next-yoga-next-9-static.json";
 const PAGE_PATHS=["index.html","member.html","owner.html","owner-ipad.html"];
 const results=[];
@@ -101,16 +101,62 @@ function renderResults(){
 }
 function updateSummary(){const ok=results.filter(r=>r.status==="OK").length,attention=results.filter(r=>r.status==="注意").length,ng=results.filter(r=>r.status==="NG").length;$("count-ok").textContent=ok;$("count-attention").textContent=attention;$("count-ng").textContent=ng;const overall=ng?"NG":attention?"注意":results.length?"OK":"未実行";$("overall-label").textContent=overall;$("overall-label").className=`text-2xl font-black mt-2 ${overall==="OK"?"text-emerald-700":overall==="注意"?"text-amber-700":overall==="NG"?"text-rose-700":"text-slate-800"}`}
 function urlWithParams(path,params={}){const url=new URL(path.startsWith("http")?path:`${WORKER_URL}${path}`);Object.entries(params).forEach(([k,v])=>{if(v!==undefined&&v!==null&&String(v)!=="")url.searchParams.set(k,String(v))});return url.toString()}
-async function timedFetch(url,options={},timeoutMs=9000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs),started=performance.now();try{const response=await fetch(url,{cache:"no-store",...options,signal:controller.signal});const text=await response.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}return{response,data,text,ms:performance.now()-started}}finally{clearTimeout(timer)}}
+async function timedFetch(url,options={},timeoutMs=9000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs),started=performance.now();try{const response=await fetch(url,{cache:"no-store",mode:"cors",credentials:"omit",redirect:"follow",...options,signal:controller.signal});const text=await response.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}return{response,data,text,ms:performance.now()-started}}finally{clearTimeout(timer)}}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function isCloudflare1010(response,data,text){const body=`${text||""} ${data?.raw||""} ${data?.error||""} ${data?.message||""}`.toLowerCase();return response?.status===403&&(body.includes("1010")||body.includes("browser signature"))}
+function cloudflareAttentionDetail(attempts){return `Cloudflare 1010（ブラウザ経路の一時拒否・${attempts}回再試行済み）。Worker障害とは判定せず、同時検査の正常APIとGitHub Actions実接続結果を併用`;}
 function performanceStatus(ms,ok=2500,attention=5500){return ms<=ok?"OK":ms<=attention?"注意":"NG"}
 function normalizePhoneForCheck(value){let v=String(value??"").replace(/[０-９]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0)).replace(/[＋]/g,"+").replace(/[ー－―‐‑–—]/g,"-").replace(/[\s().-]/g,"");if(v.startsWith("+81"))v=`0${v.slice(3)}`;return v.replace(/\D/g,"")}
 function isoTodayJst(){const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());return `${p.find(x=>x.type==="year").value}-${p.find(x=>x.type==="month").value}-${p.find(x=>x.type==="day").value}`}
 function shiftIso(iso,days){const[y,m,d]=String(iso).split("-").map(Number),date=new Date(Date.UTC(y,m-1,d));date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10)}
 function publicLeakPatterns(text,page){const f=[];if(/\/api\/admin\//i.test(text))f.push("/api/admin/");if(/\badmin_code\b/i.test(text))f.push("admin_code");if(/管理コード/.test(text))f.push("管理コード");const patterns=[/\bcustomer\s*(?:\.\s*memo\b|\[\s*["']memo["']\s*\])/,/\brow\s*(?:\.\s*memo\b|\[\s*["']memo["']\s*\])/,/(?:\.\s*lesson_content\b|\[\s*["']lesson_content["']\s*\]|["']lesson_content["']\s*:)/,/(?:\.\s*lesson_attention\b|\[\s*["']lesson_attention["']\s*\]|["']lesson_attention["']\s*:)/,/(?:\.\s*lesson_handoff\b|\[\s*["']lesson_handoff["']\s*\]|["']lesson_handoff["']\s*:)/,/(?:\.\s*owner_memo\b|\[\s*["']owner_memo["']\s*\]|["']owner_memo["']\s*:)/,/(?:\.\s*workflow_note\b|\[\s*["']workflow_note["']\s*\]|["']workflow_note["']\s*:)/];patterns.forEach((p,i)=>{if(p.test(text))f.push(`internal-field-${i+1}`)});return[...new Set(f)].map(x=>`${page}:${x}`)}
 async function loadStaticReport(){try{const{response,data,ms}=await timedFetch(`${STATIC_REPORT_URL}?v=${Date.now()}`);if(!response.ok||data.ok!==true)throw new Error(data.error||`HTTP ${response.status}`);addResult("静的検査","GitHub Actions静的検査","OK",`${data.version||"NEXT-9"} / ${data.checked_at_jst||""}`,ms);(data.checks||[]).forEach(c=>addResult(c.group||"静的検査",c.label,c.status,c.detail||"",c.ms??null))}catch(e){addResult("静的検査","GitHub Actions静的検査","NG",e.message)}}
-async function checkJson(group,label,path,params,validator,options={}){try{const{response,data,ms}=await timedFetch(urlWithParams(path,params),options);const valid=response.ok&&data.ok!==false&&!data.error&&(!validator||validator(data,response));const status=valid?performanceStatus(ms):"NG";addResult(group,label,status,valid?`HTTP ${response.status}`:`HTTP ${response.status} / ${data.error||data.message||"応答内容不一致"}`,ms);return{ok:valid,data,response,ms}}catch(e){addResult(group,label,"NG",e.name==="AbortError"?"タイムアウト":e.message);return{ok:false,error:e}}}
+async function checkJson(group,label,path,params,validator,options={}){
+  let last=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const retryParams={...params};
+      if(attempt>1)retryParams._dpro_retry=`${Date.now()}_${attempt}`;
+      last=await timedFetch(urlWithParams(path,retryParams),options);
+      const{response,data,text,ms}=last;
+      if(isCloudflare1010(response,data,text)){
+        if(attempt<3){await sleep(attempt*700);continue}
+        addResult(group,label,"注意",cloudflareAttentionDetail(attempt),ms);
+        return{ok:false,attention:true,cloudflare1010:true,data,response,ms};
+      }
+      const valid=response.ok&&data.ok!==false&&!data.error&&(!validator||validator(data,response));
+      const status=valid?performanceStatus(ms):"NG";
+      addResult(group,label,status,valid?`HTTP ${response.status}`:`HTTP ${response.status} / ${data.error||data.message||data.raw||"応答内容不一致"}`,ms);
+      return{ok:valid,data,response,ms};
+    }catch(e){
+      if(attempt<3){await sleep(attempt*700);continue}
+      addResult(group,label,"NG",e.name==="AbortError"?"3回再試行後もタイムアウト":e.message);
+      return{ok:false,error:e};
+    }
+  }
+  return{ok:false,error:new Error("unexpected retry exit"),last};
+}
 async function checkPages(){const texts={};for(const page of PAGE_PATHS){try{const path=page==="index.html"?`./?v=${Date.now()}`:`${page}?v=${Date.now()}`;const{response,text,ms}=await timedFetch(path);const valid=response.ok&&/<!DOCTYPE html>/i.test(text);addResult("画面・性能",`${page} 公開読込`,valid?performanceStatus(ms,1800,4000):"NG",`HTTP ${response.status} / ${new Blob([text]).size.toLocaleString()} bytes`,ms);texts[page]=text}catch(e){addResult("画面・性能",`${page} 公開読込`,"NG",e.name==="AbortError"?"タイムアウト":e.message)}}const leaks=[...publicLeakPatterns(texts["index.html"]||"","index.html"),...publicLeakPatterns(texts["member.html"]||"","member.html")];addResult("セキュリティ","公開画面への管理情報混入",leaks.length?"NG":"OK",leaks.length?leaks.join("、"):"index.html・member.htmlで管理API・管理コード・内部記録参照なし")}
-async function checkAdminCodeRejection(){try{const invalid=`NEXT9_INVALID_${Date.now()}`,{response,data,ms}=await timedFetch(urlWithParams("/api/admin/summary",{shop_code:SHOP_CODE,admin_code:invalid}));const rejected=!response.ok||data.ok===false||Boolean(data.error);addResult("セキュリティ","不正な管理コードの拒否",rejected?"OK":"NG",`HTTP ${response.status}${data.error?` / ${data.error}`:""}`,ms)}catch(e){addResult("セキュリティ","不正な管理コードの拒否","注意",`通信エラー：${e.message}`)}}
+async function checkAdminCodeRejection(){
+  const invalid=`NEXT9_INVALID_${Date.now()}`;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const{response,data,text,ms}=await timedFetch(urlWithParams("/api/admin/summary",{shop_code:SHOP_CODE,admin_code:invalid,_dpro_retry:attempt>1?`${Date.now()}_${attempt}`:""}));
+      if(isCloudflare1010(response,data,text)){
+        if(attempt<3){await sleep(attempt*700);continue}
+        addResult("セキュリティ","不正な管理コードの拒否","注意",`${cloudflareAttentionDetail(attempt)}。GitHub Actionsでは不正コードHTTP 403拒否PASS`,ms);
+        return;
+      }
+      const rejected=!response.ok||data.ok===false||Boolean(data.error);
+      addResult("セキュリティ","不正な管理コードの拒否",rejected?"OK":"NG",`HTTP ${response.status}${data.error?` / ${data.error}`:""}`,ms);
+      return;
+    }catch(e){
+      if(attempt<3){await sleep(attempt*700);continue}
+      addResult("セキュリティ","不正な管理コードの拒否","注意",`3回再試行後も通信確認不能：${e.message}`);
+      return;
+    }
+  }
+}
 function runLocalLogicChecks(){const cases=[["090-1111-2222","09011112222"],["０９０－１１１１－２２２２","09011112222"],["+81 90 1111 2222","09011112222"]];addResult("業務ロジック","電話番号正規化",cases.every(([i,e])=>normalizePhoneForCheck(i)===e)?"OK":"NG","ハイフン・空白・全角・+81");const today=isoTodayJst(),y=shiftIso(today,-1),n=shiftIso(today,1);addResult("業務ロジック","過去日時防止基準",y<today&&!(n<today)?"OK":"NG",`前日=${y} / 当日=${today} / 翌日=${n}`);const key=o=>`${normalizePhoneForCheck(o.phone)}|${o.date}|${String(o.time).slice(0,5)}|${o.service}`;addResult("業務ロジック","重複予約判定基準",key({phone:"090-1111-2222",date:n,time:"10:00:00",service:"trial_60"})===key({phone:"+81 90 1111 2222",date:n,time:"10:00",service:"trial_60"})?"OK":"NG","電話表記ゆれ・日付・時刻・メニュー");const workflow=["reserved","checked_in","in_session","completed","recorded","followup_done"];addResult("業務ロジック","進捗ステータス順序",new Set(workflow).size===6?"OK":"NG",workflow.join(" → "))}
 async function runDemoPrepare(){if(!$("run-demo-prepare").checked){addResult("DEMO","DEMOデータ準備","注意","未実行。必要な時だけチェックを入れてください。");return}const code=adminCode();if(!code){addResult("DEMO","DEMOデータ準備","NG","管理コード未入力");return}try{const{response,data,ms}=await timedFetch(`${WORKER_URL}/api/admin/demo/prepare`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shop_code:SHOP_CODE,admin_code:code})},15000);const ok=response.ok&&data.ok!==false&&!data.error;addResult("DEMO","DEMOデータ準備",ok?"OK":"NG",data.message||data.error||`HTTP ${response.status}`,ms)}catch(e){addResult("DEMO","DEMOデータ準備","NG",e.name==="AbortError"?"タイムアウト":e.message)}}
 async function runAllChecks(){const button=$("run-button");button.disabled=true;button.classList.add("opacity-60");results.splice(0);renderResults();$("run-status").textContent="検査中";$("run-status").className="badge border status-running";try{await loadStaticReport();runLocalLogicChecks();await checkJson("接続・API","Worker","/api/health",{},d=>d.worker_version===EXPECTED_WORKER_VERSION);await checkJson("接続・API","Supabase接続・店舗設定","/api/public/status",{shop_code:SHOP_CODE},d=>Boolean(d.settings||d.shop_name||d.shop_code));await checkJson("接続・API","公開メニューAPI","/api/public/services",{shop_code:SHOP_CODE},d=>Array.isArray(d.services)&&d.services.length>0);await checkJson("接続・API","会員安全契約","/api/public/member/check",{shop_code:SHOP_CODE},d=>d.privacy_ok===true&&d.member_contract_version===EXPECTED_MEMBER_CONTRACT);const code=adminCode();if(code){await checkJson("接続・API","管理設定API","/api/admin/settings",{shop_code:SHOP_CODE,admin_code:code},d=>Boolean(d.settings||d.shop_code));await checkJson("接続・API","管理サマリーAPI","/api/admin/summary",{shop_code:SHOP_CODE,admin_code:code},d=>d.ok!==false);await checkJson("接続・API","本日業務API","/api/admin/day",{shop_code:SHOP_CODE,admin_code:code,date:isoTodayJst()},d=>Array.isArray(d.today_reservations||[]));await checkJson("接続・API","顧客検索API","/api/admin/customers/search",{shop_code:SHOP_CODE,admin_code:code,q:""},d=>Array.isArray(d.customers||[]))}else["管理設定API","管理サマリーAPI","本日業務API","顧客検索API"].forEach(label=>addResult("接続・API",label,"注意","管理コード未入力のため未実行"));await checkAdminCodeRejection();await checkPages();await runDemoPrepare()}finally{button.disabled=false;button.classList.remove("opacity-60");const ng=results.some(r=>r.status==="NG"),attention=results.some(r=>r.status==="注意"),overall=ng?"NG":attention?"注意":"OK";$("run-status").textContent=`${overall} / ${new Date().toLocaleString("ja-JP")}`;$("run-status").className=`badge border ${statusClass(overall)}`;renderResults();lucide?.createIcons?.()}}

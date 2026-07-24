@@ -4,12 +4,14 @@ step_name: "性能・セキュリティ・system-check強化"
 current_step: "YOGA-NEXT-9-COMPLETE"
 previous_step: "YOGA-NEXT-8-COMPLETE"
 next_step: "YOGA-NEXT-10"
-completed_at_jst: "2026-07-24 17:19:00 +0900"
-applied_revision: "R3"
+completed_at_jst: "2026-07-24 19:32:40 +0900"
+applied_revision: "R4"
 r1_result: "FAILED_BEFORE_COMMIT"
 r1_failure_reason: "phone_test_required_0081_outside_dpro_standard"
 r2_result: "FAILED_BEFORE_COMMIT"
 r2_failure_reason: "cloudflare_1010_blocked_python_urllib_probe"
+r3_result: "COMPLETE_THEN_BROWSER_RUNTIME_ISSUE_FOUND"
+r3_post_publish_issue: "browser_system_check_classified_cloudflare_1010_as_ng"
 before_sha: "8a3adde3c417f5cefabcfc8ec8dc6ceae073d003"
 before_tag: "dpro-yoga-next-9-before-20260724"
 before_tag_status: "existing_same_sha"
@@ -26,6 +28,9 @@ implementation:
   github_actions_browser_like_headers: true
   cloudflare_1010_is_environment_attention: true
   browser_runtime_live_check_fallback: true
+  browser_runtime_cloudflare_1010_retry_count: 3
+  browser_runtime_cloudflare_1010_status: "注意"
+  browser_runtime_real_api_error_status: "NG"
   supabase_connection_inferred_from_api: true
   store_settings_check: true
   major_api_check: true
@@ -72,13 +77,14 @@ change_record:
 file_result:
   system_check:
     path: "system-check.html"
-    blob_sha: "cd90eb5c1caff08aa7ffed783af4c4c29edac2dd"
-    bytes: 20555
-    version: "YOGA-NEXT-9-SYSTEM-CHECK-20260724"
+    blob_sha: "2df7d0fae5f40ba58762b41a16a14b9d765af685"
+    bytes: 22420
+    version: "YOGA-NEXT-9-R4-SYSTEM-CHECK-20260724"
   static_report:
     path: "dpro-next-yoga-next-9-static.json"
 known_attention:
-  - "GitHub Actions送信元だけがCloudflare 1010で拒否された場合は注意とし、公開後のブラウザ版system-checkで実接続確認する"
+  - "Cloudflare 1010は最大3回再試行し、継続時はブラウザ経路上の注意として表示する"
+  - "実際のAPIエラー、応答不一致、3回後の一般通信エラーはNGを維持する"
   - "DEMO準備は明示的にチェックした場合だけ実行する"
   - "ブラウザの読込時間は通信状況で変動する"
   - "製品サイト・操作体験シート・完成判定はYOGA-NEXT-10で実施する"
@@ -86,7 +92,8 @@ rollback:
   method: "backup_tag"
   tag: "dpro-yoga-next-9-before-20260724"
   command_reference: "git checkout dpro-yoga-next-9-before-20260724 -- owner.html owner-ipad.html dpro-next-ledger.yml && git rm system-check.html dpro-next-yoga-next-9-static.json dpro-next-yoga-next-9-result.json"
-failed_r1_workflow_self_delete_after_success: true
+failed_r1_r4_workflow_self_delete_after_success: true
+workflow_self_delete_after_success: true
 failed_r2_workflow_self_delete_after_success: true
 workflow_self_delete_after_success: true
 auto_commit_push: true

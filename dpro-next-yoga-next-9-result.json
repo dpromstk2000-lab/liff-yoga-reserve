@@ -2,13 +2,13 @@
   "ok": true,
   "overall": "注意",
   "step": "YOGA-NEXT-9",
-  "applied_revision": "R3",
+  "applied_revision": "R4",
   "r1_result": "FAILED_BEFORE_COMMIT",
   "r1_failure_reason": "phone_test_required_0081_outside_dpro_standard",
   "r2_result": "FAILED_BEFORE_COMMIT",
   "r2_failure_reason": "cloudflare_1010_blocked_python_urllib_probe",
   "cloudflare_actions_probe_attention": false,
-  "checked_at_jst": "2026-07-24T17:19:00.372182+09:00",
+  "checked_at_jst": "2026-07-24T19:32:40.505816+09:00",
   "before_sha": "8a3adde3c417f5cefabcfc8ec8dc6ceae073d003",
   "before_tag": "dpro-yoga-next-9-before-20260724",
   "checks": [
@@ -285,5 +285,15 @@
   "api_changed": false,
   "system_check_created": true,
   "demo_prepare_runtime_optional": true,
-  "automatic_line_send": false
+  "automatic_line_send": false,
+  "r3_result": "COMPLETE_THEN_BROWSER_RUNTIME_ISSUE_FOUND",
+  "r3_post_publish_issue": "browser_system_check_classified_cloudflare_1010_as_ng",
+  "r4_fix": {
+    "system_check_retry_count": 3,
+    "cloudflare_1010_status": "注意",
+    "actual_api_failure_status": "NG",
+    "worker_changed": false,
+    "supabase_changed": false,
+    "api_changed": false
+  }
 }

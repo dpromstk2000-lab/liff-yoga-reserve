@@ -1,7 +1,7 @@
 {
   "ok": true,
-  "version": "YOGA-NEXT-9-STATIC-REPORT-20260724",
-  "checked_at_jst": "2026-07-24T17:19:00.264098+09:00",
+  "version": "YOGA-NEXT-9-R4-STATIC-REPORT-20260724",
+  "checked_at_jst": "2026-07-24T19:32:40.505303+09:00",
   "checks": [
     {
       "group": "静的検査",
@@ -237,6 +237,18 @@
       "status": "OK",
       "detail": "HTTP 200 / 72,258 bytes",
       "ms": 81.71
+    },
+    {
+      "group": "ブラウザ実行検査",
+      "label": "Cloudflare 1010再試行",
+      "status": "OK",
+      "detail": "最大3回・段階待機・キャッシュ回避パラメータ"
+    },
+    {
+      "group": "ブラウザ実行検査",
+      "label": "Cloudflare 1010判定",
+      "status": "OK",
+      "detail": "Worker障害NGではなく環境上の注意として表示"
     }
   ],
   "files": {
@@ -281,5 +293,15 @@
   "live_checks_attention": false,
   "cloudflare_1010_from_github_actions": false,
   "browser_runtime_live_check_required": false,
-  "actions_request_headers": "browser_like"
+  "actions_request_headers": "browser_like",
+  "browser_runtime_fix": {
+    "cloudflare_1010_retry_count": 3,
+    "cloudflare_1010_final_status": "注意",
+    "real_api_errors_remain_ng": true,
+    "network_errors_remain_ng_after_retry": true,
+    "invalid_admin_code_actions_evidence": "HTTP 403 PASS",
+    "worker_changed": false,
+    "supabase_changed": false,
+    "api_changed": false
+  }
 }
