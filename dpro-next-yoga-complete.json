@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "current_step": "COMPLETE",
+  "final_version": "YOGA-NEXT-10-COMPLETE-20260724",
+  "completed_at_jst": "2026-07-24T20:13:25.090761+09:00",
+  "all_steps_complete": true,
+  "system_check": {
+    "ok": 57,
+    "attention": 2,
+    "ng": 0,
+    "pass": true
+  },
+  "product_site": {
+    "published": true,
+    "url": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/systems/yoga.html"
+  },
+  "operation_sheet": {
+    "pdf": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/assets/pdfs/dpro-yoga-line-next-operation-guide.pdf",
+    "png": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/assets/pdfs/dpro-yoga-line-next-operation-guide.png",
+    "pages": 1,
+    "qr_count": 6,
+    "qr_pass": true
+  },
+  "sellable": true,
+  "public_demo_available": true,
+  "owner_operation_available": true,
+  "worker_changed_during_next": true,
+  "supabase_changed_during_next": false,
+  "api_changed_during_next": true
+}
