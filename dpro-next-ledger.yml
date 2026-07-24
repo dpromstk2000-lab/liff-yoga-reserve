@@ -1,105 +1,59 @@
 system_name: "DPRO ヨガ LINE"
 standard: "DPRO NEXT"
-step_name: "LINE会員ページ・履歴・前回と同じ予約"
-current_step: "YOGA-NEXT-7-COMPLETE"
-previous_step: "YOGA-NEXT-6-COMPLETE"
-next_step: "YOGA-NEXT-8"
-completed_at_jst: "2026-07-24 14:26:26 +0900"
+step_name: "次回案内・再来店・フォロー最適化"
+current_step: "YOGA-NEXT-8-COMPLETE"
+previous_step: "YOGA-NEXT-7-COMPLETE"
+next_step: "YOGA-NEXT-9"
+completed_at_jst: "2026-07-24 16:00:37 +0900"
 applied_revision: "R3"
 r1_result: "FAILED_BEFORE_COMMIT"
-r1_failure_reason: "reservation_origin_exact_match_count_2"
+r1_failure_reason: "tasks_substring_match_count_2"
 r2_result: "FAILED_BEFORE_COMMIT"
-r2_failure_reason: "owner_memo_privacy_guard_false_positive"
-before_sha: "7343b5b1eda8b2c68194d3a65e75bb8b6ecc1c25"
-before_tag: "dpro-yoga-next-7-before-20260723"
+r2_failure_reason: "existing_addDays_signature_dependency_in_due_test_and_logic"
+before_sha: "8860139e45e5e049593440689c40f2289129d4f9"
+before_tag: "dpro-yoga-next-8-before-20260724"
 before_tag_status: "existing_same_sha"
-target_files:
-  - "member.html"
-  - "index.html"
-worker:
-  changed: true
-  deployed_before_yml: true
-  version: "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723"
-  member_contract_version: "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723"
-privacy:
-  public_customer_profile_sanitized: true
-  active_reservations_sanitized: true
-  lesson_history_sanitized: true
-  followups_sanitized: true
-  line_message_body_excluded: true
-  customer_memo_excluded: true
-  owner_memo_excluded: true
-  owner_memo_privacy_guard_required: true
-  internal_field_access_pattern_check: true
-  lesson_content_excluded: true
-  lesson_attention_excluded: true
-  lesson_handoff_excluded: true
-  workflow_note_excluded: true
+target_files: ["owner.html", "owner-ipad.html"]
 implementation:
-  current_reservation_preserved: true
-  last_lesson_card: true
-  lesson_history: true
-  lesson_history_initial_limit: 3
-  lesson_history_max_api_rows: 24
-  repeat_same_service: true
-  repeat_customer_request_note: true
-  repeat_date_time_reselection: true
-  repeat_transport: "sessionStorage"
-  query_parameter_contains_internal_data: false
+  due_states: ["overdue", "today", "soon", "future", "undated"]
+  dedicated_due_date_helper: "followupAddDays"
+  due_date_boundary_checks: ["-1", "0", "+1", "+7", "+8"]
+  today_guidance_summary: true
+  today_task_followup_merge: true
+  followup_task_deduplication: true
+  outgoing_message_uses_internal_memo: false
+  individual_preview_before_copy: true
+  copy_does_not_auto_handle: true
+  handled_requires_separate_confirmation: true
   automatic_line_send: false
 checks:
-  required_files: "OK"
-  previous_step: "OK"
   yml_syntax: "OK"
-  worker_member_contract: "OK"
-  worker_privacy: "OK"
   html_syntax: "OK"
   javascript_syntax: "OK"
   html_id_duplicates: "OK"
-  public_information_separation: "OK"
-  member_repeat_logic: "OK"
-  index_repeat_logic: "OK"
-  page_api_paths_preserved: "OK"
-  admin_screen_hash_preservation: "OK"
+  existing_api_paths: "OK"
+  due_priority_logic: "OK"
+  internal_memo_exclusion: "OK"
+  member_index_hash_preservation: "OK"
   overall: "OK"
 change_record:
-  worker_changed: true
+  worker_changed: false
   supabase_changed: false
-  api_changed: true
-  api_response_changed: true
-  member_html_changed: true
-  index_html_changed: true
-  owner_html_changed: false
-  owner_ipad_html_changed: false
+  api_changed: false
+  owner_html_changed: true
+  owner_ipad_html_changed: true
+  member_html_changed: false
+  index_html_changed: false
   existing_data_changed: false
 file_result:
-  member:
-    path: "member.html"
-    blob_sha: "de427a20414ce8c8697cfbaafd004cc0bde48c3f"
-    bytes: 55494
-    version: "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723"
-  reservation:
-    path: "index.html"
-    blob_sha: "6c3b2e4abcce8dc78f0a658b56580a983f4935b4"
-    bytes: 71383
-    version: "YOGA-NEXT-7-REPEAT-BOOKING-20260723"
-generated_files:
-  - "dpro-next-ledger.yml"
-  - "dpro-next-yoga-next-7-result.json"
+  owner: {path: "owner.html", blob_sha: "57eb91e95abaa129df64210b41cb61af123e4f04", bytes: 130106, version: "YOGA-NEXT-8-FOLLOWUP-RETENTION-20260724"}
+  ipad: {path: "owner-ipad.html", blob_sha: "14da19cf1979d47e4d4b23fa7f28930e273fda31", bytes: 72258, version: "YOGA-NEXT-8-IPAD-FOLLOWUP-20260724"}
 known_attention:
-  - "前回と同じ予約はメニューとお客様自身の希望だけを引き継ぎ、日付・時間は毎回選び直す"
-  - "スタッフ用レッスン記録は会員画面へ公開しない"
-  - "次回おすすめ日は表示のみで、自動LINE配信は行わない"
-  - "LINE会員本人確認を優先し、電話番号検索はデモ用途に限定する"
-rollback:
-  github:
-    method: "backup_tag"
-    tag: "dpro-yoga-next-7-before-20260723"
-    command_reference: "git checkout dpro-yoga-next-7-before-20260723 -- member.html index.html dpro-next-ledger.yml"
-  worker:
-    method: "redeploy_previous_worker"
-    previous_version: "YOGA-NEXT-5-LESSON-RECORD-20260723"
+  - "LINE文面はコピーまでとし、実際の送信は個別確認して行う"
+  - "コピーだけでは対応済みにせず、送信後に別ボタンで確認する"
+  - "性能・セキュリティ・system-check強化はYOGA-NEXT-9で実施する"
+rollback: {method: "backup_tag", tag: "dpro-yoga-next-8-before-20260724", command_reference: "git checkout dpro-yoga-next-8-before-20260724 -- owner.html owner-ipad.html dpro-next-ledger.yml"}
 workflow_self_delete_after_success: true
-failed_workflow_self_delete_after_success: true
+failed_r1_workflow_self_delete_after_success: true
 failed_r2_workflow_self_delete_after_success: true
 auto_commit_push: true

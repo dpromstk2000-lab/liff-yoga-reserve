@@ -1,0 +1,80 @@
+{
+  "ok": true,
+  "overall": "OK",
+  "step": "YOGA-NEXT-8",
+  "applied_revision": "R3",
+  "r1_result": "FAILED_BEFORE_COMMIT",
+  "r1_failure_reason": "tasks_substring_match_count_2",
+  "r2_result": "FAILED_BEFORE_COMMIT",
+  "r2_failure_reason": "existing_addDays_signature_dependency_in_due_test_and_logic",
+  "due_date_helper": "followupAddDays",
+  "checked_at_jst": "2026-07-24T16:00:36.877958+09:00",
+  "before_sha": "8860139e45e5e049593440689c40f2289129d4f9",
+  "before_tag": "dpro-yoga-next-8-before-20260724",
+  "target_files": [
+    "owner.html",
+    "owner-ipad.html"
+  ],
+  "html_syntax": "OK",
+  "javascript_syntax": "OK",
+  "html_id_duplicates": "OK",
+  "api_paths_preserved": {
+    "owner.html": {
+      "unchanged": true,
+      "paths": [
+        "/api/admin/customers/search",
+        "/api/admin/day",
+        "/api/admin/demo/prepare",
+        "/api/admin/followups/update-status",
+        "/api/admin/reservations/manual-create",
+        "/api/admin/reservations/save-lesson-record",
+        "/api/admin/reservations/update-workflow",
+        "/api/admin/services",
+        "/api/admin/services/save",
+        "/api/admin/settings",
+        "/api/admin/settings/update",
+        "/api/admin/summary",
+        "/api/line/log-copy",
+        "/api/public/available-times",
+        "/api/public/services",
+        "/api/public/status"
+      ]
+    },
+    "owner-ipad.html": {
+      "unchanged": true,
+      "paths": [
+        "/api/admin/customers/search",
+        "/api/admin/day",
+        "/api/admin/demo/prepare",
+        "/api/admin/followups",
+        "/api/admin/followups/update-status",
+        "/api/admin/reservations/manual-create",
+        "/api/admin/reservations/save-lesson-record",
+        "/api/admin/reservations/update-workflow",
+        "/api/admin/summary",
+        "/api/health",
+        "/api/line/log-copy",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status"
+      ]
+    }
+  },
+  "due_priority": "ADDED",
+  "automatic_line_send": false,
+  "automatic_handled_on_copy": false,
+  "member_index_unchanged": true,
+  "owner_bytes": 130106,
+  "owner_ipad_bytes": 72258,
+  "worker_changed": false,
+  "supabase_changed": false,
+  "api_changed": false,
+  "changed_files_before_ledger": [
+    ".github/workflows/STEP-YOGA-NEXT-8-R2.yml",
+    ".github/workflows/STEP-YOGA-NEXT-8-R3.yml",
+    ".github/workflows/STEP-YOGA-NEXT-8.yml",
+    "owner-ipad.html",
+    "owner.html"
+  ]
+}

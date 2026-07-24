@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>DPRO YOGA LINE | Staff iPad STEP YOGA-NEXT-6</title>
+  <title>DPRO YOGA LINE | Staff iPad STEP YOGA-NEXT-8</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -43,9 +43,9 @@
             <i data-lucide="tablet-smartphone" class="w-7 h-7"></i>
           </div>
           <div>
-            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-6</p>
+            <p class="text-xs tracking-[.24em] text-slate-500 font-black uppercase">STEP YOGA-NEXT-8</p>
             <h1 id="header-title" class="text-2xl md:text-[30px] font-black text-slate-800 mt-1">DPRO YOGA LINE 店頭・スタッフ画面</h1>
-            <p class="text-sm text-slate-500 mt-2">最初に「次に対応」を確認し、受付・進捗・記録を現場3操作以内で行います。</p>
+            <p class="text-sm text-slate-500 mt-2">受付・進捗・記録に加え、期限順の次回案内を個別確認してからLINEへコピーします。</p>
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-[minmax(230px,1fr)_auto] gap-2 w-full md:w-auto">
@@ -188,6 +188,7 @@
               </div>
               <button onclick="loadAll()" class="touch rounded-2xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-black text-slate-700">更新</button>
             </div>
+            <div id="followup-summary-ipad" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2"><div class="rounded-2xl bg-white/70 p-3 text-sm text-slate-500 md:col-span-4">次回案内を集計しています...</div></div>
             <div id="follow-list" class="mt-4 space-y-3"></div>
           </section>
         </div>
@@ -288,13 +289,14 @@
 
 <script>
 const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
-const STEP_VERSION = "YOGA-NEXT-6-IPAD-STAFF-FOCUS-20260723";
+const STEP_VERSION = "YOGA-NEXT-8-IPAD-FOLLOWUP-20260724";
 const state = {
   status: null,
   services: [],
   summary: null,
   day: null,
   followups: [],
+  followupFilter: "today",
   customers: [],
   customersLoaded: false,
   customersLoading: false,
@@ -737,6 +739,7 @@ function renderAll(){
   renderWorkflowSummary();
   renderNextActionFocus();
   renderKpis();
+  renderFollowupSummary();
   renderServices();
   renderTasks();
   renderReservations("today-list", state.day?.today_reservations || [], "today");
@@ -754,7 +757,7 @@ function renderKpis(){
   const c = state.summary?.counts || {};
   const todayCount = (state.day?.today_reservations || []).length;
   const nextCount = (state.day?.next_business_reservations || []).length;
-  const followCount = state.followups.length || (state.day?.followups || []).length || c.open_followups || 0;
+  const followCount = openFollowupRows().length || c.open_followups || 0;
   const tasksCount = (state.day?.today_tasks || []).length || todayCount + followCount;
   $("kpi-today").textContent = todayCount;
   $("kpi-next").textContent = nextCount;
@@ -863,45 +866,36 @@ async function selectReservation(key){
   toast("予約を選択しました");
 }
 
+
+function openFollowupRows(){ return (state.followups || state.day?.followups || []).filter(row=>["","open","pending"].includes(clean(row?.status || "open").toLowerCase())); }
+function followupAddDays(iso,days){
+  const parts=String(iso || "").split("-").map(Number);
+  if(parts.length !== 3 || parts.some(value => !Number.isFinite(value))) return "";
+  const date=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]));
+  date.setUTCDate(date.getUTCDate()+Number(days || 0));
+  return date.toISOString().slice(0,10);
+}
+function followupDueState(row){ const due=clean(row?.due_date || row?.date || ""); if(!/^\d{4}-\d{2}-\d{2}$/.test(due)) return "undated"; const today=todayIso(); if(due<today) return "overdue"; if(due===today) return "today"; if(due<=followupAddDays(today,7)) return "soon"; return "future"; }
+function followupDueMeta(row){ const map={overdue:{label:"期限超過",order:0,badge:"bg-rose-50 text-rose-700",card:"border-rose-200 bg-rose-50/35"},today:{label:"今日送る",order:1,badge:"bg-amber-50 text-amber-800",card:"border-amber-200 bg-amber-50/35"},soon:{label:"7日以内",order:2,badge:"bg-sky-50 text-sky-700",card:"border-sky-200 bg-sky-50/30"},future:{label:"今後",order:3,badge:"bg-[var(--sage-50)] text-[var(--sage-800)]",card:"border-[var(--sage-100)] bg-white/82"},undated:{label:"期限未設定",order:4,badge:"bg-slate-100 text-slate-600",card:"border-slate-100 bg-white/82"}}; return map[followupDueState(row)] || map.undated; }
+function followupTypeKey(row){ const value=`${clean(row?.followup_type)} ${clean(row?.title)}`.toLowerCase(); if(value.includes("次回レッスン")||value.includes("next_lesson")||value.includes("recommend")) return "next_lesson"; if(value.includes("体験")||value.includes("trial")) return "after_trial"; if(value.includes("回数券")||value.includes("ticket")) return "ticket"; if(value.includes("再来")||value.includes("return")) return "return"; return "general"; }
+function followupTypeLabel(row){ return {next_lesson:"次回レッスン",after_trial:"体験後",ticket:"回数券",return:"再来店",general:"個別フォロー"}[followupTypeKey(row)] || "個別フォロー"; }
+function filteredFollowupRows(){ const rows=openFollowupRows().slice().sort((a,b)=>followupDueMeta(a).order-followupDueMeta(b).order || clean(a?.due_date || "9999-12-31").localeCompare(clean(b?.due_date || "9999-12-31"))); if(state.followupFilter==="all") return rows; if(state.followupFilter==="today") return rows.filter(r=>["overdue","today"].includes(followupDueState(r))); return rows.filter(r=>followupDueState(r)===state.followupFilter); }
+function setIpadFollowupFilter(filter){ state.followupFilter=filter; renderFollowupSummary(); renderFollowups(); }
+function renderFollowupSummary(){ const wrap=$("followup-summary-ipad"); if(!wrap) return; const rows=openFollowupRows(); const items=[{key:"today",label:"今日送る",count:rows.filter(r=>["overdue","today"].includes(followupDueState(r))).length,cls:"bg-amber-50 border-amber-100 text-amber-800"},{key:"overdue",label:"期限超過",count:rows.filter(r=>followupDueState(r)==="overdue").length,cls:"bg-rose-50 border-rose-100 text-rose-700"},{key:"soon",label:"7日以内",count:rows.filter(r=>followupDueState(r)==="soon").length,cls:"bg-sky-50 border-sky-100 text-sky-700"},{key:"all",label:"未対応すべて",count:rows.length,cls:"bg-white border-slate-200 text-slate-700"}]; wrap.innerHTML=items.map(i=>`<button type="button" onclick="setIpadFollowupFilter('${i.key}')" class="touch rounded-2xl border ${i.cls} p-3 text-left"><p class="text-xs font-black">${i.label}</p><p class="mt-1 text-2xl font-black">${i.count}</p></button>`).join(""); }
+function buildFollowupMessage(f){ const name=f?.customer_name || selectedName() || "お客様"; const shop=state.status?.shop_name || "DPRO YOGA"; const due=f?.due_date ? fmtDate(f.due_date) : ""; const type=followupTypeKey(f); if(type==="next_lesson") return `${name}さま\n\n先日はレッスンにお越しいただき、ありがとうございました。\nその後のお身体の調子はいかがでしょうか？\n\n${due ? `次回の目安としてご案内していた時期は ${due} 頃です。\n` : ""}ご都合の良い日時がありましたら、このLINEからお気軽にご連絡ください。\n\n${shop}`; if(type==="after_trial") return `${name}さま\n\n先日は体験レッスンにお越しいただき、ありがとうございました。\nその後のお身体の調子はいかがでしょうか？\n次回をご希望の際はご都合の良い日時をお知らせください。\n\n${shop}`; return `${name}さま\n\nこんにちは。\nその後のお身体の調子はいかがでしょうか？\n次回のレッスンやご相談についてお気軽にご返信ください。\n\n${shop}`; }
+
 function renderFollowups(){
-  const el = $("follow-list");
-  const rows = state.followups || state.day?.followups || [];
-  if(!rows.length){ el.innerHTML = emptyCard("フォロー対象はありません。"); return; }
-  el.innerHTML = rows.map((f, idx) => {
-    window.__followupRows = window.__followupRows || {};
-    window.__followupRows[`f_${idx}`] = f;
-    return `
-      <article class="rounded-[26px] bg-white/82 border border-slate-100 p-4 shadow-sm">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="flex flex-wrap gap-2"><span class="badge bg-purple-50 text-purple-700">${esc(f.followup_type || "follow")}</span><span class="badge bg-white text-slate-600 border border-slate-200">${esc(fmtDate(f.due_date))}</span></div>
-            <h3 class="mt-2 text-lg font-black text-slate-800">${esc(f.customer_name || "お客様")}</h3>
-            <p class="mt-1 text-sm font-bold text-slate-700">${esc(f.title || "フォロー対応")}</p>
-          </div>
-          <button onclick="markFollowupHandled('${esc(f.id)}')" class="touch rounded-2xl bg-[var(--sage-700)] text-white px-4 py-2.5 text-sm font-black">済</button>
-        </div>
-        ${f.memo ? `<p class="mt-3 rounded-2xl bg-purple-50/60 px-3 py-2 text-sm text-slate-600">${esc(f.memo)}</p>` : ""}
-        <div class="mt-3 grid grid-cols-2 gap-2">
-          <button onclick="selectFollowup('f_${idx}');makeQuickMessage('after_trial')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">案内文</button>
-          <button onclick="selectFollowup('f_${idx}');copyLineMessage()" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">コピー</button>
-        </div>
-      </article>`;
-  }).join("");
+  const el=$("follow-list"); const rows=filteredFollowupRows();
+  if(!rows.length){ el.innerHTML=emptyCard("選択した期限のフォロー対象はありません。"); return; }
+  window.__followupRows={};
+  el.innerHTML=rows.map((f,idx)=>{ const key=`f_${idx}`; window.__followupRows[key]=f; const due=followupDueMeta(f); return `<article class="rounded-[26px] ${due.card} border p-4 shadow-sm"><div class="flex flex-wrap gap-2"><span class="badge ${due.badge}">${due.label}</span><span class="badge bg-purple-50 text-purple-700">${esc(followupTypeLabel(f))}</span><span class="badge bg-white text-slate-600 border border-slate-200">${esc(fmtDate(f.due_date))}</span></div><h3 class="mt-2 text-lg font-black text-slate-800">${esc(f.customer_name || "お客様")}</h3><p class="mt-1 text-sm font-bold text-slate-700">${esc(f.title || "フォロー対応")}</p>${f.memo ? `<p class="mt-3 rounded-2xl bg-white/65 px-3 py-2 text-sm text-slate-600">${esc(f.memo)}</p>` : ""}<div class="mt-3 grid grid-cols-2 gap-2"><button onclick="selectFollowup('${key}')" class="touch rounded-2xl yoga-gradient text-white px-3 py-2 text-sm font-black">案内文を確認</button><button onclick="markFollowupHandled('${esc(f.id)}')" class="touch rounded-2xl bg-white border border-slate-200 px-3 py-2 text-sm font-black text-slate-700">送信後に対応済み</button></div></article>`; }).join("");
 }
-function selectFollowup(key){
-  const f = window.__followupRows?.[key];
-  if(!f) return;
-  state.selectedCustomer = { name:f.customer_name, line_id:f.line_user_id, id:f.customer_id };
-  state.selectedReservation = null;
-  $("line-message").value = buildMessage("after_trial");
-}
+function selectFollowup(key){ const f=window.__followupRows?.[key]; if(!f) return; state.selectedCustomer={name:f.customer_name,line_id:f.line_user_id,id:f.customer_id}; state.selectedReservation=null; $("line-message").value=buildFollowupMessage(f); toast("文面を確認してコピーし、LINE送信後に対応済みを押してください。",3600); }
 async function markFollowupHandled(id){
   if(!id) return;
-  try{
-    await apiPost("/api/admin/followups/update-status", { followup_id:id, status:"handled", handled_note:`${staffName()}がiPad店頭画面で対応済み` });
-    toast("フォローを対応済みにしました");
-    await loadAll();
-  }catch(err){ toast(`対応済みエラー：${err.message}`, 3500); }
+  if(!window.confirm("LINEで個別に送信済みであることを確認し、このフォローを対応済みにしますか？")) return;
+  try{ await apiPost("/api/admin/followups/update-status",{followup_id:id,status:"handled",handled_note:`YOGA-NEXT-8：${staffName()}が個別LINE送信確認後にiPadで対応済み`}); toast("フォローを対応済みにしました"); await loadAll(); }
+  catch(err){ toast(`対応済みエラー：${err.message}`,3500); }
 }
 
 function setManualDate(date){
