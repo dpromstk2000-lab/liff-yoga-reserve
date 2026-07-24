@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DPRO YOGA LINE 会員ページ STEP YOGA-PHONE-3</title>
+  <title>DPRO YOGA LINE 会員ページ STEP YOGA-NEXT-7</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
@@ -63,8 +63,8 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <p id="shop-label" class="text-xs font-black tracking-[0.25em] text-emerald-700 uppercase">DPRO YOGA LINE</p>
-          <h1 class="text-2xl font-black text-stone-900 mt-1">ヨガ会員ページ</h1>
-          <p id="header-subtitle" class="text-sm text-stone-500 mt-2 leading-relaxed">現在の予約・変更・キャンセル・次回案内を確認できます。</p>
+          <h1 class="text-2xl font-black text-stone-900 mt-1">ヨガ会員・受講履歴</h1>
+          <p id="header-subtitle" class="text-sm text-stone-500 mt-2 leading-relaxed">次の予約、前回のレッスン、受講履歴を安全に確認できます。</p>
         </div>
         <div class="w-12 h-12 rounded-2xl bg-emerald-700 text-white flex items-center justify-center text-xl shadow-lg">Y</div>
       </div>
@@ -144,16 +144,40 @@
           </button>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 mt-5">
-          <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
-            <p class="text-xs font-bold text-emerald-700">現在予約</p>
+        <div class="grid grid-cols-3 gap-2 mt-5">
+          <div class="bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
+            <p class="text-[11px] font-bold text-emerald-700">現在予約</p>
             <p id="reservation-count" class="text-2xl font-black text-emerald-900 mt-1">0件</p>
           </div>
-          <div class="bg-stone-50 rounded-2xl p-4 border border-stone-100">
-            <p class="text-xs font-bold text-stone-600">フォロー案内</p>
+          <div class="bg-sky-50 rounded-2xl p-3 border border-sky-100">
+            <p class="text-[11px] font-bold text-sky-700">受講履歴</p>
+            <p id="lesson-history-count" class="text-2xl font-black text-sky-900 mt-1">0件</p>
+          </div>
+          <div class="bg-stone-50 rounded-2xl p-3 border border-stone-100">
+            <p class="text-[11px] font-bold text-stone-600">次回案内</p>
             <p id="followup-count" class="text-2xl font-black text-stone-900 mt-1">0件</p>
           </div>
         </div>
+      </section>
+
+      <section id="last-lesson-section" class="glass rounded-3xl p-5 border border-emerald-100 space-y-4">
+        <div>
+          <p class="text-xs font-black text-emerald-700 tracking-[0.16em]">LAST LESSON</p>
+          <h2 class="text-lg font-black text-stone-900 mt-1">前回のレッスン</h2>
+          <p class="text-xs text-stone-500 mt-1">前回の予約内容を確認し、同じメニューで次回予約へ進めます。</p>
+        </div>
+        <div id="last-lesson-card"></div>
+      </section>
+
+      <section id="lesson-history-section" class="glass rounded-3xl p-5 border border-white/70 space-y-4">
+        <button type="button" onclick="toggleLessonHistory()" class="w-full flex items-center justify-between gap-3 text-left">
+          <div>
+            <h2 class="text-lg font-black text-stone-900">受講履歴</h2>
+            <p class="text-xs text-stone-500 mt-1">受講日・メニュー・次回おすすめ日を表示します。</p>
+          </div>
+          <span id="lesson-history-toggle-label" class="text-xs font-bold text-emerald-700">すべて見る</span>
+        </button>
+        <div id="lesson-history-list" class="space-y-3"></div>
       </section>
 
       <section class="glass rounded-3xl p-5 border border-white/70 space-y-4">
@@ -228,8 +252,8 @@
       <section class="glass rounded-3xl p-5 border border-white/70 space-y-4">
         <button type="button" onclick="toggleHistory()" class="w-full flex items-center justify-between gap-3 text-left">
           <div>
-            <h2 class="text-lg font-black text-stone-900">最近の履歴</h2>
-            <p class="text-xs text-stone-500 mt-1">予約・キャンセル・カルテ更新など</p>
+            <h2 class="text-lg font-black text-stone-900">予約手続き履歴</h2>
+            <p class="text-xs text-stone-500 mt-1">予約・変更・キャンセルの記録です。</p>
           </div>
           <span id="history-toggle-label" class="text-xs font-bold text-emerald-700">開く</span>
         </button>
@@ -262,10 +286,13 @@
   </main>
 
 <script>
-  // STEP YOGA-PHONE-3: 会員ページ 電話番号正規化対応
+  // STEP YOGA-NEXT-7: 会員履歴・前回と同じ予約・公開情報分離
   const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
   const LIFF_ID = "2010377734-4tHMhUx6";
   const SHOP_CODE = "yoga_demo";
+  const STEP_VERSION = "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723";
+  const MEMBER_CONTRACT_VERSION = "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723";
+  const REPEAT_STORAGE_KEY = "yoga_member_repeat_booking";
 
   let lineUserId = "";
   let lineDisplayName = "";
@@ -281,6 +308,7 @@
   let changeAvailableDays = [];
   let changeAvailableTimes = [];
   let isSubmittingChange = false;
+  let lessonHistoryExpanded = false;
 
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -443,7 +471,7 @@
       const data = await apiGet("/api/public/status");
       shopSettings = data;
       $("shop-label").textContent = data.service_name || "DPRO YOGA LINE";
-      $("header-subtitle").textContent = `${data.shop_name || "DPRO YOGA"} の会員ページです。現在予約・変更・キャンセル・次回案内を確認できます。`;
+      $("header-subtitle").textContent = `${data.shop_name || "DPRO YOGA"} の会員ページです。次の予約・前回内容・受講履歴を確認できます。`;
     } catch (error) {
       console.warn(error);
       shopSettings = {
@@ -566,15 +594,27 @@
   }
 
   function renderMember(data) {
+    if(data.member_contract_version !== MEMBER_CONTRACT_VERSION){
+      throw new Error("会員ページ用APIの更新を確認できません。時間をおいて開き直してください。");
+    }
+    const privacy = data.privacy_guard || {};
+    if(privacy.internal_lesson_notes_returned !== false || privacy.owner_memo_returned !== false){
+      throw new Error("会員ページの公開情報ガードを確認できません。");
+    }
+
     const customer = data.customer || {};
     const reservations = Array.isArray(data.reservations) ? data.reservations : [];
     const followups = Array.isArray(data.followups) ? data.followups : [];
+    const lessonHistory = Array.isArray(data.lesson_history) ? data.lesson_history : [];
 
     $("member-name").textContent = customer.name || customer.customer_name || lineDisplayName || "お客様";
     $("member-sub").textContent = customer.phone ? `電話番号：${normalizePhone(customer.phone)}` : "LINE会員";
     $("reservation-count").textContent = `${reservations.length}件`;
+    $("lesson-history-count").textContent = `${lessonHistory.length}件`;
     $("followup-count").textContent = `${followups.filter(f => !isHandledFollowup(f)).length}件`;
 
+    renderLastLesson(data.last_lesson || null, data.repeat_booking || null);
+    renderLessonHistory(lessonHistory);
     renderReservations(reservations);
     renderProfile(customer);
     renderFollowups(followups);
@@ -584,6 +624,94 @@
 
   function isHandledFollowup(row) {
     return ["handled", "done", "closed", "対応済み"].includes(String(row.status || ""));
+  }
+
+  function renderLastLesson(lastLesson, repeatBooking) {
+    const container = $("last-lesson-card");
+    if(!lastLesson){
+      container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-5 text-center">
+        <p class="text-sm font-black text-stone-800">受講履歴はまだありません</p>
+        <p class="text-xs text-stone-500 mt-2">受講後に、前回メニューから再予約できるようになります。</p>
+        <button type="button" onclick="goReservationPage()" class="mt-4 w-full bg-emerald-700 text-white font-black py-3 rounded-xl">新しく予約する</button>
+      </div>`;
+      return;
+    }
+
+    const recommended = lastLesson.next_recommended_date
+      ? `<p class="mt-2 text-xs font-bold text-emerald-800">次回おすすめ：${escapeHtml(formatDate(lastLesson.next_recommended_date))}</p>`
+      : "";
+    const request = lastLesson.request_note
+      ? `<div class="mt-3 bg-white/80 border border-emerald-100 rounded-xl p-3"><p class="text-[11px] font-bold text-stone-500">前回のお客様のご希望</p><p class="mt-1 text-sm text-stone-700 whitespace-pre-wrap">${escapeHtml(lastLesson.request_note)}</p></div>`
+      : "";
+    const repeatAvailable = repeatBooking?.available === true && repeatBooking?.service_code;
+
+    container.innerHTML = `<div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-black text-emerald-700">${escapeHtml(formatDate(lastLesson.reservation_date))}</p>
+          <h3 class="text-lg font-black text-stone-900 mt-1">${escapeHtml(lastLesson.service_name || "ヨガレッスン")}</h3>
+          <p class="text-xs text-stone-600 mt-1">${escapeHtml(normalizeTime(lastLesson.reservation_time || "", ""))} 開始</p>
+        </div>
+        <span class="text-xs font-bold bg-white text-emerald-700 px-3 py-2 rounded-full">受講済み</span>
+      </div>
+      ${recommended}
+      ${request}
+      <button type="button" ${repeatAvailable ? "" : "disabled"} onclick="repeatLastBooking()" class="mt-4 w-full ${repeatAvailable ? "bg-emerald-700 text-white" : "bg-stone-200 text-stone-500"} font-black py-3 rounded-xl">
+        前回と同じメニューで予約
+      </button>
+      <p class="mt-2 text-[11px] text-stone-500 leading-relaxed">日付と時間は次の画面で選びます。スタッフ用の記録・注意事項・引継ぎは会員ページには表示しません。</p>
+    </div>`;
+  }
+
+  function renderLessonHistory(history) {
+    const container = $("lesson-history-list");
+    if(!history.length){
+      container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm text-stone-500">受講履歴はまだありません。</div>`;
+      $("lesson-history-toggle-label").textContent = "履歴なし";
+      return;
+    }
+
+    const visible = lessonHistoryExpanded ? history : history.slice(0, 3);
+    container.innerHTML = visible.map(row => `
+      <div class="bg-stone-50 border border-stone-100 rounded-2xl p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-black text-emerald-700">${escapeHtml(formatDate(row.reservation_date))}</p>
+            <p class="text-base font-black text-stone-900 mt-1">${escapeHtml(row.service_name || "ヨガレッスン")}</p>
+            <p class="text-xs text-stone-500 mt-1">${escapeHtml(normalizeTime(row.reservation_time || "", ""))} 開始</p>
+          </div>
+          <span class="text-[11px] font-bold bg-white text-stone-600 px-3 py-2 rounded-full">受講済み</span>
+        </div>
+        ${row.next_recommended_date ? `<p class="mt-3 text-xs font-bold text-emerald-800">次回おすすめ：${escapeHtml(formatShortDate(row.next_recommended_date))}</p>` : ""}
+      </div>`).join("");
+
+    $("lesson-history-toggle-label").textContent = lessonHistoryExpanded ? "3件表示" : history.length > 3 ? `すべて見る（${history.length}件）` : `${history.length}件`;
+  }
+
+  function toggleLessonHistory(){
+    lessonHistoryExpanded = !lessonHistoryExpanded;
+    renderLessonHistory(Array.isArray(memberData?.lesson_history) ? memberData.lesson_history : []);
+  }
+
+  function repeatLastBooking(){
+    const repeat = memberData?.repeat_booking;
+    if(!repeat?.available || !repeat.service_code){
+      alert("前回と同じ予約に使える履歴がありません。");
+      return;
+    }
+
+    const safeRepeat = {
+      service_code: clean(repeat.service_code).slice(0, 80),
+      service_name: clean(repeat.service_name).slice(0, 160),
+      request_note: clean(repeat.request_note).slice(0, 1000),
+      previous_reservation_date: isValidDateString(repeat.previous_reservation_date) ? repeat.previous_reservation_date : "",
+      previous_reservation_time: normalizeTime(repeat.previous_reservation_time || "", ""),
+      next_recommended_date: isValidDateString(repeat.next_recommended_date) ? repeat.next_recommended_date : "",
+      source: "member_last_lesson"
+    };
+
+    sessionStorage.setItem(REPEAT_STORAGE_KEY, JSON.stringify(safeRepeat));
+    goReservationPage({ repeat: true });
   }
 
   function renderReservations(reservations) {
@@ -633,8 +761,7 @@
       ["電話番号", normalizePhone(customer.phone) || "-"],
       ["ヨガ経験", customer.yoga_experience || "未登録"],
       ["目的", goal || "未登録"],
-      ["通うペース", customer.target_pace || "未登録"],
-      ["メモ", customer.memo || "未登録"]
+      ["通うペース", customer.target_pace || "未登録"]
     ];
 
     $("profile-grid").innerHTML = items.map(([label, value]) => `
@@ -667,7 +794,6 @@
             </div>
             <span class="text-xs font-bold bg-white text-emerald-700 px-3 py-2 rounded-full">${escapeHtml(row.due_date ? formatShortDate(row.due_date) : "日付なし")}</span>
           </div>
-          ${row.memo ? `<p class="text-sm text-stone-600 leading-relaxed mt-3 whitespace-pre-wrap">${escapeHtml(row.memo)}</p>` : ""}
           <label class="block mt-3">
             <span class="text-xs font-black text-emerald-800">案内文面・編集できます</span>
             <textarea id="followup-message-${index}" rows="7" class="mt-2 w-full rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-600">${escapeHtml(message)}</textarea>
@@ -681,19 +807,18 @@
   function renderHistory(history) {
     const container = $("history-list");
     if (!history.length) {
-      container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm text-stone-500">履歴はまだありません。</div>`;
+      container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm text-stone-500">予約手続き履歴はまだありません。</div>`;
       return;
     }
 
     container.innerHTML = history.slice(0, 12).map(row => `
       <div class="bg-stone-50 border border-stone-100 rounded-2xl p-3">
         <div class="flex items-center justify-between gap-2">
-          <p class="text-xs font-black text-stone-700">${escapeHtml(row.status || "履歴")}</p>
+          <p class="text-xs font-black text-stone-700">${escapeHtml(row.status || "予約")}</p>
           <p class="text-[11px] text-stone-400">${escapeHtml(String(row.created_at || "").slice(0, 10))}</p>
         </div>
         ${row.reservation_date ? `<p class="text-sm font-bold text-stone-900 mt-1">${escapeHtml(formatShortDate(row.reservation_date))} ${escapeHtml(normalizeTime(row.reservation_time || "", ""))}</p>` : ""}
         ${row.service_name ? `<p class="text-xs text-stone-600 mt-1">${escapeHtml(row.service_name)}</p>` : ""}
-        ${row.memo ? `<p class="text-xs text-stone-500 mt-2 whitespace-pre-wrap leading-relaxed">${escapeHtml(row.memo)}</p>` : ""}
       </div>`).join("");
   }
 
@@ -1050,10 +1175,11 @@
     }
   }
 
-  function goReservationPage() {
+  function goReservationPage(options = {}) {
     const url = new URL("index.html", location.href);
     if (lineUserId) url.searchParams.set("line_user_id", lineUserId);
     if (lineDisplayName) url.searchParams.set("line_display_name", lineDisplayName);
+    if (options.repeat === true) url.searchParams.set("repeat", "1");
     location.href = url.toString();
   }
 

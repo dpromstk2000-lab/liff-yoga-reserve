@@ -1,92 +1,105 @@
 system_name: "DPRO ヨガ LINE"
 standard: "DPRO NEXT"
-step_name: "iPad・現場スタッフ画面最適化"
-current_step: "YOGA-NEXT-6-COMPLETE"
-previous_step: "YOGA-NEXT-5-COMPLETE"
-next_step: "YOGA-NEXT-7"
-completed_at_jst: "2026-07-23 22:29:56 +0900"
-before_sha: "1d6e07fe655e5adc78aa755950f9029bf5d7531b"
-before_tag: "dpro-yoga-next-6-before-20260723"
-before_tag_status: "created"
+step_name: "LINE会員ページ・履歴・前回と同じ予約"
+current_step: "YOGA-NEXT-7-COMPLETE"
+previous_step: "YOGA-NEXT-6-COMPLETE"
+next_step: "YOGA-NEXT-8"
+completed_at_jst: "2026-07-24 14:26:26 +0900"
+applied_revision: "R3"
+r1_result: "FAILED_BEFORE_COMMIT"
+r1_failure_reason: "reservation_origin_exact_match_count_2"
+r2_result: "FAILED_BEFORE_COMMIT"
+r2_failure_reason: "owner_memo_privacy_guard_false_positive"
+before_sha: "7343b5b1eda8b2c68194d3a65e75bb8b6ecc1c25"
+before_tag: "dpro-yoga-next-7-before-20260723"
+before_tag_status: "existing_same_sha"
 target_files:
-  - "owner-ipad.html"
-role_separation:
-  owner_pc:
-    file: "owner.html"
-    role: "全体管理・設定・詳細確認"
-    changed: false
-  store_staff:
-    file: "owner-ipad.html"
-    role: "本日受付・進捗・レッスン記録・フォロー"
-    changed: true
-  separate_staff_html:
-    added: false
-    reason: "小規模ヨガ運用ではiPad画面と機能が重複し、保守と操作を複雑にするため"
-  customer:
-    files:
-      - "index.html"
-      - "member.html"
-    changed: false
+  - "member.html"
+  - "index.html"
+worker:
+  changed: true
+  deployed_before_yml: true
+  version: "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723"
+  member_contract_version: "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723"
+privacy:
+  public_customer_profile_sanitized: true
+  active_reservations_sanitized: true
+  lesson_history_sanitized: true
+  followups_sanitized: true
+  line_message_body_excluded: true
+  customer_memo_excluded: true
+  owner_memo_excluded: true
+  owner_memo_privacy_guard_required: true
+  internal_field_access_pattern_check: true
+  lesson_content_excluded: true
+  lesson_attention_excluded: true
+  lesson_handoff_excluded: true
+  workflow_note_excluded: true
 implementation:
-  next_action_focus: true
-  next_action_single_item: true
-  staff_name_local_save: true
-  staff_actor_on_workflow: true
-  staff_actor_on_lesson_record: true
-  staff_name_on_followup_handled: true
-  management_tools_collapsed: true
-  admin_code_password: true
-  admin_code_delete_button: true
-  initial_customer_search_removed: true
-  customer_search_lazy_load: true
-  daily_main_operations_within_three_actions: true
+  current_reservation_preserved: true
+  last_lesson_card: true
+  lesson_history: true
+  lesson_history_initial_limit: 3
+  lesson_history_max_api_rows: 24
+  repeat_same_service: true
+  repeat_customer_request_note: true
+  repeat_date_time_reselection: true
+  repeat_transport: "sessionStorage"
+  query_parameter_contains_internal_data: false
+  automatic_line_send: false
 checks:
   required_files: "OK"
   previous_step: "OK"
   yml_syntax: "OK"
+  worker_member_contract: "OK"
+  worker_privacy: "OK"
   html_syntax: "OK"
   javascript_syntax: "OK"
   html_id_duplicates: "OK"
-  existing_api_paths: "OK"
-  ipad_staff_business_logic: "OK"
-  next_action_priority: "OK"
-  cancelled_reservation_exclusion: "OK"
-  other_screen_hash_preservation: "OK"
+  public_information_separation: "OK"
+  member_repeat_logic: "OK"
+  index_repeat_logic: "OK"
+  page_api_paths_preserved: "OK"
+  admin_screen_hash_preservation: "OK"
   overall: "OK"
 change_record:
-  worker_changed: false
+  worker_changed: true
   supabase_changed: false
-  api_changed: false
-  api_path_changed: false
-  owner_ipad_html_changed: true
+  api_changed: true
+  api_response_changed: true
+  member_html_changed: true
+  index_html_changed: true
   owner_html_changed: false
-  index_html_changed: false
-  member_html_changed: false
+  owner_ipad_html_changed: false
   existing_data_changed: false
-performance:
-  initial_load:
-    today_data: true
-    next_business_data: true
-    followups: true
-    customer_search: false
-  customer_search_trigger:
-    - "顧客検索画面を初めて開いた時"
-    - "検索欄へ入力した時"
 file_result:
-  path: "owner-ipad.html"
-  blob_sha: "dc50811237ef63325543da029d97cd90052ef796"
-  bytes: 67369
-  version: "YOGA-NEXT-6-IPAD-STAFF-FOCUS-20260723"
+  member:
+    path: "member.html"
+    blob_sha: "de427a20414ce8c8697cfbaafd004cc0bde48c3f"
+    bytes: 55494
+    version: "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723"
+  reservation:
+    path: "index.html"
+    blob_sha: "6c3b2e4abcce8dc78f0a658b56580a983f4935b4"
+    bytes: 71383
+    version: "YOGA-NEXT-7-REPEAT-BOOKING-20260723"
 generated_files:
   - "dpro-next-ledger.yml"
-  - "dpro-next-yoga-next-6-result.json"
+  - "dpro-next-yoga-next-7-result.json"
 known_attention:
-  - "会員ページの履歴・前回内容・再予約導線はYOGA-NEXT-7で実装する"
-  - "担当者名は現場操作の識別用であり、スタッフ権限管理やログイン機能ではない"
-  - "本格的な複数スタッフ権限は将来追加とし、NEXT-6では画面を重くしない"
+  - "前回と同じ予約はメニューとお客様自身の希望だけを引き継ぎ、日付・時間は毎回選び直す"
+  - "スタッフ用レッスン記録は会員画面へ公開しない"
+  - "次回おすすめ日は表示のみで、自動LINE配信は行わない"
+  - "LINE会員本人確認を優先し、電話番号検索はデモ用途に限定する"
 rollback:
-  method: "backup_tag"
-  tag: "dpro-yoga-next-6-before-20260723"
-  command_reference: "git checkout dpro-yoga-next-6-before-20260723 -- owner-ipad.html dpro-next-ledger.yml"
+  github:
+    method: "backup_tag"
+    tag: "dpro-yoga-next-7-before-20260723"
+    command_reference: "git checkout dpro-yoga-next-7-before-20260723 -- member.html index.html dpro-next-ledger.yml"
+  worker:
+    method: "redeploy_previous_worker"
+    previous_version: "YOGA-NEXT-5-LESSON-RECORD-20260723"
 workflow_self_delete_after_success: true
+failed_workflow_self_delete_after_success: true
+failed_r2_workflow_self_delete_after_success: true
 auto_commit_push: true

@@ -1,0 +1,99 @@
+{
+  "ok": true,
+  "overall": "OK",
+  "step": "YOGA-NEXT-7-R3",
+  "completed_step": "YOGA-NEXT-7",
+  "applied_revision": "R3",
+  "r1_result": "FAILED_BEFORE_COMMIT",
+  "r1_failure_reason": "reservation_origin_exact_match_count_2",
+  "r2_result": "FAILED_BEFORE_COMMIT",
+  "r2_failure_reason": "owner_memo_privacy_guard_false_positive",
+  "checked_at_jst": "2026-07-24T14:26:26.230168+09:00",
+  "repository": "dpromstk2000-lab/liff-yoga-reserve",
+  "branch": "main",
+  "run_id": "30069425695",
+  "before_sha": "7343b5b1eda8b2c68194d3a65e75bb8b6ecc1c25",
+  "before_tag": "dpro-yoga-next-7-before-20260723",
+  "target_files": [
+    "member.html",
+    "index.html"
+  ],
+  "html_syntax": "OK",
+  "javascript_syntax": "OK",
+  "html_id_duplicates": "OK",
+  "page_api_paths_preserved": {
+    "member.html": {
+      "before": [
+        "/api/line/log-copy",
+        "/api/public/available-days",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status",
+        "/api/reservations/cancel",
+        "/api/reservations/change"
+      ],
+      "after": [
+        "/api/line/log-copy",
+        "/api/public/available-days",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status",
+        "/api/reservations/cancel",
+        "/api/reservations/change"
+      ],
+      "unchanged": true
+    },
+    "index.html": {
+      "before": [
+        "/api/public/available-days",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status",
+        "/api/reservations/cancel",
+        "/api/reservations/change",
+        "/api/reservations/create"
+      ],
+      "after": [
+        "/api/public/available-days",
+        "/api/public/available-times",
+        "/api/public/customer",
+        "/api/public/services",
+        "/api/public/status",
+        "/api/reservations/cancel",
+        "/api/reservations/change",
+        "/api/reservations/create"
+      ],
+      "unchanged": true
+    }
+  },
+  "public_admin_information": "OK",
+  "internal_lesson_note_reference": "NONE",
+  "privacy_guard_reference": "REQUIRED_AND_PRESENT",
+  "owner_memo_guard_false_positive_fixed": true,
+  "last_lesson": "ADDED",
+  "lesson_history": "ADDED",
+  "repeat_booking": "ADDED",
+  "repeat_transport": "SESSION_STORAGE",
+  "automatic_line_send": false,
+  "unchanged_admin_screens": {
+    "owner.html": true,
+    "owner-ipad.html": true
+  },
+  "member_bytes": 55494,
+  "index_bytes": 71383,
+  "worker_changed": true,
+  "supabase_changed": false,
+  "api_changed": true,
+  "worker_version": "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723",
+  "member_contract_version": "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723",
+  "changed_files_before_ledger": [
+    ".github/workflows/STEP-YOGA-NEXT-7-R2.yml",
+    ".github/workflows/STEP-YOGA-NEXT-7-R3.yml",
+    ".github/workflows/STEP-YOGA-NEXT-7.yml",
+    "index.html",
+    "member.html"
+  ]
+}

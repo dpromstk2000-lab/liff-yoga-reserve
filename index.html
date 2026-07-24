@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>DPRO YOGA LINE 予約フォーム | YOGA-NEXT-3</title>
+  <title>DPRO YOGA LINE 予約フォーム | YOGA-NEXT-7</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
@@ -80,6 +80,11 @@
     <div id="change-mode-banner" class="hidden bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 text-sm leading-relaxed">
       <p class="font-black">予約変更モード</p>
       <p id="change-mode-text" class="mt-1">変更後の日程とメニューを選択してください。</p>
+    </div>
+
+    <div id="repeat-mode-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 text-sm leading-relaxed">
+      <p class="font-black">前回と同じメニューで予約</p>
+      <p id="repeat-mode-text" class="mt-1">前回のメニューを選択しました。日付と時間を選んでください。</p>
     </div>
 
     <div id="survey-section" class="space-y-6">
@@ -304,7 +309,10 @@
 
   const LIFF_ID = "2010377734-4tHMhUx6";
   const SHOP_CODE = "yoga_demo";
-  const STEP_VERSION = "YOGA-NEXT-3-LINE-RECEPTION-20260723";
+  const STEP_VERSION = "YOGA-NEXT-7-REPEAT-BOOKING-20260723";
+  const REPEAT_STORAGE_KEY = "yoga_member_repeat_booking";
+  const IS_REPEAT_BOOKING = PAGE_PARAMS.get("repeat") === "1";
+  let repeatBookingData = null;
 
   let lineUserId = "";
   let lineDisplayName = "";
@@ -914,10 +922,75 @@
     document.getElementById("system-message-section").classList.add("hidden");
   }
 
+  function cleanRepeatText(value, maxLength = 500) {
+    return String(value || "").trim().slice(0, maxLength);
+  }
+
+  function loadRepeatBookingData() {
+    if(!IS_REPEAT_BOOKING) return null;
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(REPEAT_STORAGE_KEY) || "null");
+      if(!parsed || typeof parsed !== "object") return null;
+      return {
+        service_code: cleanRepeatText(parsed.service_code, 80),
+        service_name: cleanRepeatText(parsed.service_name, 160),
+        request_note: cleanRepeatText(parsed.request_note, 1000),
+        previous_reservation_date: isValidDateString(parsed.previous_reservation_date) ? parsed.previous_reservation_date : "",
+        previous_reservation_time: normalizeTime(parsed.previous_reservation_time || "", ""),
+        next_recommended_date: isValidDateString(parsed.next_recommended_date) ? parsed.next_recommended_date : "",
+        source: "member_last_lesson"
+      };
+    } catch (error) {
+      console.warn("前回予約プリセットを読み込めませんでした。", error);
+      return null;
+    }
+  }
+
+  async function applyRepeatBookingPrefill() {
+    if(!IS_REPEAT_BOOKING || !repeatBookingData) return;
+    if(!isExisting){
+      showSystemMessage("会員情報を確認できないため、前回内容の自動入力は行いませんでした。通常予約として入力してください。", "warning");
+      return;
+    }
+
+    const maxActive = Number(shopSettings.max_active_reservations_per_customer || 2);
+    if(activeReservations.length >= maxActive){
+      showSystemMessage(`現在${maxActive}件の予約があります。前回と同じ内容の追加予約は、現在予約を変更またはキャンセルした後にご利用ください。`, "warning");
+      return;
+    }
+
+    startAdditionalReservation();
+
+    if(repeatBookingData.service_code && services.some(service => service.service_code === repeatBookingData.service_code)){
+      selectService(repeatBookingData.service_code);
+    }
+
+    const requestInput = document.getElementById("request_note");
+    if(requestInput && repeatBookingData.request_note){
+      requestInput.value = repeatBookingData.request_note;
+    }
+
+    const banner = document.getElementById("repeat-mode-banner");
+    const label = document.getElementById("repeat-mode-text");
+    banner?.classList.remove("hidden");
+
+    const previous = repeatBookingData.previous_reservation_date
+      ? `前回：${formatCompleteDate(repeatBookingData.previous_reservation_date)} ${repeatBookingData.previous_reservation_time || ""}`
+      : "前回の受講内容";
+    const recommended = repeatBookingData.next_recommended_date
+      ? ` / 次回おすすめ：${formatCompleteDate(repeatBookingData.next_recommended_date)}`
+      : "";
+    if(label){
+      label.innerText = `${previous} / ${repeatBookingData.service_name || "前回メニュー"}${recommended}。日付と時間は選び直してください。`;
+    }
+    document.getElementById("header-subtitle").innerText = "前回と同じメニューで次回予約";
+  }
+
   async function initLiff() {
     try {
       await Promise.all([loadShopStatus(), loadServices()]);
       await loadAvailableDays();
+      repeatBookingData = loadRepeatBookingData();
 
       if (IS_EMBED_DEMO) {
         // 製品サイト内ではLINEログインを行わず、予約フォームを安全に表示する。
@@ -953,6 +1026,7 @@
       lineDisplayName = profile.displayName || "";
 
       await checkExistingCustomer(lineUserId);
+      await applyRepeatBookingPrefill();
     } catch (error) {
       console.error("LIFF初期化エラー:", error);
       showSystemMessage("LINE情報または店舗設定の取得に失敗しました。LINE公式アカウントのメニューから開き直してください。", "error");
@@ -1163,6 +1237,7 @@
 
   function lineReceptionType() {
     if (isChangeMode) return "change";
+    if (IS_REPEAT_BOOKING && repeatBookingData) return "repeat";
     if (isExisting) return "additional";
     return "new";
   }
@@ -1188,7 +1263,7 @@
       booking_channel: "line",
       reception_channel: "line",
       reception_source: "line_liff",
-      reservation_origin: "customer_line",
+      reservation_origin: IS_REPEAT_BOOKING && repeatBookingData ? "member_repeat" : "customer_line",
       contact_channel: "line",
       reception_type: lineReceptionType(),
       client_step_version: STEP_VERSION,
@@ -1346,6 +1421,7 @@
         service_price: selectedService?.base_price || 0
       };
       latestReservation = lastSubmittedReservation;
+      if(IS_REPEAT_BOOKING) sessionStorage.removeItem(REPEAT_STORAGE_KEY);
 
       document.getElementById("survey-section").classList.add("hidden");
       document.getElementById("header-subtitle").innerText = "現在のご予約";
