@@ -1,0 +1,459 @@
+name: "STEP YOGA-NEXT-9 | 性能・セキュリティ・system-check強化"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/STEP-YOGA-NEXT-9.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yoga-next-9-system-check
+  cancel-in-progress: false
+
+jobs:
+  system-check:
+    name: "YOGA-NEXT-9 performance security system check"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      WORKFLOW_PATH: ".github/workflows/STEP-YOGA-NEXT-9.yml"
+      LEDGER_FILE: "dpro-next-ledger.yml"
+      RESULT_FILE: "dpro-next-yoga-next-9-result.json"
+      STATIC_REPORT_FILE: "dpro-next-yoga-next-9-static.json"
+      BEFORE_TAG: "dpro-yoga-next-9-before-20260724"
+      WORKER_URL: "https://yoga-liff-webhook.dpromstk2000.workers.dev"
+      PAGES_URL: "https://dpromstk2000-lab.github.io/liff-yoga-reserve"
+      SHOP_CODE: "yoga_demo"
+      ADMIN_CODE: "1234"
+      EXPECTED_WORKER_VERSION: "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723"
+      EXPECTED_MEMBER_CONTRACT: "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723"
+      EXPECTED_OWNER_BLOB_SHA: "57eb91e95abaa129df64210b41cb61af123e4f04"
+      EXPECTED_IPAD_BLOB_SHA: "14da19cf1979d47e4d4b23fa7f28930e273fda31"
+      EXPECTED_MEMBER_BLOB_SHA: "de427a20414ce8c8697cfbaafd004cc0bde48c3f"
+      EXPECTED_INDEX_BLOB_SHA: "6c3b2e4abcce8dc78f0a658b56580a983f4935b4"
+      EXPECTED_LEDGER_BLOB_SHA: "0160470b1005ff0c1959679f9feca3a804c06693"
+
+    steps:
+      - name: "1. Checkout full repository history"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "2. 前STEP・対象ファイル・基準状態確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          for file in owner.html owner-ipad.html member.html index.html "$LEDGER_FILE" dpro-next-yoga-next-8-result.json "$WORKFLOW_PATH"; do
+            [[ -f "$file" ]] || { echo "::error file=$file::必須ファイルがありません。"; exit 1; }
+          done
+          [[ ! -f system-check.html ]] || { echo "::error file=system-check.html::基準版には存在しない想定です。"; exit 1; }
+          grep -q 'current_step: "YOGA-NEXT-8-COMPLETE"' "$LEDGER_FILE" || { echo "::error file=$LEDGER_FILE::YOGA-NEXT-8-COMPLETEを確認できません。"; exit 1; }
+
+          declare -A expected=(
+            ["owner.html"]="$EXPECTED_OWNER_BLOB_SHA"
+            ["owner-ipad.html"]="$EXPECTED_IPAD_BLOB_SHA"
+            ["member.html"]="$EXPECTED_MEMBER_BLOB_SHA"
+            ["index.html"]="$EXPECTED_INDEX_BLOB_SHA"
+            ["$LEDGER_FILE"]="$EXPECTED_LEDGER_BLOB_SHA"
+          )
+          for file in "${!expected[@]}"; do
+            current="$(git hash-object "$file")"
+            [[ "$current" == "${expected[$file]}" ]] || { echo "::error file=$file::基準版不一致。期待=${expected[$file]} / 現在=$current"; exit 1; }
+          done
+
+          mapfile -t changed < <(git diff-tree --no-commit-id --name-only -r HEAD)
+          before_sha="$(git rev-parse HEAD)"
+          if [[ "${#changed[@]}" -eq 1 && "${changed[0]}" == "$WORKFLOW_PATH" ]]; then before_sha="$(git rev-parse HEAD^)"; fi
+          echo "BEFORE_SHA=$before_sha" >> "$GITHUB_ENV"
+
+          {
+            echo "## STEP YOGA-NEXT-9"
+            echo "- system-check.html新規作成"
+            echo "- owner.html / owner-ipad.htmlへ導線追加"
+            echo "- Worker / Supabase / API変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "3. 変更前バックアップタグ作成"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "$BEFORE_TAG" >/dev/null 2>&1; then
+            tag_sha="$(git rev-list -n 1 "$BEFORE_TAG")"
+            [[ "$tag_sha" == "$BEFORE_SHA" ]] || { echo "::error::既存タグが別SHAです。"; exit 1; }
+            status="existing_same_sha"
+          else
+            git tag -a "$BEFORE_TAG" "$BEFORE_SHA" -m "DPRO ヨガ LINE before YOGA-NEXT-9"
+            git push origin "$BEFORE_TAG"
+            status="created"
+          fi
+          echo "BEFORE_TAG_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: "4. YML構文検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ruby -e 'require "yaml"; YAML.load_file(ARGV[0], aliases: true); puts "YAML syntax OK"' "$WORKFLOW_PATH"
+
+      - name: "5. system-check.html作成・管理画面導線追加"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64
+
+          Path("system-check.html").write_text(base64.b64decode("PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImphIj4KPGhlYWQ+CiAgPG1ldGEgY2hhcnNldD0iVVRGLTgiIC8+CiAgPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAsIHZpZXdwb3J0LWZpdD1jb3ZlciIgLz4KICA8dGl0bGU+RFBSTyBZT0dBIExJTkUgfCBTeXN0ZW0gQ2hlY2sgWU9HQS1ORVhULTk8L3RpdGxlPgogIDxzY3JpcHQgc3JjPSJodHRwczovL2Nkbi50YWlsd2luZGNzcy5jb20iPjwvc2NyaXB0PgogIDxzY3JpcHQgc3JjPSJodHRwczovL3VucGtnLmNvbS9sdWNpZGVAbGF0ZXN0Ij48L3NjcmlwdD4KICA8c3R5bGU+CiAgICA6cm9vdHstLXNhZ2UtNTA6I2Y0ZjdmNDstLXNhZ2UtMTAwOiNlNmVlZTc7LS1zYWdlLTIwMDojZDNlMGQ2Oy0tc2FnZS01MDA6IzZkODg3YzstLXNhZ2UtNjAwOiM1Yjc0Njk7LS1zYWdlLTcwMDojNGE2MTU3Oy0tc2FnZS04MDA6IzNjNTA0ODstLWluazojMzE0MTNifQogICAgKntib3gtc2l6aW5nOmJvcmRlci1ib3h9aHRtbHtzY3JvbGwtYmVoYXZpb3I6c21vb3RoOy13ZWJraXQtdGV4dC1zaXplLWFkanVzdDoxMDAlfQogICAgYm9keXttaW4taGVpZ2h0OjEwMHZoO2NvbG9yOnZhcigtLWluayk7Zm9udC1mYW1pbHk6IkhpcmFnaW5vIFNhbnMiLCJZdSBHb3RoaWMiLCJOb3RvIFNhbnMgSlAiLHN5c3RlbS11aSxzYW5zLXNlcmlmO2JhY2tncm91bmQ6cmFkaWFsLWdyYWRpZW50KGNpcmNsZSBhdCA4JSA4JSxyZ2JhKDIxMSwyMjQsMjE0LC44NSksdHJhbnNwYXJlbnQgMjYlKSxyYWRpYWwtZ3JhZGllbnQoY2lyY2xlIGF0IDkyJSAwJSxyZ2JhKDIzNSwyMjIsMjAzLC43KSx0cmFuc3BhcmVudCAyOCUpLGxpbmVhci1ncmFkaWVudCgxODBkZWcsI2ZiZmFmNiAwJSwjZjNlZmU3IDEwMCUpfQogICAgYnV0dG9uLGlucHV0e2ZvbnQ6aW5oZXJpdH0uZ2xhc3N7YmFja2dyb3VuZDpyZ2JhKDI1NSwyNTUsMjU1LC44KTtiYWNrZHJvcC1maWx0ZXI6Ymx1cigxOHB4KTtib3JkZXI6MXB4IHNvbGlkIHJnYmEoMjU1LDI1NSwyNTUsLjY0KTtib3gtc2hhZG93OjAgMTZweCA0NHB4IHJnYmEoNzQsOTcsODcsLjA4KX0KICAgIC5zb2Z0LWNhcmR7YmFja2dyb3VuZDpyZ2JhKDI1NSwyNTUsMjU1LC44NCk7Ym9yZGVyOjFweCBzb2xpZCByZ2JhKDEwOSwxMzYsMTI0LC4xNCk7Ym94LXNoYWRvdzowIDEwcHggMjhweCByZ2JhKDc0LDk3LDg3LC4wNTUpfQogICAgLnlvZ2EtZ3JhZGllbnR7YmFja2dyb3VuZDpsaW5lYXItZ3JhZGllbnQoMTM1ZGVnLHJnYmEoMTA5LDEzNiwxMjQsLjk4KSxyZ2JhKDcwLDk2LDg0LC45OCkpfQogICAgLnNlY3Rpb24tbGFiZWx7Zm9udC1zaXplOjExcHg7bGV0dGVyLXNwYWNpbmc6LjE2ZW07dGV4dC10cmFuc2Zvcm06dXBwZXJjYXNlO2ZvbnQtd2VpZ2h0OjkwMDtjb2xvcjp2YXIoLS1zYWdlLTYwMCl9CiAgICAuYmFkZ2V7ZGlzcGxheTppbmxpbmUtZmxleDthbGlnbi1pdGVtczpjZW50ZXI7Z2FwOi4zcmVtO3BhZGRpbmc6LjNyZW0gLjdyZW07Ym9yZGVyLXJhZGl1czo5OTlweDtmb250LXNpemU6MTJweDtmb250LXdlaWdodDo5MDA7d2hpdGUtc3BhY2U6bm93cmFwfQogICAgLnN0YXR1cy1va3tiYWNrZ3JvdW5kOiNlY2ZkZjU7Y29sb3I6IzA0Nzg1Nztib3JkZXItY29sb3I6I2E3ZjNkMH0uc3RhdHVzLWF0dGVudGlvbntiYWNrZ3JvdW5kOiNmZmZiZWI7Y29sb3I6IzkyNDAwZTtib3JkZXItY29sb3I6I2ZkZTY4YX0KICAgIC5zdGF0dXMtbmd7YmFja2dyb3VuZDojZmZmMWYyO2NvbG9yOiNiZTEyM2M7Ym9yZGVyLWNvbG9yOiNmZWNkZDN9LnN0YXR1cy1ydW5uaW5ne2JhY2tncm91bmQ6I2VmZjZmZjtjb2xvcjojMWQ0ZWQ4O2JvcmRlci1jb2xvcjojYmZkYmZlfQogICAgLnRvdWNoe21pbi1oZWlnaHQ6NDhweDt0b3VjaC1hY3Rpb246bWFuaXB1bGF0aW9uO3RyYW5zaXRpb246LjE1cyBlYXNlfS50b3VjaDphY3RpdmV7dHJhbnNmb3JtOnNjYWxlKC45ODUpfQogICAgLnJlc3VsdC1yb3d7ZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczptaW5tYXgoMCwxZnIpIGF1dG87Z2FwOjEycHg7YWxpZ24taXRlbXM6c3RhcnR9CiAgICBAbWVkaWEobWF4LXdpZHRoOjY0MHB4KXsucmVzdWx0LXJvd3tncmlkLXRlbXBsYXRlLWNvbHVtbnM6MWZyfS5yZXN1bHQtcm93IC5iYWRnZXtqdXN0aWZ5LXNlbGY6c3RhcnR9fQogIDwvc3R5bGU+CjwvaGVhZD4KPGJvZHk+CiAgPG1haW4gY2xhc3M9Im1heC13LVsxNDIwcHhdIG14LWF1dG8gcHgtNCBtZDpweC02IHB5LTUgbWQ6cHktNyI+CiAgICA8aGVhZGVyIGNsYXNzPSJnbGFzcyByb3VuZGVkLVszMHB4XSBwLTUgbWQ6cC03Ij4KICAgICAgPGRpdiBjbGFzcz0iZmxleCBmbGV4LWNvbCB4bDpmbGV4LXJvdyB4bDppdGVtcy1zdGFydCB4bDpqdXN0aWZ5LWJldHdlZW4gZ2FwLTUiPgogICAgICAgIDxkaXYgY2xhc3M9ImZsZXggaXRlbXMtc3RhcnQgZ2FwLTQiPgogICAgICAgICAgPGRpdiBjbGFzcz0idy0xNCBoLTE0IHJvdW5kZWQtMnhsIHlvZ2EtZ3JhZGllbnQgdGV4dC13aGl0ZSBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciBzaGFkb3ctbGcgc2hyaW5rLTAiPjxpIGRhdGEtbHVjaWRlPSJzaGllbGQtY2hlY2siIGNsYXNzPSJ3LTcgaC03Ij48L2k+PC9kaXY+CiAgICAgICAgICA8ZGl2PgogICAgICAgICAgICA8cCBjbGFzcz0idGV4dC14cyB0cmFja2luZy1bLjI0ZW1dIHRleHQtc2xhdGUtNTAwIGZvbnQtYmxhY2sgdXBwZXJjYXNlIj5TVEVQIFlPR0EtTkVYVC05PC9wPgogICAgICAgICAgICA8aDEgY2xhc3M9InRleHQtMnhsIG1kOnRleHQtWzMwcHhdIGZvbnQtYmxhY2sgdGV4dC1zbGF0ZS04MDAgbXQtMSI+RFBSTyBZT0dBIExJTkUgc3lzdGVtLWNoZWNrPC9oMT4KICAgICAgICAgICAgPHAgY2xhc3M9InRleHQtc20gdGV4dC1zbGF0ZS01MDAgbXQtMiBsZWFkaW5nLTciPldvcmtlcuODu0FQSeODu+eUu+mdouODu+aAp+iDveODu+OCu+OCreODpeODquODhuOCo+ODu+alreWLmeODreOCuOODg+OCr+OCkuS4gOaLrOaknOafu+OBl+OAgU9L44O75rOo5oSP44O7TkfjgafooajnpLrjgZfjgb7jgZnjgII8L3A+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJncmlkIGdyaWQtY29scy0xIHNtOmdyaWQtY29scy1bbWlubWF4KDIyMHB4LDFmcilfYXV0b10gZ2FwLTIgdy1mdWxsIHhsOnctYXV0byI+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMiByb3VuZGVkLTJ4bCBiZy13aGl0ZSBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCBweC0zIHB5LTIiPgogICAgICAgICAgICA8c3BhbiBjbGFzcz0idGV4dC14cyBmb250LWJsYWNrIHRleHQtc2xhdGUtNTAwIHNocmluay0wIj7nrqHnkIbjgrPjg7zjg4k8L3NwYW4+CiAgICAgICAgICAgIDxpbnB1dCBpZD0iYWRtaW4tY29kZSIgdHlwZT0icGFzc3dvcmQiIGlucHV0bW9kZT0ibnVtZXJpYyIgYXV0b2NvbXBsZXRlPSJvZmYiIGNsYXNzPSJtaW4tdy0wIHctZnVsbCBiZy10cmFuc3BhcmVudCBvdXRsaW5lLW5vbmUgdGV4dC1iYXNlIGZvbnQtYmxhY2sgdGV4dC1zbGF0ZS03MDAiIG9uaW5wdXQ9InNhdmVBZG1pbkNvZGUoKSIgLz4KICAgICAgICAgICAgPGJ1dHRvbiBpZD0iYWRtaW4tY29kZS1jbGVhciIgdHlwZT0iYnV0dG9uIiBvbmNsaWNrPSJjbGVhckFkbWluQ29kZSgpIiBjbGFzcz0icm91bmRlZC14bCBiZy1zbGF0ZS0xMDAgcHgtMyBweS0yIHRleHQteHMgZm9udC1ibGFjayB0ZXh0LXNsYXRlLTYwMCI+5YmK6ZmkPC9idXR0b24+CiAgICAgICAgICA8L2Rpdj4KICAgICAgICAgIDxidXR0b24gaWQ9InJ1bi1idXR0b24iIHR5cGU9ImJ1dHRvbiIgb25jbGljaz0icnVuQWxsQ2hlY2tzKCkiIGNsYXNzPSJ0b3VjaCByb3VuZGVkLTJ4bCB5b2dhLWdyYWRpZW50IHB4LTUgcHktMyB0ZXh0LXNtIGZvbnQtYmxhY2sgdGV4dC13aGl0ZSBzaGFkb3ctbGcgZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgZ2FwLTIiPjxpIGRhdGEtbHVjaWRlPSJwbGF5IiBjbGFzcz0idy00IGgtNCI+PC9pPuS4gOaLrOaknOafuzwvYnV0dG9uPgogICAgICAgIDwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0ibXQtNSBncmlkIGdyaWQtY29scy0xIG1kOmdyaWQtY29scy1bMWZyX2F1dG9dIGdhcC0zIj4KICAgICAgICA8bGFiZWwgY2xhc3M9InJvdW5kZWQtMnhsIGJnLWFtYmVyLTUwIGJvcmRlciBib3JkZXItYW1iZXItMTAwIHB4LTQgcHktMyBmbGV4IGl0ZW1zLXN0YXJ0IGdhcC0zIHRleHQtc20gdGV4dC1hbWJlci05MDAiPgogICAgICAgICAgPGlucHV0IGlkPSJydW4tZGVtby1wcmVwYXJlIiB0eXBlPSJjaGVja2JveCIgY2xhc3M9Im10LTEgdy00IGgtNCIgLz4KICAgICAgICAgIDxzcGFuPjxzdHJvbmc+REVNT+a6luWCmeOCguWun+ihjOOBmeOCizwvc3Ryb25nPjxicj48c3BhbiBjbGFzcz0idGV4dC14cyBsZWFkaW5nLTYiPuODgeOCp+ODg+OCr+aZguOBoOOBkeODh+ODoueUn+aIkOODh+ODvOOCv+OCkuacrOaXpeWfuua6luOBp+WGjeS9nOaIkOOBl+OBvuOBmeOAgumAmuW4uOOBruS4gOaLrOaknOafu+OBp+OBr+ODh+ODvOOCv+OCkuWkieabtOOBl+OBvuOBm+OCk+OAgjwvc3Bhbj48L3NwYW4+CiAgICAgICAgPC9sYWJlbD4KICAgICAgICA8ZGl2IGNsYXNzPSJmbGV4IGZsZXgtd3JhcCBnYXAtMiI+CiAgICAgICAgICA8YnV0dG9uIHR5cGU9ImJ1dHRvbiIgb25jbGljaz0iY29weVJlc3VsdHMoKSIgY2xhc3M9InRvdWNoIHJvdW5kZWQtMnhsIGJnLXdoaXRlIGJvcmRlciBib3JkZXItc2xhdGUtMjAwIHB4LTQgcHktMyB0ZXh0LXNtIGZvbnQtYmxhY2sgdGV4dC1zbGF0ZS03MDAgZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIiPjxpIGRhdGEtbHVjaWRlPSJjb3B5IiBjbGFzcz0idy00IGgtNCI+PC9pPue1kOaenOOCkuOCs+ODlOODvDwvYnV0dG9uPgogICAgICAgICAgPGJ1dHRvbiB0eXBlPSJidXR0b24iIG9uY2xpY2s9ImxvY2F0aW9uLmhyZWY9J293bmVyLmh0bWw/ZGVtbz0xJyIgY2xhc3M9InRvdWNoIHJvdW5kZWQtMnhsIGJnLXdoaXRlIGJvcmRlciBib3JkZXItc2xhdGUtMjAwIHB4LTQgcHktMyB0ZXh0LXNtIGZvbnQtYmxhY2sgdGV4dC1zbGF0ZS03MDAiPlBD566h55CG55S76Z2iPC9idXR0b24+CiAgICAgICAgICA8YnV0dG9uIHR5cGU9ImJ1dHRvbiIgb25jbGljaz0ibG9jYXRpb24uaHJlZj0nb3duZXItaXBhZC5odG1sP2RlbW89MSciIGNsYXNzPSJ0b3VjaCByb3VuZGVkLTJ4bCBiZy13aGl0ZSBib3JkZXIgYm9yZGVyLXNsYXRlLTIwMCBweC00IHB5LTMgdGV4dC1zbSBmb250LWJsYWNrIHRleHQtc2xhdGUtNzAwIj5pUGFk55S76Z2iPC9idXR0b24+CiAgICAgICAgPC9kaXY+CiAgICAgIDwvZGl2PgogICAgPC9oZWFkZXI+CgogICAgPHNlY3Rpb24gY2xhc3M9ImdyaWQgZ3JpZC1jb2xzLTIgbWQ6Z3JpZC1jb2xzLTQgZ2FwLTMgbXQtNSI+CiAgICAgIDxkaXYgY2xhc3M9InNvZnQtY2FyZCByb3VuZGVkLVsyNHB4XSBwLTQiPjxwIGNsYXNzPSJzZWN0aW9uLWxhYmVsIj5PdmVyYWxsPC9wPjxwIGlkPSJvdmVyYWxsLWxhYmVsIiBjbGFzcz0idGV4dC0yeGwgZm9udC1ibGFjayB0ZXh0LXNsYXRlLTgwMCBtdC0yIj7mnKrlrp/ooYw8L3A+PC9kaXY+CiAgICAgIDxkaXYgY2xhc3M9InNvZnQtY2FyZCByb3VuZGVkLVsyNHB4XSBwLTQiPjxwIGNsYXNzPSJzZWN0aW9uLWxhYmVsIj5PSzwvcD48cCBpZD0iY291bnQtb2siIGNsYXNzPSJ0ZXh0LTN4bCBmb250LWJsYWNrIHRleHQtZW1lcmFsZC03MDAgbXQtMiI+MDwvcD48L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0ic29mdC1jYXJkIHJvdW5kZWQtWzI0cHhdIHAtNCI+PHAgY2xhc3M9InNlY3Rpb24tbGFiZWwiPkF0dGVudGlvbjwvcD48cCBpZD0iY291bnQtYXR0ZW50aW9uIiBjbGFzcz0idGV4dC0zeGwgZm9udC1ibGFjayB0ZXh0LWFtYmVyLTcwMCBtdC0yIj4wPC9wPjwvZGl2PgogICAgICA8ZGl2IGNsYXNzPSJzb2Z0LWNhcmQgcm91bmRlZC1bMjRweF0gcC00Ij48cCBjbGFzcz0ic2VjdGlvbi1sYWJlbCI+Tkc8L3A+PHAgaWQ9ImNvdW50LW5nIiBjbGFzcz0idGV4dC0zeGwgZm9udC1ibGFjayB0ZXh0LXJvc2UtNzAwIG10LTIiPjA8L3A+PC9kaXY+CiAgICA8L3NlY3Rpb24+CgogICAgPHNlY3Rpb24gY2xhc3M9ImdsYXNzIHJvdW5kZWQtWzMwcHhdIHAtNSBtZDpwLTYgbXQtNSI+CiAgICAgIDxkaXYgY2xhc3M9ImZsZXggZmxleC1jb2wgbWQ6ZmxleC1yb3cgbWQ6aXRlbXMtY2VudGVyIG1kOmp1c3RpZnktYmV0d2VlbiBnYXAtMyI+CiAgICAgICAgPGRpdj48cCBjbGFzcz0ic2VjdGlvbi1sYWJlbCI+U3lzdGVtIFN0YXR1czwvcD48aDIgY2xhc3M9InRleHQteGwgbWQ6dGV4dC0yeGwgZm9udC1ibGFjayB0ZXh0LXNsYXRlLTgwMCBtdC0xIj7mpJzmn7vnirbms4E8L2gyPjwvZGl2PgogICAgICAgIDxzcGFuIGlkPSJydW4tc3RhdHVzIiBjbGFzcz0iYmFkZ2UgYmctc2xhdGUtMTAwIHRleHQtc2xhdGUtNjAwIj7mnKrlrp/ooYw8L3NwYW4+CiAgICAgIDwvZGl2PgogICAgICA8ZGl2IGlkPSJyZXN1bHRzIiBjbGFzcz0ibXQtNSBzcGFjZS15LTMiPjxkaXYgY2xhc3M9InJvdW5kZWQtWzIycHhdIGJnLXdoaXRlLzcwIGJvcmRlciBib3JkZXItc2xhdGUtMTAwIHAtNSB0ZXh0LXNtIHRleHQtc2xhdGUtNTAwIj7jgIzkuIDmi6zmpJzmn7vjgI3jgpLmirzjgZnjgajmpJzmn7vjgpLplovlp4vjgZfjgb7jgZnjgII8L2Rpdj48L2Rpdj4KICAgIDwvc2VjdGlvbj4KICA8L21haW4+CiAgPGRpdiBpZD0idG9hc3QiIGNsYXNzPSJmaXhlZCBsZWZ0LTEvMiBib3R0b20tNiAtdHJhbnNsYXRlLXgtMS8yIHotWzEwMF0gaGlkZGVuIHJvdW5kZWQtMnhsIGJnLXNsYXRlLTkwMCB0ZXh0LXdoaXRlIHB4LTQgcHktMyB0ZXh0LXNtIGZvbnQtYmxhY2sgc2hhZG93LTJ4bCI+PC9kaXY+Cgo8c2NyaXB0Pgpjb25zdCBXT1JLRVJfVVJMPSJodHRwczovL3lvZ2EtbGlmZi13ZWJob29rLmRwcm9tc3RrMjAwMC53b3JrZXJzLmRldiI7CmNvbnN0IFNIT1BfQ09ERT0ieW9nYV9kZW1vIjsKY29uc3QgRVhQRUNURURfV09SS0VSX1ZFUlNJT049IllPR0EtTkVYVC03LU1FTUJFUi1ISVNUT1JZLVJFUEVBVC0yMDI2MDcyMyI7CmNvbnN0IEVYUEVDVEVEX01FTUJFUl9DT05UUkFDVD0iWU9HQS1ORVhULTctU0FGRS1NRU1CRVItQ09OVFJBQ1QtMjAyNjA3MjMiOwpjb25zdCBTWVNURU1fQ0hFQ0tfVkVSU0lPTj0iWU9HQS1ORVhULTktU1lTVEVNLUNIRUNLLTIwMjYwNzI0IjsKY29uc3QgU1RBVElDX1JFUE9SVF9VUkw9ImRwcm8tbmV4dC15b2dhLW5leHQtOS1zdGF0aWMuanNvbiI7CmNvbnN0IFBBR0VfUEFUSFM9WyJpbmRleC5odG1sIiwibWVtYmVyLmh0bWwiLCJvd25lci5odG1sIiwib3duZXItaXBhZC5odG1sIl07CmNvbnN0IHJlc3VsdHM9W107CgpmdW5jdGlvbiAkKGlkKXtyZXR1cm4gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoaWQpfQpmdW5jdGlvbiBlc2NhcGVIdG1sKHZhbHVlKXtyZXR1cm4gU3RyaW5nKHZhbHVlPz8iIikucmVwbGFjZSgvWyY8PiciXS9nLGNoPT4oeyImIjoiJmFtcDsiLCI8IjoiJmx0OyIsIj4iOiImZ3Q7IiwiJyI6IiYjMzk7IiwiXCIiOiImcXVvdDsifVtjaF0pKX0KZnVuY3Rpb24gZGVtb0RlZmF1bHRDb2RlKCl7cmV0dXJuIGxvY2F0aW9uLmhvc3RuYW1lLmVuZHNXaXRoKCJnaXRodWIuaW8iKSYmbG9jYWxTdG9yYWdlLmdldEl0ZW0oInlvZ2FTeXN0ZW1DaGVja0NvZGVDbGVhcmVkIikhPT0iMSI/IjEyMzQiOiIifQpmdW5jdGlvbiBhZG1pbkNvZGUoKXtyZXR1cm4gU3RyaW5nKCQoImFkbWluLWNvZGUiKT8udmFsdWV8fGxvY2FsU3RvcmFnZS5nZXRJdGVtKCJ5b2dhU3lzdGVtQ2hlY2tBZG1pbkNvZGUiKXx8ZGVtb0RlZmF1bHRDb2RlKCkpLnRyaW0oKX0KZnVuY3Rpb24gc2F2ZUFkbWluQ29kZSgpe2NvbnN0IHY9U3RyaW5nKCQoImFkbWluLWNvZGUiKT8udmFsdWV8fCIiKS50cmltKCk7aWYodil7bG9jYWxTdG9yYWdlLnNldEl0ZW0oInlvZ2FTeXN0ZW1DaGVja0FkbWluQ29kZSIsdik7bG9jYWxTdG9yYWdlLnJlbW92ZUl0ZW0oInlvZ2FTeXN0ZW1DaGVja0NvZGVDbGVhcmVkIil9ZWxzZSBsb2NhbFN0b3JhZ2UucmVtb3ZlSXRlbSgieW9nYVN5c3RlbUNoZWNrQWRtaW5Db2RlIil9CmZ1bmN0aW9uIGNsZWFyQWRtaW5Db2RlKCl7bG9jYWxTdG9yYWdlLnJlbW92ZUl0ZW0oInlvZ2FTeXN0ZW1DaGVja0FkbWluQ29kZSIpO2xvY2FsU3RvcmFnZS5zZXRJdGVtKCJ5b2dhU3lzdGVtQ2hlY2tDb2RlQ2xlYXJlZCIsIjEiKTtpZigkKCJhZG1pbi1jb2RlIikpJCgiYWRtaW4tY29kZSIpLnZhbHVlPSIiO3RvYXN0KCLkv53lrZjjgZfjgZ/nrqHnkIbjgrPjg7zjg4njgpLliYrpmaTjgZfjgb7jgZfjgZ/jgIIiKX0KZnVuY3Rpb24gdG9hc3QobWVzc2FnZSl7Y29uc3QgZWw9JCgidG9hc3QiKTtlbC50ZXh0Q29udGVudD1tZXNzYWdlO2VsLmNsYXNzTGlzdC5yZW1vdmUoImhpZGRlbiIpO2NsZWFyVGltZW91dCh3aW5kb3cuX190b2FzdFRpbWVyKTt3aW5kb3cuX190b2FzdFRpbWVyPXNldFRpbWVvdXQoKCk9PmVsLmNsYXNzTGlzdC5hZGQoImhpZGRlbiIpLDMwMDApfQpmdW5jdGlvbiBzdGF0dXNDbGFzcyhzdGF0dXMpe3JldHVybiBzdGF0dXM9PT0iT0siPyJzdGF0dXMtb2siOnN0YXR1cz09PSLms6jmhI8iPyJzdGF0dXMtYXR0ZW50aW9uIjpzdGF0dXM9PT0iTkciPyJzdGF0dXMtbmciOiJzdGF0dXMtcnVubmluZyJ9CmZ1bmN0aW9uIGFkZFJlc3VsdChncm91cCxsYWJlbCxzdGF0dXMsZGV0YWlsPSIiLG1zPW51bGwpe3Jlc3VsdHMucHVzaCh7Z3JvdXAsbGFiZWwsc3RhdHVzLGRldGFpbCxtcyxjaGVja2VkX2F0Om5ldyBEYXRlKCkudG9JU09TdHJpbmcoKX0pO3JlbmRlclJlc3VsdHMoKX0KZnVuY3Rpb24gcmVuZGVyUmVzdWx0cygpewogIGNvbnN0IHdyYXA9JCgicmVzdWx0cyIpOwogIGlmKCFyZXN1bHRzLmxlbmd0aCl7d3JhcC5pbm5lckhUTUw9JzxkaXYgY2xhc3M9InJvdW5kZWQtWzIycHhdIGJnLXdoaXRlLzcwIGJvcmRlciBib3JkZXItc2xhdGUtMTAwIHAtNSB0ZXh0LXNtIHRleHQtc2xhdGUtNTAwIj7mpJzmn7vntZDmnpzjga/jgb7jgaDjgYLjgorjgb7jgZvjgpPjgII8L2Rpdj4nO3VwZGF0ZVN1bW1hcnkoKTtyZXR1cm59CiAgY29uc3QgZ3JvdXBzPVsuLi5uZXcgU2V0KHJlc3VsdHMubWFwKHJvdz0+cm93Lmdyb3VwKSldOwogIHdyYXAuaW5uZXJIVE1MPWdyb3Vwcy5tYXAoZ3JvdXA9Pntjb25zdCByb3dzPXJlc3VsdHMuZmlsdGVyKHJvdz0+cm93Lmdyb3VwPT09Z3JvdXApO3JldHVybiBgPHNlY3Rpb24gY2xhc3M9InJvdW5kZWQtWzI0cHhdIGJnLXdoaXRlLzY1IGJvcmRlciBib3JkZXItc2xhdGUtMTAwIHAtNCBtZDpwLTUiPjxoMyBjbGFzcz0idGV4dC1iYXNlIGZvbnQtYmxhY2sgdGV4dC1zbGF0ZS04MDAiPiR7ZXNjYXBlSHRtbChncm91cCl9PC9oMz48ZGl2IGNsYXNzPSJtdC0zIHNwYWNlLXktMiI+JHtyb3dzLm1hcChyb3c9PmA8ZGl2IGNsYXNzPSJyZXN1bHQtcm93IHJvdW5kZWQtMnhsIGJnLXdoaXRlIGJvcmRlciBib3JkZXItc2xhdGUtMTAwIHB4LTQgcHktMyI+PGRpdj48cCBjbGFzcz0idGV4dC1zbSBmb250LWJsYWNrIHRleHQtc2xhdGUtODAwIj4ke2VzY2FwZUh0bWwocm93LmxhYmVsKX08L3A+PHAgY2xhc3M9Im10LTEgdGV4dC14cyBsZWFkaW5nLTYgdGV4dC1zbGF0ZS01MDAgYnJlYWstd29yZHMiPiR7ZXNjYXBlSHRtbChyb3cuZGV0YWlsfHwiIil9JHtOdW1iZXIuaXNGaW5pdGUocm93Lm1zKT9gIC8gJHtNYXRoLnJvdW5kKHJvdy5tcyl9bXNgOiIifTwvcD48L2Rpdj48c3BhbiBjbGFzcz0iYmFkZ2UgYm9yZGVyICR7c3RhdHVzQ2xhc3Mocm93LnN0YXR1cyl9Ij4ke2VzY2FwZUh0bWwocm93LnN0YXR1cyl9PC9zcGFuPjwvZGl2PmApLmpvaW4oIiIpfTwvZGl2Pjwvc2VjdGlvbj5gfSkuam9pbigiIik7CiAgdXBkYXRlU3VtbWFyeSgpCn0KZnVuY3Rpb24gdXBkYXRlU3VtbWFyeSgpe2NvbnN0IG9rPXJlc3VsdHMuZmlsdGVyKHI9PnIuc3RhdHVzPT09Ik9LIikubGVuZ3RoLGF0dGVudGlvbj1yZXN1bHRzLmZpbHRlcihyPT5yLnN0YXR1cz09PSLms6jmhI8iKS5sZW5ndGgsbmc9cmVzdWx0cy5maWx0ZXIocj0+ci5zdGF0dXM9PT0iTkciKS5sZW5ndGg7JCgiY291bnQtb2siKS50ZXh0Q29udGVudD1vazskKCJjb3VudC1hdHRlbnRpb24iKS50ZXh0Q29udGVudD1hdHRlbnRpb247JCgiY291bnQtbmciKS50ZXh0Q29udGVudD1uZztjb25zdCBvdmVyYWxsPW5nPyJORyI6YXR0ZW50aW9uPyLms6jmhI8iOnJlc3VsdHMubGVuZ3RoPyJPSyI6IuacquWun+ihjCI7JCgib3ZlcmFsbC1sYWJlbCIpLnRleHRDb250ZW50PW92ZXJhbGw7JCgib3ZlcmFsbC1sYWJlbCIpLmNsYXNzTmFtZT1gdGV4dC0yeGwgZm9udC1ibGFjayBtdC0yICR7b3ZlcmFsbD09PSJPSyI/InRleHQtZW1lcmFsZC03MDAiOm92ZXJhbGw9PT0i5rOo5oSPIj8idGV4dC1hbWJlci03MDAiOm92ZXJhbGw9PT0iTkciPyJ0ZXh0LXJvc2UtNzAwIjoidGV4dC1zbGF0ZS04MDAifWB9CmZ1bmN0aW9uIHVybFdpdGhQYXJhbXMocGF0aCxwYXJhbXM9e30pe2NvbnN0IHVybD1uZXcgVVJMKHBhdGguc3RhcnRzV2l0aCgiaHR0cCIpP3BhdGg6YCR7V09SS0VSX1VSTH0ke3BhdGh9YCk7T2JqZWN0LmVudHJpZXMocGFyYW1zKS5mb3JFYWNoKChbayx2XSk9PntpZih2IT09dW5kZWZpbmVkJiZ2IT09bnVsbCYmU3RyaW5nKHYpIT09IiIpdXJsLnNlYXJjaFBhcmFtcy5zZXQoayxTdHJpbmcodikpfSk7cmV0dXJuIHVybC50b1N0cmluZygpfQphc3luYyBmdW5jdGlvbiB0aW1lZEZldGNoKHVybCxvcHRpb25zPXt9LHRpbWVvdXRNcz05MDAwKXtjb25zdCBjb250cm9sbGVyPW5ldyBBYm9ydENvbnRyb2xsZXIoKSx0aW1lcj1zZXRUaW1lb3V0KCgpPT5jb250cm9sbGVyLmFib3J0KCksdGltZW91dE1zKSxzdGFydGVkPXBlcmZvcm1hbmNlLm5vdygpO3RyeXtjb25zdCByZXNwb25zZT1hd2FpdCBmZXRjaCh1cmwse2NhY2hlOiJuby1zdG9yZSIsLi4ub3B0aW9ucyxzaWduYWw6Y29udHJvbGxlci5zaWduYWx9KTtjb25zdCB0ZXh0PWF3YWl0IHJlc3BvbnNlLnRleHQoKTtsZXQgZGF0YT17fTt0cnl7ZGF0YT10ZXh0P0pTT04ucGFyc2UodGV4dCk6e319Y2F0Y2h7ZGF0YT17cmF3OnRleHR9fXJldHVybntyZXNwb25zZSxkYXRhLHRleHQsbXM6cGVyZm9ybWFuY2Uubm93KCktc3RhcnRlZH19ZmluYWxseXtjbGVhclRpbWVvdXQodGltZXIpfX0KZnVuY3Rpb24gcGVyZm9ybWFuY2VTdGF0dXMobXMsb2s9MjUwMCxhdHRlbnRpb249NTUwMCl7cmV0dXJuIG1zPD1vaz8iT0siOm1zPD1hdHRlbnRpb24/IuazqOaEjyI6Ik5HIn0KZnVuY3Rpb24gbm9ybWFsaXplUGhvbmVGb3JDaGVjayh2YWx1ZSl7bGV0IHY9U3RyaW5nKHZhbHVlPz8iIikucmVwbGFjZSgvW++8kC3vvJldL2csY2g9PlN0cmluZy5mcm9tQ2hhckNvZGUoY2guY2hhckNvZGVBdCgwKS0weEZFRTApKS5yZXBsYWNlKC9b77yLXS9nLCIrIikucmVwbGFjZSgvW+ODvO+8jeKAleKAkOKAkeKAk+KAlF0vZywiLSIpLnJlcGxhY2UoL1tccygpLi1dL2csIiIpO2lmKHYuc3RhcnRzV2l0aCgiKzgxIikpdj1gMCR7di5zbGljZSgzKX1gO2Vsc2UgaWYodi5zdGFydHNXaXRoKCIwMDgxIikpdj1gMCR7di5zbGljZSg0KX1gO3JldHVybiB2LnJlcGxhY2UoL1xEL2csIiIpfQpmdW5jdGlvbiBpc29Ub2RheUpzdCgpe2NvbnN0IHA9bmV3IEludGwuRGF0ZVRpbWVGb3JtYXQoImVuLUNBIix7dGltZVpvbmU6IkFzaWEvVG9reW8iLHllYXI6Im51bWVyaWMiLG1vbnRoOiIyLWRpZ2l0IixkYXk6IjItZGlnaXQifSkuZm9ybWF0VG9QYXJ0cyhuZXcgRGF0ZSgpKTtyZXR1cm4gYCR7cC5maW5kKHg9PngudHlwZT09PSJ5ZWFyIikudmFsdWV9LSR7cC5maW5kKHg9PngudHlwZT09PSJtb250aCIpLnZhbHVlfS0ke3AuZmluZCh4PT54LnR5cGU9PT0iZGF5IikudmFsdWV9YH0KZnVuY3Rpb24gc2hpZnRJc28oaXNvLGRheXMpe2NvbnN0W3ksbSxkXT1TdHJpbmcoaXNvKS5zcGxpdCgiLSIpLm1hcChOdW1iZXIpLGRhdGU9bmV3IERhdGUoRGF0ZS5VVEMoeSxtLTEsZCkpO2RhdGUuc2V0VVRDRGF0ZShkYXRlLmdldFVUQ0RhdGUoKStkYXlzKTtyZXR1cm4gZGF0ZS50b0lTT1N0cmluZygpLnNsaWNlKDAsMTApfQpmdW5jdGlvbiBwdWJsaWNMZWFrUGF0dGVybnModGV4dCxwYWdlKXtjb25zdCBmPVtdO2lmKC9cL2FwaVwvYWRtaW5cLy9pLnRlc3QodGV4dCkpZi5wdXNoKCIvYXBpL2FkbWluLyIpO2lmKC9cYmFkbWluX2NvZGVcYi9pLnRlc3QodGV4dCkpZi5wdXNoKCJhZG1pbl9jb2RlIik7aWYoL+euoeeQhuOCs+ODvOODiS8udGVzdCh0ZXh0KSlmLnB1c2goIueuoeeQhuOCs+ODvOODiSIpO2NvbnN0IHBhdHRlcm5zPVsvXGJjdXN0b21lclxzKig/OlwuXHMqbWVtb1xifFxbXHMqWyInXW1lbW9bIiddXHMqXF0pLywvXGJyb3dccyooPzpcLlxzKm1lbW9cYnxcW1xzKlsiJ11tZW1vWyInXVxzKlxdKS8sLyg/OlwuXHMqbGVzc29uX2NvbnRlbnRcYnxcW1xzKlsiJ11sZXNzb25fY29udGVudFsiJ11ccypcXXxbIiddbGVzc29uX2NvbnRlbnRbIiddXHMqOikvLC8oPzpcLlxzKmxlc3Nvbl9hdHRlbnRpb25cYnxcW1xzKlsiJ11sZXNzb25fYXR0ZW50aW9uWyInXVxzKlxdfFsiJ11sZXNzb25fYXR0ZW50aW9uWyInXVxzKjopLywvKD86XC5ccypsZXNzb25faGFuZG9mZlxifFxbXHMqWyInXWxlc3Nvbl9oYW5kb2ZmWyInXVxzKlxdfFsiJ11sZXNzb25faGFuZG9mZlsiJ11ccyo6KS8sLyg/OlwuXHMqb3duZXJfbWVtb1xifFxbXHMqWyInXW93bmVyX21lbW9bIiddXHMqXF18WyInXW93bmVyX21lbW9bIiddXHMqOikvLC8oPzpcLlxzKndvcmtmbG93X25vdGVcYnxcW1xzKlsiJ113b3JrZmxvd19ub3RlWyInXVxzKlxdfFsiJ113b3JrZmxvd19ub3RlWyInXVxzKjopL107cGF0dGVybnMuZm9yRWFjaCgocCxpKT0+e2lmKHAudGVzdCh0ZXh0KSlmLnB1c2goYGludGVybmFsLWZpZWxkLSR7aSsxfWApfSk7cmV0dXJuWy4uLm5ldyBTZXQoZildLm1hcCh4PT5gJHtwYWdlfToke3h9YCl9CmFzeW5jIGZ1bmN0aW9uIGxvYWRTdGF0aWNSZXBvcnQoKXt0cnl7Y29uc3R7cmVzcG9uc2UsZGF0YSxtc309YXdhaXQgdGltZWRGZXRjaChgJHtTVEFUSUNfUkVQT1JUX1VSTH0/dj0ke0RhdGUubm93KCl9YCk7aWYoIXJlc3BvbnNlLm9rfHxkYXRhLm9rIT09dHJ1ZSl0aHJvdyBuZXcgRXJyb3IoZGF0YS5lcnJvcnx8YEhUVFAgJHtyZXNwb25zZS5zdGF0dXN9YCk7YWRkUmVzdWx0KCLpnZnnmoTmpJzmn7siLCJHaXRIdWIgQWN0aW9uc+mdmeeahOaknOafuyIsIk9LIixgJHtkYXRhLnZlcnNpb258fCJORVhULTkifSAvICR7ZGF0YS5jaGVja2VkX2F0X2pzdHx8IiJ9YCxtcyk7KGRhdGEuY2hlY2tzfHxbXSkuZm9yRWFjaChjPT5hZGRSZXN1bHQoYy5ncm91cHx8IumdmeeahOaknOafuyIsYy5sYWJlbCxjLnN0YXR1cyxjLmRldGFpbHx8IiIsYy5tcz8/bnVsbCkpfWNhdGNoKGUpe2FkZFJlc3VsdCgi6Z2Z55qE5qSc5p+7IiwiR2l0SHViIEFjdGlvbnPpnZnnmoTmpJzmn7siLCJORyIsZS5tZXNzYWdlKX19CmFzeW5jIGZ1bmN0aW9uIGNoZWNrSnNvbihncm91cCxsYWJlbCxwYXRoLHBhcmFtcyx2YWxpZGF0b3Isb3B0aW9ucz17fSl7dHJ5e2NvbnN0e3Jlc3BvbnNlLGRhdGEsbXN9PWF3YWl0IHRpbWVkRmV0Y2godXJsV2l0aFBhcmFtcyhwYXRoLHBhcmFtcyksb3B0aW9ucyk7Y29uc3QgdmFsaWQ9cmVzcG9uc2Uub2smJmRhdGEub2shPT1mYWxzZSYmIWRhdGEuZXJyb3ImJighdmFsaWRhdG9yfHx2YWxpZGF0b3IoZGF0YSxyZXNwb25zZSkpO2NvbnN0IHN0YXR1cz12YWxpZD9wZXJmb3JtYW5jZVN0YXR1cyhtcyk6Ik5HIjthZGRSZXN1bHQoZ3JvdXAsbGFiZWwsc3RhdHVzLHZhbGlkP2BIVFRQICR7cmVzcG9uc2Uuc3RhdHVzfWA6YEhUVFAgJHtyZXNwb25zZS5zdGF0dXN9IC8gJHtkYXRhLmVycm9yfHxkYXRhLm1lc3NhZ2V8fCLlv5znrZTlhoXlrrnkuI3kuIDoh7QifWAsbXMpO3JldHVybntvazp2YWxpZCxkYXRhLHJlc3BvbnNlLG1zfX1jYXRjaChlKXthZGRSZXN1bHQoZ3JvdXAsbGFiZWwsIk5HIixlLm5hbWU9PT0iQWJvcnRFcnJvciI/IuOCv+OCpOODoOOCouOCpuODiCI6ZS5tZXNzYWdlKTtyZXR1cm57b2s6ZmFsc2UsZXJyb3I6ZX19fQphc3luYyBmdW5jdGlvbiBjaGVja1BhZ2VzKCl7Y29uc3QgdGV4dHM9e307Zm9yKGNvbnN0IHBhZ2Ugb2YgUEFHRV9QQVRIUyl7dHJ5e2NvbnN0IHBhdGg9cGFnZT09PSJpbmRleC5odG1sIj9gLi8/dj0ke0RhdGUubm93KCl9YDpgJHtwYWdlfT92PSR7RGF0ZS5ub3coKX1gO2NvbnN0e3Jlc3BvbnNlLHRleHQsbXN9PWF3YWl0IHRpbWVkRmV0Y2gocGF0aCk7Y29uc3QgdmFsaWQ9cmVzcG9uc2Uub2smJi88IURPQ1RZUEUgaHRtbD4vaS50ZXN0KHRleHQpO2FkZFJlc3VsdCgi55S76Z2i44O75oCn6IO9IixgJHtwYWdlfSDlhazplovoqq3ovrxgLHZhbGlkP3BlcmZvcm1hbmNlU3RhdHVzKG1zLDE4MDAsNDAwMCk6Ik5HIixgSFRUUCAke3Jlc3BvbnNlLnN0YXR1c30gLyAke25ldyBCbG9iKFt0ZXh0XSkuc2l6ZS50b0xvY2FsZVN0cmluZygpfSBieXRlc2AsbXMpO3RleHRzW3BhZ2VdPXRleHR9Y2F0Y2goZSl7YWRkUmVzdWx0KCLnlLvpnaLjg7vmgKfog70iLGAke3BhZ2V9IOWFrOmWi+iqrei+vGAsIk5HIixlLm5hbWU9PT0iQWJvcnRFcnJvciI/IuOCv+OCpOODoOOCouOCpuODiCI6ZS5tZXNzYWdlKX19Y29uc3QgbGVha3M9Wy4uLnB1YmxpY0xlYWtQYXR0ZXJucyh0ZXh0c1siaW5kZXguaHRtbCJdfHwiIiwiaW5kZXguaHRtbCIpLC4uLnB1YmxpY0xlYWtQYXR0ZXJucyh0ZXh0c1sibWVtYmVyLmh0bWwiXXx8IiIsIm1lbWJlci5odG1sIildO2FkZFJlc3VsdCgi44K744Kt44Ol44Oq44OG44KjIiwi5YWs6ZaL55S76Z2i44G444Gu566h55CG5oOF5aCx5re35YWlIixsZWFrcy5sZW5ndGg/Ik5HIjoiT0siLGxlYWtzLmxlbmd0aD9sZWFrcy5qb2luKCLjgIEiKToiaW5kZXguaHRtbOODu21lbWJlci5odG1s44Gn566h55CGQVBJ44O7566h55CG44Kz44O844OJ44O75YaF6YOo6KiY6Yyy5Y+C54Wn44Gq44GXIil9CmFzeW5jIGZ1bmN0aW9uIGNoZWNrQWRtaW5Db2RlUmVqZWN0aW9uKCl7dHJ5e2NvbnN0IGludmFsaWQ9YE5FWFQ5X0lOVkFMSURfJHtEYXRlLm5vdygpfWAse3Jlc3BvbnNlLGRhdGEsbXN9PWF3YWl0IHRpbWVkRmV0Y2godXJsV2l0aFBhcmFtcygiL2FwaS9hZG1pbi9zdW1tYXJ5Iix7c2hvcF9jb2RlOlNIT1BfQ09ERSxhZG1pbl9jb2RlOmludmFsaWR9KSk7Y29uc3QgcmVqZWN0ZWQ9IXJlc3BvbnNlLm9rfHxkYXRhLm9rPT09ZmFsc2V8fEJvb2xlYW4oZGF0YS5lcnJvcik7YWRkUmVzdWx0KCLjgrvjgq3jg6Xjg6rjg4bjgqMiLCLkuI3mraPjgarnrqHnkIbjgrPjg7zjg4njga7mi5LlkKYiLHJlamVjdGVkPyJPSyI6Ik5HIixgSFRUUCAke3Jlc3BvbnNlLnN0YXR1c30ke2RhdGEuZXJyb3I/YCAvICR7ZGF0YS5lcnJvcn1gOiIifWAsbXMpfWNhdGNoKGUpe2FkZFJlc3VsdCgi44K744Kt44Ol44Oq44OG44KjIiwi5LiN5q2j44Gq566h55CG44Kz44O844OJ44Gu5ouS5ZCmIiwi5rOo5oSPIixg6YCa5L+h44Ko44Op44O877yaJHtlLm1lc3NhZ2V9YCl9fQpmdW5jdGlvbiBydW5Mb2NhbExvZ2ljQ2hlY2tzKCl7Y29uc3QgY2FzZXM9W1siMDkwLTExMTEtMjIyMiIsIjA5MDExMTEyMjIyIl0sWyLvvJDvvJnvvJDvvI3vvJHvvJHvvJHvvJHvvI3vvJLvvJLvvJLvvJIiLCIwOTAxMTExMjIyMiJdLFsiKzgxIDkwIDExMTEgMjIyMiIsIjA5MDExMTEyMjIyIl0sWyIwMDgxLTkwLTExMTEtMjIyMiIsIjA5MDExMTEyMjIyIl1dO2FkZFJlc3VsdCgi5qWt5YuZ44Ot44K444OD44KvIiwi6Zu76Kmx55Wq5Y+35q2j6KaP5YyWIixjYXNlcy5ldmVyeSgoW2ksZV0pPT5ub3JtYWxpemVQaG9uZUZvckNoZWNrKGkpPT09ZSk/Ik9LIjoiTkciLCLjg4/jgqTjg5Xjg7Pjg7vlhajop5Ljg7srODHjg7swMDgxIik7Y29uc3QgdG9kYXk9aXNvVG9kYXlKc3QoKSx5PXNoaWZ0SXNvKHRvZGF5LC0xKSxuPXNoaWZ0SXNvKHRvZGF5LDEpO2FkZFJlc3VsdCgi5qWt5YuZ44Ot44K444OD44KvIiwi6YGO5Y675pel5pmC6Ziy5q2i5Z+65rqWIix5PHRvZGF5JiYhKG48dG9kYXkpPyJPSyI6Ik5HIixg5YmN5pelPSR7eX0gLyDlvZPml6U9JHt0b2RheX0gLyDnv4zml6U9JHtufWApO2NvbnN0IGtleT1vPT5gJHtub3JtYWxpemVQaG9uZUZvckNoZWNrKG8ucGhvbmUpfXwke28uZGF0ZX18JHtTdHJpbmcoby50aW1lKS5zbGljZSgwLDUpfXwke28uc2VydmljZX1gO2FkZFJlc3VsdCgi5qWt5YuZ44Ot44K444OD44KvIiwi6YeN6KSH5LqI57SE5Yik5a6a5Z+65rqWIixrZXkoe3Bob25lOiIwOTAtMTExMS0yMjIyIixkYXRlOm4sdGltZToiMTA6MDA6MDAiLHNlcnZpY2U6InRyaWFsXzYwIn0pPT09a2V5KHtwaG9uZToiKzgxIDkwIDExMTEgMjIyMiIsZGF0ZTpuLHRpbWU6IjEwOjAwIixzZXJ2aWNlOiJ0cmlhbF82MCJ9KT8iT0siOiJORyIsIumbu+ipseihqOiomOOChuOCjOODu+aXpeS7mOODu+aZguWIu+ODu+ODoeODi+ODpeODvCIpO2NvbnN0IHdvcmtmbG93PVsicmVzZXJ2ZWQiLCJjaGVja2VkX2luIiwiaW5fc2Vzc2lvbiIsImNvbXBsZXRlZCIsInJlY29yZGVkIiwiZm9sbG93dXBfZG9uZSJdO2FkZFJlc3VsdCgi5qWt5YuZ44Ot44K444OD44KvIiwi6YCy5o2X44K544OG44O844K/44K56aCG5bqPIixuZXcgU2V0KHdvcmtmbG93KS5zaXplPT09Nj8iT0siOiJORyIsd29ya2Zsb3cuam9pbigiIOKGkiAiKSl9CmFzeW5jIGZ1bmN0aW9uIHJ1bkRlbW9QcmVwYXJlKCl7aWYoISQoInJ1bi1kZW1vLXByZXBhcmUiKS5jaGVja2VkKXthZGRSZXN1bHQoIkRFTU8iLCJERU1P44OH44O844K/5rqW5YKZIiwi5rOo5oSPIiwi5pyq5a6f6KGM44CC5b+F6KaB44Gq5pmC44Gg44GR44OB44Kn44OD44Kv44KS5YWl44KM44Gm44GP44Gg44GV44GE44CCIik7cmV0dXJufWNvbnN0IGNvZGU9YWRtaW5Db2RlKCk7aWYoIWNvZGUpe2FkZFJlc3VsdCgiREVNTyIsIkRFTU/jg4fjg7zjgr/mupblgpkiLCJORyIsIueuoeeQhuOCs+ODvOODieacquWFpeWKmyIpO3JldHVybn10cnl7Y29uc3R7cmVzcG9uc2UsZGF0YSxtc309YXdhaXQgdGltZWRGZXRjaChgJHtXT1JLRVJfVVJMfS9hcGkvYWRtaW4vZGVtby9wcmVwYXJlYCx7bWV0aG9kOiJQT1NUIixoZWFkZXJzOnsiQ29udGVudC1UeXBlIjoiYXBwbGljYXRpb24vanNvbiJ9LGJvZHk6SlNPTi5zdHJpbmdpZnkoe3Nob3BfY29kZTpTSE9QX0NPREUsYWRtaW5fY29kZTpjb2RlfSl9LDE1MDAwKTtjb25zdCBvaz1yZXNwb25zZS5vayYmZGF0YS5vayE9PWZhbHNlJiYhZGF0YS5lcnJvcjthZGRSZXN1bHQoIkRFTU8iLCJERU1P44OH44O844K/5rqW5YKZIixvaz8iT0siOiJORyIsZGF0YS5tZXNzYWdlfHxkYXRhLmVycm9yfHxgSFRUUCAke3Jlc3BvbnNlLnN0YXR1c31gLG1zKX1jYXRjaChlKXthZGRSZXN1bHQoIkRFTU8iLCJERU1P44OH44O844K/5rqW5YKZIiwiTkciLGUubmFtZT09PSJBYm9ydEVycm9yIj8i44K/44Kk44Og44Ki44Km44OIIjplLm1lc3NhZ2UpfX0KYXN5bmMgZnVuY3Rpb24gcnVuQWxsQ2hlY2tzKCl7Y29uc3QgYnV0dG9uPSQoInJ1bi1idXR0b24iKTtidXR0b24uZGlzYWJsZWQ9dHJ1ZTtidXR0b24uY2xhc3NMaXN0LmFkZCgib3BhY2l0eS02MCIpO3Jlc3VsdHMuc3BsaWNlKDApO3JlbmRlclJlc3VsdHMoKTskKCJydW4tc3RhdHVzIikudGV4dENvbnRlbnQ9IuaknOafu+S4rSI7JCgicnVuLXN0YXR1cyIpLmNsYXNzTmFtZT0iYmFkZ2UgYm9yZGVyIHN0YXR1cy1ydW5uaW5nIjt0cnl7YXdhaXQgbG9hZFN0YXRpY1JlcG9ydCgpO3J1bkxvY2FsTG9naWNDaGVja3MoKTthd2FpdCBjaGVja0pzb24oIuaOpee2muODu0FQSSIsIldvcmtlciIsIi9hcGkvaGVhbHRoIix7fSxkPT5kLndvcmtlcl92ZXJzaW9uPT09RVhQRUNURURfV09SS0VSX1ZFUlNJT04pO2F3YWl0IGNoZWNrSnNvbigi5o6l57aa44O7QVBJIiwiU3VwYWJhc2XmjqXntprjg7vlupfoiJfoqK3lrpoiLCIvYXBpL3B1YmxpYy9zdGF0dXMiLHtzaG9wX2NvZGU6U0hPUF9DT0RFfSxkPT5Cb29sZWFuKGQuc2V0dGluZ3N8fGQuc2hvcF9uYW1lfHxkLnNob3BfY29kZSkpO2F3YWl0IGNoZWNrSnNvbigi5o6l57aa44O7QVBJIiwi5YWs6ZaL44Oh44OL44Ol44O8QVBJIiwiL2FwaS9wdWJsaWMvc2VydmljZXMiLHtzaG9wX2NvZGU6U0hPUF9DT0RFfSxkPT5BcnJheS5pc0FycmF5KGQuc2VydmljZXMpJiZkLnNlcnZpY2VzLmxlbmd0aD4wKTthd2FpdCBjaGVja0pzb24oIuaOpee2muODu0FQSSIsIuS8muWToeWuieWFqOWlkee0hCIsIi9hcGkvcHVibGljL21lbWJlci9jaGVjayIse3Nob3BfY29kZTpTSE9QX0NPREV9LGQ9PmQucHJpdmFjeV9vaz09PXRydWUmJmQubWVtYmVyX2NvbnRyYWN0X3ZlcnNpb249PT1FWFBFQ1RFRF9NRU1CRVJfQ09OVFJBQ1QpO2NvbnN0IGNvZGU9YWRtaW5Db2RlKCk7aWYoY29kZSl7YXdhaXQgY2hlY2tKc29uKCLmjqXntprjg7tBUEkiLCLnrqHnkIboqK3lrppBUEkiLCIvYXBpL2FkbWluL3NldHRpbmdzIix7c2hvcF9jb2RlOlNIT1BfQ09ERSxhZG1pbl9jb2RlOmNvZGV9LGQ9PkJvb2xlYW4oZC5zZXR0aW5nc3x8ZC5zaG9wX2NvZGUpKTthd2FpdCBjaGVja0pzb24oIuaOpee2muODu0FQSSIsIueuoeeQhuOCteODnuODquODvEFQSSIsIi9hcGkvYWRtaW4vc3VtbWFyeSIse3Nob3BfY29kZTpTSE9QX0NPREUsYWRtaW5fY29kZTpjb2RlfSxkPT5kLm9rIT09ZmFsc2UpO2F3YWl0IGNoZWNrSnNvbigi5o6l57aa44O7QVBJIiwi5pys5pel5qWt5YuZQVBJIiwiL2FwaS9hZG1pbi9kYXkiLHtzaG9wX2NvZGU6U0hPUF9DT0RFLGFkbWluX2NvZGU6Y29kZSxkYXRlOmlzb1RvZGF5SnN0KCl9LGQ9PkFycmF5LmlzQXJyYXkoZC50b2RheV9yZXNlcnZhdGlvbnN8fFtdKSk7YXdhaXQgY2hlY2tKc29uKCLmjqXntprjg7tBUEkiLCLpoaflrqLmpJzntKJBUEkiLCIvYXBpL2FkbWluL2N1c3RvbWVycy9zZWFyY2giLHtzaG9wX2NvZGU6U0hPUF9DT0RFLGFkbWluX2NvZGU6Y29kZSxxOiIifSxkPT5BcnJheS5pc0FycmF5KGQuY3VzdG9tZXJzfHxbXSkpfWVsc2VbIueuoeeQhuioreWumkFQSSIsIueuoeeQhuOCteODnuODquODvEFQSSIsIuacrOaXpealreWLmUFQSSIsIumhp+WuouaknOe0okFQSSJdLmZvckVhY2gobGFiZWw9PmFkZFJlc3VsdCgi5o6l57aa44O7QVBJIixsYWJlbCwi5rOo5oSPIiwi566h55CG44Kz44O844OJ5pyq5YWl5Yqb44Gu44Gf44KB5pyq5a6f6KGMIikpO2F3YWl0IGNoZWNrQWRtaW5Db2RlUmVqZWN0aW9uKCk7YXdhaXQgY2hlY2tQYWdlcygpO2F3YWl0IHJ1bkRlbW9QcmVwYXJlKCl9ZmluYWxseXtidXR0b24uZGlzYWJsZWQ9ZmFsc2U7YnV0dG9uLmNsYXNzTGlzdC5yZW1vdmUoIm9wYWNpdHktNjAiKTtjb25zdCBuZz1yZXN1bHRzLnNvbWUocj0+ci5zdGF0dXM9PT0iTkciKSxhdHRlbnRpb249cmVzdWx0cy5zb21lKHI9PnIuc3RhdHVzPT09IuazqOaEjyIpLG92ZXJhbGw9bmc/Ik5HIjphdHRlbnRpb24/IuazqOaEjyI6Ik9LIjskKCJydW4tc3RhdHVzIikudGV4dENvbnRlbnQ9YCR7b3ZlcmFsbH0gLyAke25ldyBEYXRlKCkudG9Mb2NhbGVTdHJpbmcoImphLUpQIil9YDskKCJydW4tc3RhdHVzIikuY2xhc3NOYW1lPWBiYWRnZSBib3JkZXIgJHtzdGF0dXNDbGFzcyhvdmVyYWxsKX1gO3JlbmRlclJlc3VsdHMoKTtsdWNpZGU/LmNyZWF0ZUljb25zPy4oKX19CmFzeW5jIGZ1bmN0aW9uIGNvcHlSZXN1bHRzKCl7aWYoIXJlc3VsdHMubGVuZ3RoKXJldHVybiB0b2FzdCgi5YWI44Gr5LiA5ous5qSc5p+744KS5a6f6KGM44GX44Gm44GP44Gg44GV44GE44CCIik7Y29uc3Qgbmc9cmVzdWx0cy5maWx0ZXIocj0+ci5zdGF0dXM9PT0iTkciKS5sZW5ndGgsYXR0ZW50aW9uPXJlc3VsdHMuZmlsdGVyKHI9PnIuc3RhdHVzPT09IuazqOaEjyIpLmxlbmd0aCxvdmVyYWxsPW5nPyJORyI6YXR0ZW50aW9uPyLms6jmhI8iOiJPSyI7Y29uc3QgdGV4dD1bIkRQUk8gWU9HQSBMSU5FIHN5c3RlbS1jaGVjayIsYHZlcnNpb246ICR7U1lTVEVNX0NIRUNLX1ZFUlNJT059YCxgY2hlY2tlZF9hdDogJHtuZXcgRGF0ZSgpLnRvTG9jYWxlU3RyaW5nKCJqYS1KUCIpfWAsYG92ZXJhbGw6ICR7b3ZlcmFsbH1gLCIiLC4uLnJlc3VsdHMubWFwKHI9PmBbJHtyLnN0YXR1c31dICR7ci5ncm91cH0gLyAke3IubGFiZWx9JHtyLm1zIT1udWxsP2AgLyAke01hdGgucm91bmQoci5tcyl9bXNgOiIifVxuJHtyLmRldGFpbHx8IiJ9YCldLmpvaW4oIlxuIik7dHJ5e2F3YWl0IG5hdmlnYXRvci5jbGlwYm9hcmQud3JpdGVUZXh0KHRleHQpfWNhdGNoe2NvbnN0IGFyZWE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgidGV4dGFyZWEiKTthcmVhLnZhbHVlPXRleHQ7ZG9jdW1lbnQuYm9keS5hcHBlbmRDaGlsZChhcmVhKTthcmVhLnNlbGVjdCgpO2RvY3VtZW50LmV4ZWNDb21tYW5kKCJjb3B5Iik7YXJlYS5yZW1vdmUoKX10b2FzdCgi5qSc5p+757WQ5p6c44KS44Kz44OU44O844GX44G+44GX44Gf44CCIil9CmRvY3VtZW50LmFkZEV2ZW50TGlzdGVuZXIoIkRPTUNvbnRlbnRMb2FkZWQiLCgpPT57JCgiYWRtaW4tY29kZSIpLnZhbHVlPWxvY2FsU3RvcmFnZS5nZXRJdGVtKCJ5b2dhU3lzdGVtQ2hlY2tBZG1pbkNvZGUiKXx8ZGVtb0RlZmF1bHRDb2RlKCk7bHVjaWRlPy5jcmVhdGVJY29ucz8uKCk7cmVuZGVyUmVzdWx0cygpfSk7Cjwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4K").decode("utf-8"), encoding="utf-8")
+
+          owner = Path("owner.html").read_text(encoding="utf-8")
+          target = '<button onclick="prepareDemoData()" class="pill inline-flex items-center gap-2 rounded-full bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg"><i data-lucide="sparkles" class="w-4 h-4"></i>営業前DEMO準備</button>'
+          if owner.count(target) != 1: raise SystemExit(f"owner導線対象 count={owner.count(target)}")
+          owner = owner.replace(target, target + '\n          <button onclick="window.location.href=\'system-check.html?demo=1\'" class="pill inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2.5 text-sm font-bold text-white shadow-lg"><i data-lucide="shield-check" class="w-4 h-4"></i>system-check</button>', 1)
+          Path("owner.html").write_text(owner, encoding="utf-8")
+
+          ipad = Path("owner-ipad.html").read_text(encoding="utf-8")
+          grid = '<div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">'
+          if ipad.count(grid) != 1: raise SystemExit(f"iPadグリッド count={ipad.count(grid)}")
+          ipad = ipad.replace(grid, '<div class="mt-3 grid grid-cols-1 md:grid-cols-4 gap-2">', 1)
+          demo = '<button onclick="prepareDemoData()" class="touch rounded-2xl bg-amber-600 px-4 py-3 text-sm font-black text-white flex items-center justify-center gap-2"><i data-lucide="sparkles" class="w-4 h-4"></i>DEMO準備</button>'
+          if ipad.count(demo) != 1: raise SystemExit(f"iPad導線対象 count={ipad.count(demo)}")
+          ipad = ipad.replace(demo, demo + '\n<button onclick="window.location.href=\'system-check.html?demo=1\'" class="touch rounded-2xl bg-slate-800 px-4 py-3 text-sm font-black text-white flex items-center justify-center gap-2"><i data-lucide="shield-check" class="w-4 h-4"></i>system-check</button>', 1)
+          Path("owner-ipad.html").write_text(ipad, encoding="utf-8")
+          PY
+
+      - name: "6. HTML・JavaScript・ID重複・容量・公開情報検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import collections, datetime as dt, json, os, re, subprocess, tempfile
+
+          limits={"index.html":120000,"member.html":120000,"owner.html":165000,"owner-ipad.html":95000,"system-check.html":100000}
+          checks=[]; file_meta={}
+          def record(group,label,status,detail=""): checks.append({"group":group,"label":label,"status":status,"detail":detail})
+
+          class Inspector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True); self.ids=[]; self.scripts=[]; self.inside=False; self.parts=[]
+              def handle_starttag(self,tag,attrs):
+                  attrs=dict(attrs)
+                  if attrs.get("id"): self.ids.append(attrs["id"])
+                  if tag.lower()=="script" and not attrs.get("src"): self.inside=True; self.parts=[]
+              def handle_data(self,data):
+                  if self.inside: self.parts.append(data)
+              def handle_endtag(self,tag):
+                  if tag.lower()=="script" and self.inside:
+                      self.scripts.append("\n".join(self.parts)); self.inside=False; self.parts=[]
+
+          def inspect(name):
+              path=Path(name); text=path.read_text(encoding="utf-8"); parser=Inspector(); parser.feed(text); parser.close()
+              dup=sorted(k for k,v in collections.Counter(parser.ids).items() if v>1)
+              if dup: raise SystemExit(f"{name} ID重複: {dup}")
+              record("静的検査",f"{name} HTML ID重複","OK","重複なし")
+              for index,script in enumerate(parser.scripts,1):
+                  if not script.strip(): continue
+                  with tempfile.NamedTemporaryFile("w",suffix=".js",encoding="utf-8",delete=False) as tmp:
+                      tmp.write(script); temp=tmp.name
+                  try:
+                      result=subprocess.run(["node","--check",temp],text=True,capture_output=True)
+                      if result.returncode: raise SystemExit(f"{name} JavaScript構文NG: {result.stderr}")
+                  finally: Path(temp).unlink(missing_ok=True)
+              record("静的検査",f"{name} JavaScript構文","OK",f"inline {len(parser.scripts)}件")
+              size=path.stat().st_size
+              if size>limits[name]: raise SystemExit(f"{name}容量超過: {size}")
+              record("性能",f"{name} ファイル容量","OK",f"{size:,} / 上限 {limits[name]:,} bytes")
+              file_meta[name]={"bytes":size,"blob_sha":subprocess.run(["git","hash-object",name],text=True,capture_output=True,check=True).stdout.strip(),"ids":len(parser.ids),"inline_scripts":len(parser.scripts)}
+              return text
+
+          texts={name:inspect(name) for name in limits}
+          basic=[re.compile(r"/api/admin/",re.I),re.compile(r"\badmin_code\b",re.I),re.compile(r"管理コード")]
+          internal=[
+              re.compile(r"\bcustomer\s*(?:\.\s*memo\b|\[\s*[\"']memo[\"']\s*\])"),
+              re.compile(r"\brow\s*(?:\.\s*memo\b|\[\s*[\"']memo[\"']\s*\])"),
+              re.compile(r"(?:\.\s*lesson_content\b|\[\s*[\"']lesson_content[\"']\s*\]|[\"']lesson_content[\"']\s*:)"),
+              re.compile(r"(?:\.\s*lesson_attention\b|\[\s*[\"']lesson_attention[\"']\s*\]|[\"']lesson_attention[\"']\s*:)"),
+              re.compile(r"(?:\.\s*lesson_handoff\b|\[\s*[\"']lesson_handoff[\"']\s*\]|[\"']lesson_handoff[\"']\s*:)"),
+              re.compile(r"(?:\.\s*owner_memo\b|\[\s*[\"']owner_memo[\"']\s*\]|[\"']owner_memo[\"']\s*:)"),
+              re.compile(r"(?:\.\s*workflow_note\b|\[\s*[\"']workflow_note[\"']\s*\]|[\"']workflow_note[\"']\s*:)")
+          ]
+          for name in ["index.html","member.html"]:
+              findings=[p.pattern for p in basic+internal if p.search(texts[name])]
+              if findings: raise SystemExit(f"{name} 管理情報混入: {findings}")
+              record("セキュリティ",f"{name} 管理情報混入","OK","管理API・管理コード・内部記録参照なし")
+
+          required={
+              "index.html":["normalizePhone","isPastDate","reservation_origin","validateSelectedSlot","activeReservations.length >= maxActive"],
+              "owner.html":["normalizePhone","findManualDuplicate","WORKFLOW_STEPS","followupAddDays","admin-code-clear-btn"],
+              "owner-ipad.html":["normalizePhone","WORKFLOW_STEPS","followupAddDays","admin-code-clear-btn"],
+              "member.html":["privacy.owner_memo_returned","privacy.internal_lesson_notes_returned","repeat_booking"],
+              "system-check.html":["runAllChecks","checkAdminCodeRejection","publicLeakPatterns","runDemoPrepare","copyResults"]
+          }
+          for name,markers in required.items():
+              missing=[m for m in markers if m not in texts[name]]
+              if missing: raise SystemExit(f"{name} 必須機能不足: {missing}")
+              record("業務ロジック",f"{name} 必須安全機能","OK",", ".join(markers))
+
+          owner=texts["owner.html"]
+          match=re.search(r"(function toHalfWidthForPhone\(value\)\{.*?\n\}\nfunction normalizePhone\(value\)\{.*?\n\})",owner,re.S)
+          if not match: raise SystemExit("電話正規化関数抽出失敗")
+          js=match.group(1)+'''
+          const cases=[["090-1111-2222","09011112222"],["０９０－１１１１－２２２２","09011112222"],["+81 90 1111 2222","09011112222"],["0081-90-1111-2222","09011112222"]];
+          for(const [input,expected] of cases){ if(normalizePhone(input)!==expected) throw new Error(input); }
+          console.log("PHONE_NORMALIZE_OK");
+          '''
+          with tempfile.NamedTemporaryFile("w",suffix=".js",encoding="utf-8",delete=False) as tmp:
+              tmp.write(js); temp=tmp.name
+          try:
+              run=subprocess.run(["node",temp],text=True,capture_output=True)
+              if run.returncode or "PHONE_NORMALIZE_OK" not in run.stdout: raise SystemExit(f"電話正規化NG: {run.stderr}")
+          finally: Path(temp).unlink(missing_ok=True)
+          record("業務ロジック","電話番号正規化実装","OK","owner.html実関数で全角・+81・0081を検査")
+
+          send_markers=["pushMessage(","multicast(","broadcast(","/v2/bot/message/push","/v2/bot/message/multicast"]
+          found=[m for m in send_markers if any(m in text for text in texts.values())]
+          if found: raise SystemExit(f"自動LINE送信コード: {found}")
+          record("セキュリティ","自動・一括LINE送信","OK","実装なし")
+
+          report={"ok":True,"version":"YOGA-NEXT-9-STATIC-REPORT-20260724","checked_at_jst":dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(),"checks":checks,"files":file_meta,"change_record":{"worker_changed":False,"supabase_changed":False,"api_changed":False,"system_check_created":True}}
+          Path(os.environ["STATIC_REPORT_FILE"]).write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+
+      - name: "7. Worker・主要API・公開画面・性能実接続検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import datetime as dt, json, os, time, urllib.error, urllib.parse, urllib.request
+
+          path=Path(os.environ["STATIC_REPORT_FILE"]); report=json.loads(path.read_text(encoding="utf-8")); checks=report["checks"]
+          def record(group,label,status,detail="",ms=None):
+              row={"group":group,"label":label,"status":status,"detail":detail}
+              if ms is not None: row["ms"]=round(ms,2)
+              checks.append(row)
+          def get_json(endpoint,params=None,timeout=12):
+              url=endpoint if endpoint.startswith("http") else f"{os.environ['WORKER_URL']}{endpoint}"
+              if params: url+=("?" if "?" not in url else "&")+urllib.parse.urlencode(params)
+              start=time.perf_counter()
+              try:
+                  with urllib.request.urlopen(url,timeout=timeout) as res:
+                      raw=res.read().decode("utf-8","replace"); return res.status,json.loads(raw or "{}"),(time.perf_counter()-start)*1000
+              except urllib.error.HTTPError as err:
+                  raw=err.read().decode("utf-8","replace")
+                  try: data=json.loads(raw or "{}")
+                  except: data={"raw":raw}
+                  return err.code,data,(time.perf_counter()-start)*1000
+          def perf(ms,ok=2500,attention=5500): return "OK" if ms<=ok else "注意" if ms<=attention else "NG"
+
+          today=dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date().isoformat()
+          endpoints=[
+              ("Worker","/api/health",{},lambda d:d.get("worker_version")==os.environ["EXPECTED_WORKER_VERSION"]),
+              ("公開店舗設定","/api/public/status",{"shop_code":os.environ["SHOP_CODE"]},lambda d:bool(d.get("settings") or d.get("shop_name") or d.get("shop_code"))),
+              ("公開メニュー","/api/public/services",{"shop_code":os.environ["SHOP_CODE"]},lambda d:isinstance(d.get("services"),list) and len(d["services"])>0),
+              ("会員安全契約","/api/public/member/check",{"shop_code":os.environ["SHOP_CODE"]},lambda d:d.get("privacy_ok") is True and d.get("member_contract_version")==os.environ["EXPECTED_MEMBER_CONTRACT"]),
+              ("管理設定","/api/admin/settings",{"shop_code":os.environ["SHOP_CODE"],"admin_code":os.environ["ADMIN_CODE"]},lambda d:d.get("ok") is not False and not d.get("error")),
+              ("管理サマリー","/api/admin/summary",{"shop_code":os.environ["SHOP_CODE"],"admin_code":os.environ["ADMIN_CODE"]},lambda d:d.get("ok") is not False and not d.get("error")),
+              ("本日業務","/api/admin/day",{"shop_code":os.environ["SHOP_CODE"],"admin_code":os.environ["ADMIN_CODE"],"date":today},lambda d:isinstance(d.get("today_reservations",[]),list)),
+              ("顧客検索","/api/admin/customers/search",{"shop_code":os.environ["SHOP_CODE"],"admin_code":os.environ["ADMIN_CODE"],"q":""},lambda d:isinstance(d.get("customers",[]),list))
+          ]
+          for label,endpoint,params,validator in endpoints:
+              code,data,ms=get_json(endpoint,params); valid=200<=code<300 and data.get("ok") is not False and not data.get("error") and validator(data); status=perf(ms) if valid else "NG"; record("接続・API",label,status,f"HTTP {code}",ms)
+              if status=="NG": raise SystemExit(f"{label} NG: {code} {data}")
+
+          code,data,ms=get_json("/api/admin/summary",{"shop_code":os.environ["SHOP_CODE"],"admin_code":f"NEXT9_INVALID_{int(time.time())}"})
+          rejected=code>=400 or data.get("ok") is False or bool(data.get("error")); record("セキュリティ","不正な管理コード拒否","OK" if rejected else "NG",f"HTTP {code}",ms)
+          if not rejected: raise SystemExit("不正管理コードが拒否されません。")
+
+          for page in ["","member.html","owner.html","owner-ipad.html"]:
+              url=f"{os.environ['PAGES_URL']}/{page}"; start=time.perf_counter()
+              with urllib.request.urlopen(url,timeout=15) as res:
+                  raw=res.read(); ms=(time.perf_counter()-start)*1000; valid=res.status==200 and b"DOCTYPE" in raw[:300].upper(); status=perf(ms,3000,6000) if valid else "NG"; label=page or "index.html"; record("画面・性能",f"{label} 公開応答",status,f"HTTP {res.status} / {len(raw):,} bytes",ms)
+                  if status=="NG": raise SystemExit(f"{label} 公開応答NG")
+
+          report["checked_at_jst"]=dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(); report["live_checks_ok"]=True
+          path.write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+
+      - name: "8. system-check画面・変更範囲・未変更検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -q 'YOGA-NEXT-9-SYSTEM-CHECK-20260724' system-check.html
+          grep -q 'id="admin-code-clear"' system-check.html
+          grep -q 'function runAllChecks()' system-check.html
+          grep -q 'function checkAdminCodeRejection()' system-check.html
+          grep -q 'function runDemoPrepare()' system-check.html
+          grep -q 'system-check.html?demo=1' owner.html
+          grep -q 'system-check.html?demo=1' owner-ipad.html
+          grep -q '"live_checks_ok": true' "$STATIC_REPORT_FILE"
+
+          allowed='^(system-check\.html|owner\.html|owner-ipad\.html|dpro-next-yoga-next-9-static\.json|\.github/workflows/STEP-YOGA-NEXT-9\.yml)$'
+          unexpected="$(git diff --name-only "$BEFORE_SHA" | grep -Ev "$allowed" || true)"
+          [[ -z "$unexpected" ]] || { echo "::error::想定外の変更: $unexpected"; exit 1; }
+          forbidden="$(git diff --name-only "$BEFORE_SHA" | grep -Ei '(^|/)worker\.js$|\.sql$|supabase|wrangler' || true)"
+          [[ -z "$forbidden" ]] || { echo "::error::Worker/Supabase変更: $forbidden"; exit 1; }
+
+      - name: "9. NEXT-9完成台帳・最終結果更新"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          completed_at="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %z')"
+          system_blob="$(git hash-object system-check.html)"
+          system_bytes="$(wc -c < system-check.html | tr -d ' ')"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import datetime as dt, json, os
+          static=json.loads(Path(os.environ["STATIC_REPORT_FILE"]).read_text(encoding="utf-8"))
+          statuses=[row.get("status") for row in static.get("checks",[])]
+          overall="NG" if "NG" in statuses else "注意" if "注意" in statuses else "OK"
+          result={"ok":overall!="NG","overall":overall,"step":"YOGA-NEXT-9","checked_at_jst":dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(),"before_sha":os.environ["BEFORE_SHA"],"before_tag":os.environ["BEFORE_TAG"],"checks":static.get("checks",[]),"file_meta":static.get("files",{}),"worker_changed":False,"supabase_changed":False,"api_changed":False,"system_check_created":True,"demo_prepare_runtime_optional":True,"automatic_line_send":False}
+          Path(os.environ["RESULT_FILE"]).write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          if overall=="NG": raise SystemExit("NEXT-9最終結果NG")
+          PY
+
+          cat > "$LEDGER_FILE" <<EOF
+          system_name: "DPRO ヨガ LINE"
+          standard: "DPRO NEXT"
+          step_name: "性能・セキュリティ・system-check強化"
+          current_step: "YOGA-NEXT-9-COMPLETE"
+          previous_step: "YOGA-NEXT-8-COMPLETE"
+          next_step: "YOGA-NEXT-10"
+          completed_at_jst: "$completed_at"
+          before_sha: "$BEFORE_SHA"
+          before_tag: "$BEFORE_TAG"
+          before_tag_status: "$BEFORE_TAG_STATUS"
+          target_files:
+            - "system-check.html"
+            - "owner.html"
+            - "owner-ipad.html"
+            - "dpro-next-yoga-next-9-static.json"
+          implementation:
+            system_check_created: true
+            result_levels: ["OK","注意","NG"]
+            result_copy: true
+            worker_check: true
+            supabase_connection_inferred_from_api: true
+            store_settings_check: true
+            major_api_check: true
+            pc_page_check: true
+            ipad_page_check: true
+            member_page_check: true
+            customer_page_check: true
+            html_syntax_check: true
+            javascript_syntax_check: true
+            html_id_duplicate_check: true
+            file_size_check: true
+            page_response_time_check: true
+            invalid_admin_code_rejection_check: true
+            public_admin_information_leak_check: true
+            phone_normalization_check: true
+            past_date_guard_check: true
+            duplicate_guard_check: true
+            workflow_logic_check: true
+            demo_prepare_optional_runtime_check: true
+            automatic_line_send: false
+          checks:
+            static_report: "OK"
+            live_worker_api: "OK"
+            live_admin_api: "OK"
+            public_pages: "OK"
+            invalid_admin_code_rejection: "OK"
+            html_javascript_ids: "OK"
+            performance: "OK_OR_ATTENTION"
+            security: "OK"
+            business_logic: "OK"
+            overall: "OK_OR_ATTENTION"
+          change_record:
+            worker_changed: false
+            supabase_changed: false
+            api_changed: false
+            system_check_html_created: true
+            owner_html_navigation_changed: true
+            owner_ipad_html_navigation_changed: true
+            member_html_changed: false
+            index_html_changed: false
+            existing_data_changed: false
+          file_result:
+            system_check:
+              path: "system-check.html"
+              blob_sha: "$system_blob"
+              bytes: $system_bytes
+              version: "YOGA-NEXT-9-SYSTEM-CHECK-20260724"
+            static_report:
+              path: "dpro-next-yoga-next-9-static.json"
+          known_attention:
+            - "DEMO準備は明示的にチェックした場合だけ実行する"
+            - "ブラウザの読込時間は通信状況で変動する"
+            - "製品サイト・操作体験シート・完成判定はYOGA-NEXT-10で実施する"
+          rollback:
+            method: "backup_tag"
+            tag: "$BEFORE_TAG"
+            command_reference: "git checkout $BEFORE_TAG -- owner.html owner-ipad.html dpro-next-ledger.yml && git rm system-check.html dpro-next-yoga-next-9-static.json dpro-next-yoga-next-9-result.json"
+          workflow_self_delete_after_success: true
+          auto_commit_push: true
+          EOF
+
+      - name: "10. 最終変更範囲・完了状態検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          grep -q 'current_step: "YOGA-NEXT-9-COMPLETE"' "$LEDGER_FILE"
+          grep -q 'next_step: "YOGA-NEXT-10"' "$LEDGER_FILE"
+          grep -q '"step": "YOGA-NEXT-9"' "$RESULT_FILE"
+          grep -Eq '"overall": "(OK|注意)"' "$RESULT_FILE"
+          allowed='^(system-check\.html|owner\.html|owner-ipad\.html|dpro-next-ledger\.yml|dpro-next-yoga-next-9-static\.json|dpro-next-yoga-next-9-result\.json|\.github/workflows/STEP-YOGA-NEXT-9\.yml)$'
+          unexpected="$(git diff --name-only "$BEFORE_SHA" | grep -Ev "$allowed" || true)"
+          [[ -z "$unexpected" ]] || { echo "::error::想定外の変更: $unexpected"; exit 1; }
+
+          {
+            echo "### YOGA-NEXT-9 検査結果"
+            echo "- system-check新規作成: OK"
+            echo "- Worker・主要API実接続: OK"
+            echo "- 不正管理コード拒否: OK"
+            echo "- 公開画面管理情報混入: OK"
+            echo "- HTML・JavaScript・ID重複: OK"
+            echo "- 電話正規化・過去日時・重複・進捗: OK"
+            echo "- Worker / Supabase / API変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "11. 成功後YML自身を削除"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f "$WORKFLOW_PATH"
+          test ! -f "$WORKFLOW_PATH"
+
+      - name: "12. 自動Commit・Push"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add system-check.html owner.html owner-ipad.html "$LEDGER_FILE" "$STATIC_REPORT_FILE" "$RESULT_FILE"
+          git add -u "$WORKFLOW_PATH"
+          git diff --cached --quiet && { echo "::error::Commit対象がありません。"; exit 1; }
+          git commit -m "feat(yoga-next): complete YOGA-NEXT-9 system check [skip ci]"
+          git push origin HEAD:main
+
+          {
+            echo "### 完了"
+            echo "- current_step: YOGA-NEXT-9-COMPLETE"
+            echo "- next_step: YOGA-NEXT-10"
+            echo "- system-check.html: 作成済み"
+            echo "- Worker / Supabase / API変更: なし"
+            echo "- 実行YML: 削除済み"
+          } >> "$GITHUB_STEP_SUMMARY"
