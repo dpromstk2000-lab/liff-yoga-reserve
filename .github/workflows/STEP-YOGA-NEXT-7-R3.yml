@@ -1,0 +1,1343 @@
+name: "STEP YOGA-NEXT-7-R3 | LINE会員ページ・履歴・前回と同じ予約 公開情報検査修正版"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/STEP-YOGA-NEXT-7-R3.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yoga-next-7-r3-member-history-repeat
+  cancel-in-progress: false
+
+jobs:
+  member-history-repeat:
+    name: "YOGA-NEXT-7-R3 member history and repeat booking"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      STEP_NAME: "YOGA-NEXT-7-R3"
+      WORKFLOW_PATH: ".github/workflows/STEP-YOGA-NEXT-7-R3.yml"
+      FAILED_WORKFLOW_R1_PATH: ".github/workflows/STEP-YOGA-NEXT-7.yml"
+      FAILED_WORKFLOW_R2_PATH: ".github/workflows/STEP-YOGA-NEXT-7-R2.yml"
+      LEDGER_FILE: "dpro-next-ledger.yml"
+      RESULT_FILE: "dpro-next-yoga-next-7-result.json"
+      BEFORE_TAG: "dpro-yoga-next-7-before-20260723"
+      EXPECTED_MEMBER_BLOB_SHA: "caceca635815dcc21699b2bedb88e3f948ceeba4"
+      EXPECTED_INDEX_BLOB_SHA: "df33c788e773bd1417d5e75cd9d4a15a90595573"
+      EXPECTED_OWNER_BLOB_SHA: "fc0df37d9d782dcab18ef35fa7a808f6f500f354"
+      EXPECTED_IPAD_BLOB_SHA: "dc50811237ef63325543da029d97cd90052ef796"
+      EXPECTED_LEDGER_BLOB_SHA: "b38072a5ce2992f3d310767eb6897238f5c01fe3"
+      EXPECTED_WORKER_VERSION: "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723"
+      EXPECTED_MEMBER_CONTRACT: "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723"
+      WORKER_BASE_URL: "https://yoga-liff-webhook.dpromstk2000.workers.dev"
+
+    steps:
+      - name: "1. Checkout full repository history"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "2. 前STEP・対象ファイル・R1・R2未反映確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          for file in \
+            member.html \
+            index.html \
+            owner.html \
+            owner-ipad.html \
+            dpro-next-ledger.yml \
+            dpro-next-yoga-next-6-result.json \
+            "$WORKFLOW_PATH"
+          do
+            if [[ ! -f "$file" ]]; then
+              echo "::error file=$file::YOGA-NEXT-7-R3の必須ファイルがありません。"
+              exit 1
+            fi
+          done
+
+          grep -q 'current_step: "YOGA-NEXT-6-COMPLETE"' "$LEDGER_FILE" || {
+            echo "::error file=$LEDGER_FILE::前STEP YOGA-NEXT-6-COMPLETEを確認できません。"
+            exit 1
+          }
+
+          declare -A expected=(
+            ["member.html"]="$EXPECTED_MEMBER_BLOB_SHA"
+            ["index.html"]="$EXPECTED_INDEX_BLOB_SHA"
+            ["owner.html"]="$EXPECTED_OWNER_BLOB_SHA"
+            ["owner-ipad.html"]="$EXPECTED_IPAD_BLOB_SHA"
+            ["$LEDGER_FILE"]="$EXPECTED_LEDGER_BLOB_SHA"
+          )
+
+          for file in "${!expected[@]}"; do
+            current="$(git hash-object "$file")"
+            if [[ "$current" != "${expected[$file]}" ]]; then
+              echo "::error file=$file::R1またはR2実行後に基準ファイルが変更されています。期待=${expected[$file]} / 現在=$current"
+              exit 1
+            fi
+          done
+
+          if git rev-parse "$BEFORE_TAG" >/dev/null 2>&1; then
+            before_sha="$(git rev-list -n 1 "$BEFORE_TAG")"
+            before_reason="existing_r1_backup_tag"
+          else
+            mapfile -t head_changed < <(git diff-tree --no-commit-id --name-only -r HEAD)
+            before_sha="$(git rev-parse HEAD)"
+            before_reason="current_head"
+
+            if [[ "${#head_changed[@]}" -eq 1 && "${head_changed[0]}" == "$WORKFLOW_PATH" ]]; then
+              before_sha="$(git rev-parse HEAD^)"
+              before_reason="workflow_upload_parent"
+            fi
+          fi
+
+          echo "BEFORE_SHA=$before_sha" >> "$GITHUB_ENV"
+          echo "BEFORE_REASON=$before_reason" >> "$GITHUB_ENV"
+
+          {
+            echo "## STEP YOGA-NEXT-7-R3"
+            echo ""
+            echo "- R1停止: index.html reservation_origin完全一致2件"
+            echo "- R2停止: owner_memo安全ガードの文字列を漏えいと誤判定"
+            echo "- R3修正: 内部項目の実参照だけを正規表現で検査"
+            echo "- privacy.owner_memo_returned安全ガード: 必須として別検査"
+            echo "- R1・R2による公開ファイル変更: なし"
+            echo "- Worker会員契約・プライバシー検査: PASS済み"
+            echo "- 対象: member.html / index.html"
+            echo "- Supabase変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "3. 変更前バックアップタグ確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$BEFORE_TAG" >/dev/null 2>&1; then
+            tag_sha="$(git rev-list -n 1 "$BEFORE_TAG")"
+            if [[ "$tag_sha" != "$BEFORE_SHA" ]]; then
+              echo "::error::既存タグと変更前SHAが一致しません。タグ=$tag_sha / 変更前=$BEFORE_SHA"
+              exit 1
+            fi
+            tag_status="existing_same_sha"
+          else
+            git tag -a "$BEFORE_TAG" "$BEFORE_SHA" -m "DPRO ヨガ LINE before YOGA-NEXT-7"
+            git push origin "$BEFORE_TAG"
+            tag_status="created"
+          fi
+
+          echo "BEFORE_TAG_STATUS=$tag_status" >> "$GITHUB_ENV"
+
+      - name: "4. YML構文検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ruby -e 'require "yaml"; YAML.load_file(ARGV[0], aliases: true); puts "YAML syntax OK"' "$WORKFLOW_PATH"
+
+      - name: "5. Worker会員契約・プライバシー稼働確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          health_file="$(mktemp)"
+          check_file="$(mktemp)"
+          trap 'rm -f "$health_file" "$check_file"' EXIT
+
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            "$WORKER_BASE_URL/api/health" > "$health_file"
+
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            "$WORKER_BASE_URL/api/public/member/check?shop_code=yoga_demo" > "$check_file"
+
+          python3 - "$health_file" "$check_file" <<'PY'
+          import json
+          import os
+          import sys
+          
+          with open(sys.argv[1], encoding="utf-8") as f:
+              health = json.load(f)
+          with open(sys.argv[2], encoding="utf-8") as f:
+              check = json.load(f)
+          
+          expected_worker = os.environ["EXPECTED_WORKER_VERSION"]
+          expected_contract = os.environ["EXPECTED_MEMBER_CONTRACT"]
+          
+          if health.get("worker_version") != expected_worker:
+              raise SystemExit(f"Worker版不一致: {health.get('worker_version')} / expected={expected_worker}")
+          if check.get("worker_version") != expected_worker:
+              raise SystemExit(f"member check Worker版不一致: {check.get('worker_version')}")
+          if check.get("member_contract_version") != expected_contract:
+              raise SystemExit(f"会員契約版不一致: {check.get('member_contract_version')}")
+          if check.get("privacy_ok") is not True:
+              raise SystemExit("会員APIプライバシー検査がOKではありません。")
+          if check.get("repeat_booking") is not True or check.get("lesson_history") is not True:
+              raise SystemExit("履歴または前回と同じ予約機能が有効ではありません。")
+          
+          excluded = set(check.get("excluded_internal_fields") or [])
+          required_excluded = {
+              "customer.memo",
+              "owner_memo",
+              "lesson_content",
+              "lesson_attention",
+              "lesson_handoff",
+              "workflow_note",
+              "line message body",
+              "audit logs",
+          }
+          missing = sorted(required_excluded - excluded)
+          if missing:
+              raise SystemExit(f"内部情報除外契約不足: {missing}")
+          
+          print(json.dumps({
+              "worker_version": expected_worker,
+              "member_contract_version": expected_contract,
+              "privacy_ok": True,
+              "repeat_booking": True,
+              "lesson_history": True,
+          }, ensure_ascii=False, indent=2))
+          PY
+
+      - name: "6. member.html 会員履歴・前回予約導線を追加"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          
+          path = Path("member.html")
+          text = path.read_text(encoding="utf-8")
+          
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: 置換対象が1件ではありません。count={count}")
+              text = text.replace(old, new, 1)
+          
+          def replace_regex(pattern: str, replacement: str, label: str, flags=0) -> None:
+              global text
+              updated, count = re.subn(pattern, lambda _: replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"{label}: 正規表現対象が1件ではありません。count={count}")
+              text = updated
+          
+          def insert_before_regex(pattern: str, insertion: str, label: str, flags=0) -> None:
+              global text
+              matches = list(re.finditer(pattern, text, flags))
+              if len(matches) != 1:
+                  raise SystemExit(f"{label}: 挿入対象が1件ではありません。count={len(matches)}")
+              match = matches[0]
+              text = text[:match.start()] + insertion + text[match.start():]
+          
+          replace_once(
+              "<title>DPRO YOGA LINE 会員ページ STEP YOGA-PHONE-3</title>",
+              "<title>DPRO YOGA LINE 会員ページ STEP YOGA-NEXT-7</title>",
+              "title"
+          )
+          replace_once(
+              '<h1 class="text-2xl font-black text-stone-900 mt-1">ヨガ会員ページ</h1>',
+              '<h1 class="text-2xl font-black text-stone-900 mt-1">ヨガ会員・受講履歴</h1>',
+              "member title"
+          )
+          replace_once(
+              '<p id="header-subtitle" class="text-sm text-stone-500 mt-2 leading-relaxed">現在の予約・変更・キャンセル・次回案内を確認できます。</p>',
+              '<p id="header-subtitle" class="text-sm text-stone-500 mt-2 leading-relaxed">次の予約、前回のレッスン、受講履歴を安全に確認できます。</p>',
+              "header subtitle"
+          )
+          
+          replace_once(
+              '''        <div class="grid grid-cols-2 gap-3 mt-5">
+                    <div class="bg-emerald-50 rounded-2xl p-4 border border-emerald-100">
+                      <p class="text-xs font-bold text-emerald-700">現在予約</p>
+                      <p id="reservation-count" class="text-2xl font-black text-emerald-900 mt-1">0件</p>
+                    </div>
+                    <div class="bg-stone-50 rounded-2xl p-4 border border-stone-100">
+                      <p class="text-xs font-bold text-stone-600">フォロー案内</p>
+                      <p id="followup-count" class="text-2xl font-black text-stone-900 mt-1">0件</p>
+                    </div>
+                  </div>''',
+              '''        <div class="grid grid-cols-3 gap-2 mt-5">
+                    <div class="bg-emerald-50 rounded-2xl p-3 border border-emerald-100">
+                      <p class="text-[11px] font-bold text-emerald-700">現在予約</p>
+                      <p id="reservation-count" class="text-2xl font-black text-emerald-900 mt-1">0件</p>
+                    </div>
+                    <div class="bg-sky-50 rounded-2xl p-3 border border-sky-100">
+                      <p class="text-[11px] font-bold text-sky-700">受講履歴</p>
+                      <p id="lesson-history-count" class="text-2xl font-black text-sky-900 mt-1">0件</p>
+                    </div>
+                    <div class="bg-stone-50 rounded-2xl p-3 border border-stone-100">
+                      <p class="text-[11px] font-bold text-stone-600">次回案内</p>
+                      <p id="followup-count" class="text-2xl font-black text-stone-900 mt-1">0件</p>
+                    </div>
+                  </div>''',
+              "member KPI"
+          )
+          
+          member_history_sections = '''      <section id="last-lesson-section" class="glass rounded-3xl p-5 border border-emerald-100 space-y-4">
+                  <div>
+                    <p class="text-xs font-black text-emerald-700 tracking-[0.16em]">LAST LESSON</p>
+                    <h2 class="text-lg font-black text-stone-900 mt-1">前回のレッスン</h2>
+                    <p class="text-xs text-stone-500 mt-1">前回の予約内容を確認し、同じメニューで次回予約へ進めます。</p>
+                  </div>
+                  <div id="last-lesson-card"></div>
+                </section>
+          
+                <section id="lesson-history-section" class="glass rounded-3xl p-5 border border-white/70 space-y-4">
+                  <button type="button" onclick="toggleLessonHistory()" class="w-full flex items-center justify-between gap-3 text-left">
+                    <div>
+                      <h2 class="text-lg font-black text-stone-900">受講履歴</h2>
+                      <p class="text-xs text-stone-500 mt-1">受講日・メニュー・次回おすすめ日を表示します。</p>
+                    </div>
+                    <span id="lesson-history-toggle-label" class="text-xs font-bold text-emerald-700">すべて見る</span>
+                  </button>
+                  <div id="lesson-history-list" class="space-y-3"></div>
+                </section>
+          
+          '''
+          insert_before_regex(
+              r'''^[ \t]*<section class="glass rounded-3xl p-5 border border-white/70 space-y-4">\s*<div class="flex items-center justify-between gap-3">\s*<div>\s*<h2 class="text-lg font-black text-stone-900">現在の予約</h2>''',
+              member_history_sections,
+              "member history sections",
+              flags=re.M | re.S
+          )
+          
+          replace_once(
+              '<h2 class="text-lg font-black text-stone-900">最近の履歴</h2>',
+              '<h2 class="text-lg font-black text-stone-900">予約手続き履歴</h2>',
+              "history title"
+          )
+          replace_once(
+              '<p class="text-xs text-stone-500 mt-1">予約・キャンセル・カルテ更新など</p>',
+              '<p class="text-xs text-stone-500 mt-1">予約・変更・キャンセルの記録です。</p>',
+              "history help"
+          )
+          
+          replace_once(
+              '''  // STEP YOGA-PHONE-3: 会員ページ 電話番号正規化対応
+            const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
+            const LIFF_ID = "2010377734-4tHMhUx6";
+            const SHOP_CODE = "yoga_demo";''',
+              '''  // STEP YOGA-NEXT-7: 会員履歴・前回と同じ予約・公開情報分離
+            const WORKER_URL = "https://yoga-liff-webhook.dpromstk2000.workers.dev";
+            const LIFF_ID = "2010377734-4tHMhUx6";
+            const SHOP_CODE = "yoga_demo";
+            const STEP_VERSION = "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723";
+            const MEMBER_CONTRACT_VERSION = "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723";
+            const REPEAT_STORAGE_KEY = "yoga_member_repeat_booking";''',
+              "member constants"
+          )
+          
+          replace_once(
+              '''  let changeAvailableTimes = [];
+            let isSubmittingChange = false;''',
+              '''  let changeAvailableTimes = [];
+            let isSubmittingChange = false;
+            let lessonHistoryExpanded = false;''',
+              "member state"
+          )
+          
+          replace_once(
+              '''      $("header-subtitle").textContent = `${data.shop_name || "DPRO YOGA"} の会員ページです。現在予約・変更・キャンセル・次回案内を確認できます。`;''',
+              '''      $("header-subtitle").textContent = `${data.shop_name || "DPRO YOGA"} の会員ページです。次の予約・前回内容・受講履歴を確認できます。`;''',
+              "status subtitle"
+          )
+          
+          replace_regex(
+              r'''function renderMember\(data\) \{\n.*?\n  \}\n\n  function isHandledFollowup''',
+              '''function renderMember(data) {
+              if(data.member_contract_version !== MEMBER_CONTRACT_VERSION){
+                throw new Error("会員ページ用APIの更新を確認できません。時間をおいて開き直してください。");
+              }
+              const privacy = data.privacy_guard || {};
+              if(privacy.internal_lesson_notes_returned !== false || privacy.owner_memo_returned !== false){
+                throw new Error("会員ページの公開情報ガードを確認できません。");
+              }
+          
+              const customer = data.customer || {};
+              const reservations = Array.isArray(data.reservations) ? data.reservations : [];
+              const followups = Array.isArray(data.followups) ? data.followups : [];
+              const lessonHistory = Array.isArray(data.lesson_history) ? data.lesson_history : [];
+          
+              $("member-name").textContent = customer.name || customer.customer_name || lineDisplayName || "お客様";
+              $("member-sub").textContent = customer.phone ? `電話番号：${normalizePhone(customer.phone)}` : "LINE会員";
+              $("reservation-count").textContent = `${reservations.length}件`;
+              $("lesson-history-count").textContent = `${lessonHistory.length}件`;
+              $("followup-count").textContent = `${followups.filter(f => !isHandledFollowup(f)).length}件`;
+          
+              renderLastLesson(data.last_lesson || null, data.repeat_booking || null);
+              renderLessonHistory(lessonHistory);
+              renderReservations(reservations);
+              renderProfile(customer);
+              renderFollowups(followups);
+              renderHistory(Array.isArray(data.history) ? data.history : []);
+              renderConsultMessage();
+            }
+          
+            function isHandledFollowup''',
+              "render member",
+              flags=re.S
+          )
+          
+          replace_regex(
+              r'''function isHandledFollowup\(row\) \{\n.*?\n  \}\n\n  function renderReservations''',
+              '''function isHandledFollowup(row) {
+              return ["handled", "done", "closed", "対応済み"].includes(String(row.status || ""));
+            }
+          
+            function renderLastLesson(lastLesson, repeatBooking) {
+              const container = $("last-lesson-card");
+              if(!lastLesson){
+                container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-5 text-center">
+                  <p class="text-sm font-black text-stone-800">受講履歴はまだありません</p>
+                  <p class="text-xs text-stone-500 mt-2">受講後に、前回メニューから再予約できるようになります。</p>
+                  <button type="button" onclick="goReservationPage()" class="mt-4 w-full bg-emerald-700 text-white font-black py-3 rounded-xl">新しく予約する</button>
+                </div>`;
+                return;
+              }
+          
+              const recommended = lastLesson.next_recommended_date
+                ? `<p class="mt-2 text-xs font-bold text-emerald-800">次回おすすめ：${escapeHtml(formatDate(lastLesson.next_recommended_date))}</p>`
+                : "";
+              const request = lastLesson.request_note
+                ? `<div class="mt-3 bg-white/80 border border-emerald-100 rounded-xl p-3"><p class="text-[11px] font-bold text-stone-500">前回のお客様のご希望</p><p class="mt-1 text-sm text-stone-700 whitespace-pre-wrap">${escapeHtml(lastLesson.request_note)}</p></div>`
+                : "";
+              const repeatAvailable = repeatBooking?.available === true && repeatBooking?.service_code;
+          
+              container.innerHTML = `<div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-black text-emerald-700">${escapeHtml(formatDate(lastLesson.reservation_date))}</p>
+                    <h3 class="text-lg font-black text-stone-900 mt-1">${escapeHtml(lastLesson.service_name || "ヨガレッスン")}</h3>
+                    <p class="text-xs text-stone-600 mt-1">${escapeHtml(normalizeTime(lastLesson.reservation_time || "", ""))} 開始</p>
+                  </div>
+                  <span class="text-xs font-bold bg-white text-emerald-700 px-3 py-2 rounded-full">受講済み</span>
+                </div>
+                ${recommended}
+                ${request}
+                <button type="button" ${repeatAvailable ? "" : "disabled"} onclick="repeatLastBooking()" class="mt-4 w-full ${repeatAvailable ? "bg-emerald-700 text-white" : "bg-stone-200 text-stone-500"} font-black py-3 rounded-xl">
+                  前回と同じメニューで予約
+                </button>
+                <p class="mt-2 text-[11px] text-stone-500 leading-relaxed">日付と時間は次の画面で選びます。スタッフ用の記録・注意事項・引継ぎは会員ページには表示しません。</p>
+              </div>`;
+            }
+          
+            function renderLessonHistory(history) {
+              const container = $("lesson-history-list");
+              if(!history.length){
+                container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm text-stone-500">受講履歴はまだありません。</div>`;
+                $("lesson-history-toggle-label").textContent = "履歴なし";
+                return;
+              }
+          
+              const visible = lessonHistoryExpanded ? history : history.slice(0, 3);
+              container.innerHTML = visible.map(row => `
+                <div class="bg-stone-50 border border-stone-100 rounded-2xl p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-xs font-black text-emerald-700">${escapeHtml(formatDate(row.reservation_date))}</p>
+                      <p class="text-base font-black text-stone-900 mt-1">${escapeHtml(row.service_name || "ヨガレッスン")}</p>
+                      <p class="text-xs text-stone-500 mt-1">${escapeHtml(normalizeTime(row.reservation_time || "", ""))} 開始</p>
+                    </div>
+                    <span class="text-[11px] font-bold bg-white text-stone-600 px-3 py-2 rounded-full">受講済み</span>
+                  </div>
+                  ${row.next_recommended_date ? `<p class="mt-3 text-xs font-bold text-emerald-800">次回おすすめ：${escapeHtml(formatShortDate(row.next_recommended_date))}</p>` : ""}
+                </div>`).join("");
+          
+              $("lesson-history-toggle-label").textContent = lessonHistoryExpanded ? "3件表示" : history.length > 3 ? `すべて見る（${history.length}件）` : `${history.length}件`;
+            }
+          
+            function toggleLessonHistory(){
+              lessonHistoryExpanded = !lessonHistoryExpanded;
+              renderLessonHistory(Array.isArray(memberData?.lesson_history) ? memberData.lesson_history : []);
+            }
+          
+            function repeatLastBooking(){
+              const repeat = memberData?.repeat_booking;
+              if(!repeat?.available || !repeat.service_code){
+                alert("前回と同じ予約に使える履歴がありません。");
+                return;
+              }
+          
+              const safeRepeat = {
+                service_code: clean(repeat.service_code).slice(0, 80),
+                service_name: clean(repeat.service_name).slice(0, 160),
+                request_note: clean(repeat.request_note).slice(0, 1000),
+                previous_reservation_date: isValidDateString(repeat.previous_reservation_date) ? repeat.previous_reservation_date : "",
+                previous_reservation_time: normalizeTime(repeat.previous_reservation_time || "", ""),
+                next_recommended_date: isValidDateString(repeat.next_recommended_date) ? repeat.next_recommended_date : "",
+                source: "member_last_lesson"
+              };
+          
+              sessionStorage.setItem(REPEAT_STORAGE_KEY, JSON.stringify(safeRepeat));
+              goReservationPage({ repeat: true });
+            }
+          
+            function renderReservations''',
+              "member lesson functions",
+              flags=re.S
+          )
+          
+          replace_once(
+              '''      ["ヨガ経験", customer.yoga_experience || "未登録"],
+                ["目的", goal || "未登録"],
+                ["通うペース", customer.target_pace || "未登録"],
+                ["メモ", customer.memo || "未登録"]''',
+              '''      ["ヨガ経験", customer.yoga_experience || "未登録"],
+                ["目的", goal || "未登録"],
+                ["通うペース", customer.target_pace || "未登録"]''',
+              "remove public memo"
+          )
+          
+          replace_once(
+              '''          ${row.memo ? `<p class="text-sm text-stone-600 leading-relaxed mt-3 whitespace-pre-wrap">${escapeHtml(row.memo)}</p>` : ""}
+                    <label class="block mt-3">''',
+              '''          <label class="block mt-3">''',
+              "remove followup memo"
+          )
+          
+          replace_regex(
+              r'''function renderHistory\(history\) \{\n.*?\n  \}\n\n  function toggleHistory''',
+              '''function renderHistory(history) {
+              const container = $("history-list");
+              if (!history.length) {
+                container.innerHTML = `<div class="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm text-stone-500">予約手続き履歴はまだありません。</div>`;
+                return;
+              }
+          
+              container.innerHTML = history.slice(0, 12).map(row => `
+                <div class="bg-stone-50 border border-stone-100 rounded-2xl p-3">
+                  <div class="flex items-center justify-between gap-2">
+                    <p class="text-xs font-black text-stone-700">${escapeHtml(row.status || "予約")}</p>
+                    <p class="text-[11px] text-stone-400">${escapeHtml(String(row.created_at || "").slice(0, 10))}</p>
+                  </div>
+                  ${row.reservation_date ? `<p class="text-sm font-bold text-stone-900 mt-1">${escapeHtml(formatShortDate(row.reservation_date))} ${escapeHtml(normalizeTime(row.reservation_time || "", ""))}</p>` : ""}
+                  ${row.service_name ? `<p class="text-xs text-stone-600 mt-1">${escapeHtml(row.service_name)}</p>` : ""}
+                </div>`).join("");
+            }
+          
+            function toggleHistory''',
+              "safe reservation history",
+              flags=re.S
+          )
+          
+          replace_regex(
+              r'''function goReservationPage\(\) \{\n.*?\n  \}''',
+              '''function goReservationPage(options = {}) {
+              const url = new URL("index.html", location.href);
+              if (lineUserId) url.searchParams.set("line_user_id", lineUserId);
+              if (lineDisplayName) url.searchParams.set("line_display_name", lineDisplayName);
+              if (options.repeat === true) url.searchParams.set("repeat", "1");
+              location.href = url.toString();
+            }''',
+              "reservation navigation",
+              flags=re.S
+          )
+          
+          path.write_text(text, encoding="utf-8")
+          print("member.html YOGA-NEXT-7 patch applied")
+          PY
+
+      - name: "7. index.html 前回と同じ予約プリセットを追加"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          
+          path = Path("index.html")
+          text = path.read_text(encoding="utf-8")
+          
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: 置換対象が1件ではありません。count={count}")
+              text = text.replace(old, new, 1)
+          
+          def replace_regex(pattern: str, replacement: str, label: str, flags=0) -> None:
+              global text
+              updated, count = re.subn(pattern, lambda _: replacement, text, count=1, flags=flags)
+              if count != 1:
+                  raise SystemExit(f"{label}: 正規表現対象が1件ではありません。count={count}")
+              text = updated
+          
+          replace_once(
+              "<title>DPRO YOGA LINE 予約フォーム | YOGA-NEXT-3</title>",
+              "<title>DPRO YOGA LINE 予約フォーム | YOGA-NEXT-7</title>",
+              "title"
+          )
+          
+          replace_once(
+              '''    <div id="change-mode-banner" class="hidden bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 text-sm leading-relaxed">
+                <p class="font-black">予約変更モード</p>
+                <p id="change-mode-text" class="mt-1">変更後の日程とメニューを選択してください。</p>
+              </div>''',
+              '''    <div id="change-mode-banner" class="hidden bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 text-sm leading-relaxed">
+                <p class="font-black">予約変更モード</p>
+                <p id="change-mode-text" class="mt-1">変更後の日程とメニューを選択してください。</p>
+              </div>
+          
+              <div id="repeat-mode-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 text-sm leading-relaxed">
+                <p class="font-black">前回と同じメニューで予約</p>
+                <p id="repeat-mode-text" class="mt-1">前回のメニューを選択しました。日付と時間を選んでください。</p>
+              </div>''',
+              "repeat banner"
+          )
+          
+          replace_once(
+              '''  const SHOP_CODE = "yoga_demo";
+            const STEP_VERSION = "YOGA-NEXT-3-LINE-RECEPTION-20260723";''',
+              '''  const SHOP_CODE = "yoga_demo";
+            const STEP_VERSION = "YOGA-NEXT-7-REPEAT-BOOKING-20260723";
+            const REPEAT_STORAGE_KEY = "yoga_member_repeat_booking";
+            const IS_REPEAT_BOOKING = PAGE_PARAMS.get("repeat") === "1";
+            let repeatBookingData = null;''',
+              "repeat constants"
+          )
+          
+          repeat_functions = '''  function cleanRepeatText(value, maxLength = 500) {
+              return String(value || "").trim().slice(0, maxLength);
+            }
+          
+            function loadRepeatBookingData() {
+              if(!IS_REPEAT_BOOKING) return null;
+              try {
+                const parsed = JSON.parse(sessionStorage.getItem(REPEAT_STORAGE_KEY) || "null");
+                if(!parsed || typeof parsed !== "object") return null;
+                return {
+                  service_code: cleanRepeatText(parsed.service_code, 80),
+                  service_name: cleanRepeatText(parsed.service_name, 160),
+                  request_note: cleanRepeatText(parsed.request_note, 1000),
+                  previous_reservation_date: isValidDateString(parsed.previous_reservation_date) ? parsed.previous_reservation_date : "",
+                  previous_reservation_time: normalizeTime(parsed.previous_reservation_time || "", ""),
+                  next_recommended_date: isValidDateString(parsed.next_recommended_date) ? parsed.next_recommended_date : "",
+                  source: "member_last_lesson"
+                };
+              } catch (error) {
+                console.warn("前回予約プリセットを読み込めませんでした。", error);
+                return null;
+              }
+            }
+          
+            async function applyRepeatBookingPrefill() {
+              if(!IS_REPEAT_BOOKING || !repeatBookingData) return;
+              if(!isExisting){
+                showSystemMessage("会員情報を確認できないため、前回内容の自動入力は行いませんでした。通常予約として入力してください。", "warning");
+                return;
+              }
+          
+              const maxActive = Number(shopSettings.max_active_reservations_per_customer || 2);
+              if(activeReservations.length >= maxActive){
+                showSystemMessage(`現在${maxActive}件の予約があります。前回と同じ内容の追加予約は、現在予約を変更またはキャンセルした後にご利用ください。`, "warning");
+                return;
+              }
+          
+              startAdditionalReservation();
+          
+              if(repeatBookingData.service_code && services.some(service => service.service_code === repeatBookingData.service_code)){
+                selectService(repeatBookingData.service_code);
+              }
+          
+              const requestInput = document.getElementById("request_note");
+              if(requestInput && repeatBookingData.request_note){
+                requestInput.value = repeatBookingData.request_note;
+              }
+          
+              const banner = document.getElementById("repeat-mode-banner");
+              const label = document.getElementById("repeat-mode-text");
+              banner?.classList.remove("hidden");
+          
+              const previous = repeatBookingData.previous_reservation_date
+                ? `前回：${formatCompleteDate(repeatBookingData.previous_reservation_date)} ${repeatBookingData.previous_reservation_time || ""}`
+                : "前回の受講内容";
+              const recommended = repeatBookingData.next_recommended_date
+                ? ` / 次回おすすめ：${formatCompleteDate(repeatBookingData.next_recommended_date)}`
+                : "";
+              if(label){
+                label.innerText = `${previous} / ${repeatBookingData.service_name || "前回メニュー"}${recommended}。日付と時間は選び直してください。`;
+              }
+              document.getElementById("header-subtitle").innerText = "前回と同じメニューで次回予約";
+            }
+          
+          '''
+          replace_regex(
+              r'''  async function initLiff\(\) \{''',
+              repeat_functions + '''  async function initLiff() {''',
+              "repeat functions"
+          )
+          
+          replace_once(
+              '''      await Promise.all([loadShopStatus(), loadServices()]);
+                await loadAvailableDays();''',
+              '''      await Promise.all([loadShopStatus(), loadServices()]);
+                await loadAvailableDays();
+                repeatBookingData = loadRepeatBookingData();''',
+              "load repeat preset"
+          )
+          
+          replace_once(
+              '''      await checkExistingCustomer(lineUserId);''',
+              '''      await checkExistingCustomer(lineUserId);
+                await applyRepeatBookingPrefill();''',
+              "apply repeat preset"
+          )
+          
+          replace_regex(
+              r'''function lineReceptionType\(\) \{\n.*?\n  \}''',
+              '''function lineReceptionType() {
+              if (isChangeMode) return "change";
+              if (IS_REPEAT_BOOKING && repeatBookingData) return "repeat";
+              if (isExisting) return "additional";
+              return "new";
+            }''',
+              "repeat reception type",
+              flags=re.S
+          )
+          
+          build_payload_origin_pattern = re.compile(
+              r'''(?P<prefix>function buildPayload\(\)\s*\{.*?reception_source:\s*"line_liff",\s*)reservation_origin:\s*"customer_line",''',
+              re.S
+          )
+          origin_matches = list(build_payload_origin_pattern.finditer(text))
+          if len(origin_matches) != 1:
+              raise SystemExit(f"repeat reservation origin: buildPayload内の対象が1件ではありません。count={len(origin_matches)}")
+
+          text = build_payload_origin_pattern.sub(
+              lambda match: match.group("prefix") + 'reservation_origin: IS_REPEAT_BOOKING && repeatBookingData ? "member_repeat" : "customer_line",',
+              text,
+              count=1
+          )
+          
+          replace_once(
+              '''      latestReservation = lastSubmittedReservation;
+          
+                document.getElementById("survey-section").classList.add("hidden");''',
+              '''      latestReservation = lastSubmittedReservation;
+                if(IS_REPEAT_BOOKING) sessionStorage.removeItem(REPEAT_STORAGE_KEY);
+          
+                document.getElementById("survey-section").classList.add("hidden");''',
+              "clear repeat storage"
+          )
+          
+          path.write_text(text, encoding="utf-8")
+          print("index.html YOGA-NEXT-7 patch applied")
+          PY
+
+      - name: "8. HTML・JavaScript・ID重複・公開情報分離検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import collections
+          import datetime as dt
+          import hashlib
+          import json
+          import os
+          import re
+          import subprocess
+          import tempfile
+          
+          class Inspector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.ids = []
+                  self.scripts = []
+                  self.in_script = False
+                  self.parts = []
+          
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if attrs.get("id"):
+                      self.ids.append(attrs["id"])
+                  if tag.lower() == "script" and not attrs.get("src"):
+                      self.in_script = True
+                      self.parts = []
+          
+              def handle_data(self, data):
+                  if self.in_script:
+                      self.parts.append(data)
+          
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.in_script:
+                      self.scripts.append("\n".join(self.parts))
+                      self.in_script = False
+                      self.parts = []
+          
+          def inspect(file_name):
+              path = Path(file_name)
+              text = path.read_text(encoding="utf-8")
+              parser = Inspector()
+              parser.feed(text)
+              parser.close()
+          
+              duplicates = sorted(k for k,v in collections.Counter(parser.ids).items() if v > 1)
+              if duplicates:
+                  raise SystemExit(f"{file_name} HTML ID重複: {duplicates}")
+          
+              for i, script in enumerate(parser.scripts, 1):
+                  if not script.strip():
+                      continue
+                  with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+                      tmp.write(script)
+                      temp_name = tmp.name
+                  try:
+                      check = subprocess.run(["node", "--check", temp_name], text=True, capture_output=True)
+                      if check.returncode != 0:
+                          raise SystemExit(f"{file_name} JavaScript構文NG inline-{i}: {check.stderr}")
+                  finally:
+                      Path(temp_name).unlink(missing_ok=True)
+          
+              return text, path.stat().st_size
+          
+          member, member_size = inspect("member.html")
+          index, index_size = inspect("index.html")
+          
+          member_required = {
+              "version": "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723",
+              "contract": "YOGA-NEXT-7-SAFE-MEMBER-CONTRACT-20260723",
+              "last_lesson": 'id="last-lesson-card"',
+              "lesson_history": 'id="lesson-history-list"',
+              "repeat_function": "function repeatLastBooking()",
+              "repeat_storage": 'sessionStorage.setItem(REPEAT_STORAGE_KEY',
+              "privacy_guard": "internal_lesson_notes_returned",
+              "safe_history": "function renderHistory(history)",
+              "member_api": '"/api/public/customer"',
+          }
+          index_required = {
+              "version": "YOGA-NEXT-7-REPEAT-BOOKING-20260723",
+              "repeat_banner": 'id="repeat-mode-banner"',
+              "repeat_load": "function loadRepeatBookingData()",
+              "repeat_apply": "async function applyRepeatBookingPrefill()",
+              "repeat_origin": '"member_repeat"',
+              "repeat_type": 'return "repeat"',
+              "create_api": '"/api/reservations/create"',
+              "change_api": '"/api/reservations/change"',
+              "cancel_api": '"/api/reservations/cancel"',
+          }
+          
+          missing_member = [name for name, marker in member_required.items() if marker not in member]
+          missing_index = [name for name, marker in index_required.items() if marker not in index]
+          if missing_member:
+              raise SystemExit(f"member.html必要機能不足: {missing_member}")
+          if missing_index:
+              raise SystemExit(f"index.html必要機能不足: {missing_index}")
+          
+          required_privacy_guards = [
+              "privacy.internal_lesson_notes_returned !== false",
+              "privacy.owner_memo_returned !== false",
+          ]
+          missing_privacy_guards = [marker for marker in required_privacy_guards if marker not in member]
+          if missing_privacy_guards:
+              raise SystemExit(f"会員画面の公開情報安全ガード不足: {missing_privacy_guards}")
+
+          # 安全ガード名の owner_memo_returned は許可し、
+          # 実際に内部フィールドを読み取るコードだけを漏えいとして検出する。
+          forbidden_member_patterns = {
+              "customer.memo": re.compile(r'''\bcustomer\s*(?:\.\s*memo\b|\[\s*["']memo["']\s*\])'''),
+              "row.memo": re.compile(r'''\brow\s*(?:\.\s*memo\b|\[\s*["']memo["']\s*\])'''),
+              "lesson_content": re.compile(r'''(?:\.\s*lesson_content\b|\[\s*["']lesson_content["']\s*\]|["']lesson_content["']\s*:)'''),
+              "lesson_attention": re.compile(r'''(?:\.\s*lesson_attention\b|\[\s*["']lesson_attention["']\s*\]|["']lesson_attention["']\s*:)'''),
+              "lesson_handoff": re.compile(r'''(?:\.\s*lesson_handoff\b|\[\s*["']lesson_handoff["']\s*\]|["']lesson_handoff["']\s*:)'''),
+              "owner_memo": re.compile(r'''(?:\.\s*owner_memo\b|\[\s*["']owner_memo["']\s*\]|["']owner_memo["']\s*:)'''),
+              "workflow_note": re.compile(r'''(?:\.\s*workflow_note\b|\[\s*["']workflow_note["']\s*\]|["']workflow_note["']\s*:)'''),
+          }
+          leaked = sorted(
+              label for label, pattern in forbidden_member_patterns.items()
+              if pattern.search(member)
+          )
+          if leaked:
+              raise SystemExit(f"会員画面に内部情報の実参照があります: {leaked}")
+          
+          if "/api/admin/" in member or "/api/admin/" in index:
+              raise SystemExit("お客様画面に管理APIが混入しています。")
+          if "管理コード" in member or "管理コード" in index:
+              raise SystemExit("お客様画面に管理コード文言が混入しています。")
+          
+          api_pattern = re.compile(r'''["'](/api/[A-Za-z0-9_./-]+)["']''')
+          api_checks = {}
+          for file_name in ["member.html", "index.html"]:
+              before = subprocess.run(
+                  ["git", "show", f"{os.environ['BEFORE_TAG']}:{file_name}"],
+                  text=True,
+                  capture_output=True,
+                  check=True,
+              ).stdout
+              after = Path(file_name).read_text(encoding="utf-8")
+              before_paths = sorted(set(api_pattern.findall(before)))
+              after_paths = sorted(set(api_pattern.findall(after)))
+              api_checks[file_name] = {
+                  "before": before_paths,
+                  "after": after_paths,
+                  "unchanged": before_paths == after_paths,
+              }
+              if before_paths != after_paths:
+                  raise SystemExit(f"{file_name}のページAPIパスが変化しています。before={before_paths} after={after_paths}")
+          
+          unchanged = {}
+          for file_name in ["owner.html", "owner-ipad.html"]:
+              current = Path(file_name).read_bytes()
+              baseline = subprocess.run(
+                  ["git", "show", f"{os.environ['BEFORE_TAG']}:{file_name}"],
+                  capture_output=True,
+                  check=True,
+              ).stdout
+              unchanged[file_name] = hashlib.sha256(current).hexdigest() == hashlib.sha256(baseline).hexdigest()
+              if not unchanged[file_name]:
+                  raise SystemExit(f"{file_name}が変更されています。")
+          
+          if member_size > 90000:
+              raise SystemExit(f"member.html容量超過: {member_size} bytes")
+          if index_size > 100000:
+              raise SystemExit(f"index.html容量超過: {index_size} bytes")
+          
+          changed = subprocess.run(
+              ["git", "diff", "--name-only", os.environ["BEFORE_SHA"]],
+              text=True,
+              capture_output=True,
+              check=True,
+          ).stdout.splitlines()
+          
+          forbidden_files = [
+              path for path in changed
+              if re.search(r"(^|/)worker\.js$|\.sql$|supabase|wrangler", path, re.I)
+          ]
+          if forbidden_files:
+              raise SystemExit(f"リポジトリ内のWorkerまたはSupabase変更を検出: {forbidden_files}")
+          
+          result = {
+              "ok": True,
+              "overall": "OK",
+              "step": "YOGA-NEXT-7-R3",
+              "completed_step": "YOGA-NEXT-7",
+              "applied_revision": "R3",
+              "r1_result": "FAILED_BEFORE_COMMIT",
+              "r1_failure_reason": "reservation_origin_exact_match_count_2",
+              "r2_result": "FAILED_BEFORE_COMMIT",
+              "r2_failure_reason": "owner_memo_privacy_guard_false_positive",
+              "checked_at_jst": dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat(),
+              "repository": os.environ.get("GITHUB_REPOSITORY", ""),
+              "branch": os.environ.get("GITHUB_REF_NAME", ""),
+              "run_id": os.environ.get("GITHUB_RUN_ID", ""),
+              "before_sha": os.environ["BEFORE_SHA"],
+              "before_tag": os.environ["BEFORE_TAG"],
+              "target_files": ["member.html", "index.html"],
+              "html_syntax": "OK",
+              "javascript_syntax": "OK",
+              "html_id_duplicates": "OK",
+              "page_api_paths_preserved": api_checks,
+              "public_admin_information": "OK",
+              "internal_lesson_note_reference": "NONE",
+              "privacy_guard_reference": "REQUIRED_AND_PRESENT",
+              "owner_memo_guard_false_positive_fixed": True,
+              "last_lesson": "ADDED",
+              "lesson_history": "ADDED",
+              "repeat_booking": "ADDED",
+              "repeat_transport": "SESSION_STORAGE",
+              "automatic_line_send": False,
+              "unchanged_admin_screens": unchanged,
+              "member_bytes": member_size,
+              "index_bytes": index_size,
+              "worker_changed": True,
+              "supabase_changed": False,
+              "api_changed": True,
+              "worker_version": os.environ["EXPECTED_WORKER_VERSION"],
+              "member_contract_version": os.environ["EXPECTED_MEMBER_CONTRACT"],
+              "changed_files_before_ledger": changed,
+          }
+          
+          Path(os.environ["RESULT_FILE"]).write_text(
+              json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(result, ensure_ascii=False, indent=2))
+          PY
+
+      - name: "9. 会員履歴・前回予約業務ロジック検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import subprocess
+          import tempfile
+          
+          class ScriptParser(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.scripts = []
+                  self.in_script = False
+                  self.parts = []
+          
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "script" and not dict(attrs).get("src"):
+                      self.in_script = True
+                      self.parts = []
+          
+              def handle_data(self, data):
+                  if self.in_script:
+                      self.parts.append(data)
+          
+              def handle_endtag(self, tag):
+                  if tag.lower() == "script" and self.in_script:
+                      self.scripts.append("\n".join(self.parts))
+                      self.in_script = False
+                      self.parts = []
+          
+          def largest_script(file_name):
+              parser = ScriptParser()
+              parser.feed(Path(file_name).read_text(encoding="utf-8"))
+              scripts = [s for s in parser.scripts if s.strip()]
+              if not scripts:
+                  raise SystemExit(f"{file_name}のJavaScriptがありません。")
+              return max(scripts, key=len)
+          
+          member_script = largest_script("member.html")
+          member_prelude = r'''
+          const elements = {};
+          globalThis.window = {
+            location:{search:"",href:"https://example.com/member.html"},
+            addEventListener:()=>{},
+            setTimeout:()=>0,
+            clearTimeout:()=>{},
+            scrollTo:()=>{}
+          };
+          globalThis.location = window.location;
+          globalThis.document = {
+            getElementById:(id)=>elements[id] || null,
+            createElement:()=>({style:{},focus:()=>{},select:()=>{},remove:()=>{}}),
+            body:{appendChild:()=>{}},
+            execCommand:()=>true
+          };
+          globalThis.sessionStorage = {
+            values:{},
+            setItem(key,value){this.values[key]=String(value);},
+            getItem(key){return this.values[key] ?? null;},
+            removeItem(key){delete this.values[key];}
+          };
+          globalThis.navigator = {clipboard:{writeText:async()=>{}},vibrate:()=>{}};
+          globalThis.fetch = async()=>{throw new Error("fetch disabled");};
+          globalThis.alert = ()=>{};
+          globalThis.confirm = ()=>false;
+          globalThis.prompt = ()=>"";
+          globalThis.liff = {};
+          '''
+          
+          member_tests = r'''
+          memberData = {
+            repeat_booking:{
+              available:true,
+              service_code:"personal_60",
+              service_name:"パーソナルヨガ 60分",
+              request_note:"肩まわりを中心に希望",
+              previous_reservation_date:"2026-07-20",
+              previous_reservation_time:"10:00",
+              next_recommended_date:"2026-07-27"
+            }
+          };
+          let navigated = null;
+          goReservationPage = (options={}) => { navigated = options; };
+          repeatLastBooking();
+          
+          const stored = JSON.parse(sessionStorage.getItem(REPEAT_STORAGE_KEY));
+          if(stored.service_code !== "personal_60") throw new Error("repeat service");
+          if(stored.request_note !== "肩まわりを中心に希望") throw new Error("repeat request note");
+          if(stored.next_recommended_date !== "2026-07-27") throw new Error("repeat date");
+          if(navigated?.repeat !== true) throw new Error("repeat navigation");
+          const source = String(repeatLastBooking) + String(renderLastLesson) + String(renderLessonHistory);
+          if(["lesson_content","lesson_attention","lesson_handoff","owner_memo","workflow_note"].some(marker => source.includes(marker))) throw new Error("internal reference");
+          console.log("MEMBER_REPEAT_LOGIC_OK");
+          '''
+          
+          with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+              tmp.write(member_prelude + "\n" + member_script + "\n" + member_tests)
+              member_temp = tmp.name
+          
+          try:
+              run = subprocess.run(["node", member_temp], text=True, capture_output=True)
+              print(run.stdout)
+              if run.returncode != 0:
+                  print(run.stderr)
+                  raise SystemExit("会員ページ再予約ロジック検査NG")
+              if "MEMBER_REPEAT_LOGIC_OK" not in run.stdout:
+                  raise SystemExit("会員ページ再予約ロジックPASSを確認できません。")
+          finally:
+              Path(member_temp).unlink(missing_ok=True)
+          
+          index_script = largest_script("index.html")
+          index_prelude = r'''
+          globalThis.window = {
+            location:{search:"?repeat=1",href:"https://example.com/index.html?repeat=1"},
+            addEventListener:()=>{},
+            setTimeout:()=>0,
+            clearTimeout:()=>{},
+            scrollTo:()=>{}
+          };
+          globalThis.location = window.location;
+          globalThis.document = {
+            getElementById:()=>null,
+            querySelectorAll:()=>[]
+          };
+          globalThis.sessionStorage = {
+            values:{
+              "yoga_member_repeat_booking":JSON.stringify({
+                service_code:"personal_60",
+                service_name:"パーソナルヨガ 60分",
+                request_note:"肩まわりを中心に希望",
+                previous_reservation_date:"2026-07-20",
+                previous_reservation_time:"10:00",
+                next_recommended_date:"2026-07-27"
+              })
+            },
+            setItem(key,value){this.values[key]=String(value);},
+            getItem(key){return this.values[key] ?? null;},
+            removeItem(key){delete this.values[key];}
+          };
+          globalThis.navigator = {};
+          globalThis.fetch = async()=>{throw new Error("fetch disabled");};
+          globalThis.alert = ()=>{};
+          globalThis.confirm = ()=>false;
+          globalThis.prompt = ()=>"";
+          globalThis.liff = {};
+          '''
+          
+          index_tests = r'''
+          repeatBookingData = loadRepeatBookingData();
+          if(!IS_REPEAT_BOOKING) throw new Error("repeat mode");
+          if(repeatBookingData.service_code !== "personal_60") throw new Error("load repeat service");
+          if(repeatBookingData.previous_reservation_time !== "10:00") throw new Error("load repeat time");
+          isChangeMode = false;
+          isExisting = true;
+          if(lineReceptionType() !== "repeat") throw new Error("repeat reception type");
+          isChangeMode = true;
+          if(lineReceptionType() !== "change") throw new Error("change precedence");
+          console.log("INDEX_REPEAT_LOGIC_OK");
+          '''
+          
+          with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as tmp:
+              tmp.write(index_prelude + "\n" + index_script + "\n" + index_tests)
+              index_temp = tmp.name
+          
+          try:
+              run = subprocess.run(["node", index_temp], text=True, capture_output=True)
+              print(run.stdout)
+              if run.returncode != 0:
+                  print(run.stderr)
+                  raise SystemExit("予約画面プリセットロジック検査NG")
+              if "INDEX_REPEAT_LOGIC_OK" not in run.stdout:
+                  raise SystemExit("予約画面プリセットロジックPASSを確認できません。")
+          finally:
+              Path(index_temp).unlink(missing_ok=True)
+          PY
+
+      - name: "10. NEXT-7完成台帳更新"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          completed_at="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %z')"
+          member_blob="$(git hash-object member.html)"
+          index_blob="$(git hash-object index.html)"
+          member_bytes="$(wc -c < member.html | tr -d ' ')"
+          index_bytes="$(wc -c < index.html | tr -d ' ')"
+
+          cat > "$LEDGER_FILE" <<EOF
+          system_name: "DPRO ヨガ LINE"
+          standard: "DPRO NEXT"
+          step_name: "LINE会員ページ・履歴・前回と同じ予約"
+          current_step: "YOGA-NEXT-7-COMPLETE"
+          previous_step: "YOGA-NEXT-6-COMPLETE"
+          next_step: "YOGA-NEXT-8"
+          completed_at_jst: "$completed_at"
+          applied_revision: "R3"
+          r1_result: "FAILED_BEFORE_COMMIT"
+          r1_failure_reason: "reservation_origin_exact_match_count_2"
+          r2_result: "FAILED_BEFORE_COMMIT"
+          r2_failure_reason: "owner_memo_privacy_guard_false_positive"
+          before_sha: "$BEFORE_SHA"
+          before_tag: "$BEFORE_TAG"
+          before_tag_status: "$BEFORE_TAG_STATUS"
+          target_files:
+            - "member.html"
+            - "index.html"
+          worker:
+            changed: true
+            deployed_before_yml: true
+            version: "$EXPECTED_WORKER_VERSION"
+            member_contract_version: "$EXPECTED_MEMBER_CONTRACT"
+          privacy:
+            public_customer_profile_sanitized: true
+            active_reservations_sanitized: true
+            lesson_history_sanitized: true
+            followups_sanitized: true
+            line_message_body_excluded: true
+            customer_memo_excluded: true
+            owner_memo_excluded: true
+            owner_memo_privacy_guard_required: true
+            internal_field_access_pattern_check: true
+            lesson_content_excluded: true
+            lesson_attention_excluded: true
+            lesson_handoff_excluded: true
+            workflow_note_excluded: true
+          implementation:
+            current_reservation_preserved: true
+            last_lesson_card: true
+            lesson_history: true
+            lesson_history_initial_limit: 3
+            lesson_history_max_api_rows: 24
+            repeat_same_service: true
+            repeat_customer_request_note: true
+            repeat_date_time_reselection: true
+            repeat_transport: "sessionStorage"
+            query_parameter_contains_internal_data: false
+            automatic_line_send: false
+          checks:
+            required_files: "OK"
+            previous_step: "OK"
+            yml_syntax: "OK"
+            worker_member_contract: "OK"
+            worker_privacy: "OK"
+            html_syntax: "OK"
+            javascript_syntax: "OK"
+            html_id_duplicates: "OK"
+            public_information_separation: "OK"
+            member_repeat_logic: "OK"
+            index_repeat_logic: "OK"
+            page_api_paths_preserved: "OK"
+            admin_screen_hash_preservation: "OK"
+            overall: "OK"
+          change_record:
+            worker_changed: true
+            supabase_changed: false
+            api_changed: true
+            api_response_changed: true
+            member_html_changed: true
+            index_html_changed: true
+            owner_html_changed: false
+            owner_ipad_html_changed: false
+            existing_data_changed: false
+          file_result:
+            member:
+              path: "member.html"
+              blob_sha: "$member_blob"
+              bytes: $member_bytes
+              version: "YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723"
+            reservation:
+              path: "index.html"
+              blob_sha: "$index_blob"
+              bytes: $index_bytes
+              version: "YOGA-NEXT-7-REPEAT-BOOKING-20260723"
+          generated_files:
+            - "dpro-next-ledger.yml"
+            - "dpro-next-yoga-next-7-result.json"
+          known_attention:
+            - "前回と同じ予約はメニューとお客様自身の希望だけを引き継ぎ、日付・時間は毎回選び直す"
+            - "スタッフ用レッスン記録は会員画面へ公開しない"
+            - "次回おすすめ日は表示のみで、自動LINE配信は行わない"
+            - "LINE会員本人確認を優先し、電話番号検索はデモ用途に限定する"
+          rollback:
+            github:
+              method: "backup_tag"
+              tag: "$BEFORE_TAG"
+              command_reference: "git checkout $BEFORE_TAG -- member.html index.html dpro-next-ledger.yml"
+            worker:
+              method: "redeploy_previous_worker"
+              previous_version: "YOGA-NEXT-5-LESSON-RECORD-20260723"
+          workflow_self_delete_after_success: true
+          failed_workflow_self_delete_after_success: true
+          failed_r2_workflow_self_delete_after_success: true
+          auto_commit_push: true
+          EOF
+
+      - name: "11. 最終変更範囲・完了状態検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          grep -q 'current_step: "YOGA-NEXT-7-COMPLETE"' "$LEDGER_FILE"
+          grep -q 'next_step: "YOGA-NEXT-8"' "$LEDGER_FILE"
+          grep -q 'applied_revision: "R3"' "$LEDGER_FILE"
+          grep -q '"overall": "OK"' "$RESULT_FILE"
+          grep -q 'YOGA-NEXT-7-MEMBER-HISTORY-REPEAT-20260723' member.html
+          grep -q 'YOGA-NEXT-7-REPEAT-BOOKING-20260723' index.html
+          grep -q 'id="last-lesson-card"' member.html
+          grep -q 'id="lesson-history-list"' member.html
+          grep -q 'function repeatLastBooking()' member.html
+          grep -q 'id="repeat-mode-banner"' index.html
+          grep -q 'async function applyRepeatBookingPrefill()' index.html
+
+          allowed_regex='^(member\.html|index\.html|dpro-next-ledger\.yml|dpro-next-yoga-next-7-result\.json|\.github/workflows/STEP-YOGA-NEXT-7\.yml|\.github/workflows/STEP-YOGA-NEXT-7-R2\.yml|\.github/workflows/STEP-YOGA-NEXT-7-R3\.yml)$'
+          unexpected="$(git diff --name-only "$BEFORE_SHA" | grep -Ev "$allowed_regex" || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "::error::想定外の変更ファイルがあります:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+          {
+            echo ""
+            echo "### YOGA-NEXT-7-R3 検査結果"
+            echo "- 会員用安全データ契約: OK"
+            echo "- 前回レッスン表示: OK"
+            echo "- 受講履歴: OK"
+            echo "- 前回と同じメニュー予約: OK"
+            echo "- 内部記録非公開: OK"
+            echo "- 自動LINE配信なし: OK"
+            echo "- Supabase変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "12. 成功後R1・R2・R3 YMLを削除"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f "$FAILED_WORKFLOW_R1_PATH" "$FAILED_WORKFLOW_R2_PATH" "$WORKFLOW_PATH"
+          test ! -f "$FAILED_WORKFLOW_R1_PATH"
+          test ! -f "$FAILED_WORKFLOW_R2_PATH"
+          test ! -f "$WORKFLOW_PATH"
+
+      - name: "13. 自動Commit・Push"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add member.html index.html "$LEDGER_FILE" "$RESULT_FILE"
+          git add -A .github/workflows
+
+          if git diff --cached --quiet; then
+            echo "::error::Commit対象がありません。"
+            exit 1
+          fi
+
+          git commit -m "fix(yoga-next): complete YOGA-NEXT-7 R3 privacy validation [skip ci]"
+          git push origin HEAD:main
+
+          {
+            echo ""
+            echo "### 完了"
+            echo "- current_step: YOGA-NEXT-7-COMPLETE"
+            echo "- next_step: YOGA-NEXT-8"
+            echo "- 適用版: R3"
+            echo "- Worker変更: あり・稼働確認済み"
+            echo "- Supabase変更: なし"
+            echo "- R1・R2・R3 YML: 削除済み"
+            echo "- 自動Commit・Push: 完了"
+          } >> "$GITHUB_STEP_SUMMARY"
