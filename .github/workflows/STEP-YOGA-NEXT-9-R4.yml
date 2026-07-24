@@ -1,0 +1,528 @@
+name: "STEP YOGA-NEXT-9-R4 | browser system-check Cloudflare 1010判定修正版"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/STEP-YOGA-NEXT-9-R4.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: yoga-next-9-r4-browser-system-check
+  cancel-in-progress: false
+
+jobs:
+  browser-system-check-fix:
+    name: "YOGA-NEXT-9-R4 browser runtime check fix"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      WORKFLOW_PATH: ".github/workflows/STEP-YOGA-NEXT-9-R4.yml"
+      LEDGER_FILE: "dpro-next-ledger.yml"
+      STATIC_REPORT_FILE: "dpro-next-yoga-next-9-static.json"
+      RESULT_FILE: "dpro-next-yoga-next-9-result.json"
+      BEFORE_TAG: "dpro-yoga-next-9-r4-before-20260724"
+      EXPECTED_SYSTEM_CHECK_BLOB_SHA: "cd90eb5c1caff08aa7ffed783af4c4c29edac2dd"
+      EXPECTED_LEDGER_BLOB_SHA: "1714f56046066084d1575bf9e52dc579d6ac7281"
+      EXPECTED_STATIC_BLOB_SHA: "dadffcd83a0c16c09f8a10a6abb67f351733d144"
+      EXPECTED_RESULT_BLOB_SHA: "11d2d66b9bf99b20027e39017c6320a32e8df828"
+
+    steps:
+      - name: "1. Checkout full repository history"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "2. NEXT-9完成状態・公開後NG・基準ファイル確認"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          for file in \
+            system-check.html \
+            "$LEDGER_FILE" \
+            "$STATIC_REPORT_FILE" \
+            "$RESULT_FILE" \
+            "$WORKFLOW_PATH"
+          do
+            [[ -f "$file" ]] || {
+              echo "::error file=$file::YOGA-NEXT-9-R4の必須ファイルがありません。"
+              exit 1
+            }
+          done
+
+          grep -q 'current_step: "YOGA-NEXT-9-COMPLETE"' "$LEDGER_FILE" || {
+            echo "::error file=$LEDGER_FILE::YOGA-NEXT-9-COMPLETEを確認できません。"
+            exit 1
+          }
+
+          declare -A expected=(
+            ["system-check.html"]="$EXPECTED_SYSTEM_CHECK_BLOB_SHA"
+            ["$LEDGER_FILE"]="$EXPECTED_LEDGER_BLOB_SHA"
+            ["$STATIC_REPORT_FILE"]="$EXPECTED_STATIC_BLOB_SHA"
+            ["$RESULT_FILE"]="$EXPECTED_RESULT_BLOB_SHA"
+          )
+
+          for file in "${!expected[@]}"; do
+            current="$(git hash-object "$file")"
+            [[ "$current" == "${expected[$file]}" ]] || {
+              echo "::error file=$file::R3公開後の確認済み基準と一致しません。期待=${expected[$file]} / 現在=$current"
+              exit 1
+            }
+          done
+
+          for old in \
+            .github/workflows/STEP-YOGA-NEXT-9.yml \
+            .github/workflows/STEP-YOGA-NEXT-9-R2.yml \
+            .github/workflows/STEP-YOGA-NEXT-9-R3.yml
+          do
+            [[ ! -e "$old" ]] || {
+              echo "::error file=$old::成功済み旧YMLが残っています。"
+              exit 1
+            }
+          done
+
+          mapfile -t changed < <(git diff-tree --no-commit-id --name-only -r HEAD)
+          before_sha="$(git rev-parse HEAD)"
+          if [[ "${#changed[@]}" -eq 1 && "${changed[0]}" == "$WORKFLOW_PATH" ]]; then
+            before_sha="$(git rev-parse HEAD^)"
+          fi
+
+          echo "BEFORE_SHA=$before_sha" >> "$GITHUB_ENV"
+
+          {
+            echo "## STEP YOGA-NEXT-9-R4"
+            echo ""
+            echo "- R3 Actions結果: COMPLETE"
+            echo "- 公開後ブラウザ検査: Cloudflare 1010を6件NG表示"
+            echo "- 本日業務API・顧客検索API: 同じブラウザでHTTP 200"
+            echo "- 問題箇所: system-checkの1010分類と再試行不足"
+            echo "- 修正対象: system-check.htmlのみ"
+            echo "- Worker / Supabase / API変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "3. 変更前バックアップタグ作成"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "$BEFORE_TAG" >/dev/null 2>&1; then
+            tag_sha="$(git rev-list -n 1 "$BEFORE_TAG")"
+            [[ "$tag_sha" == "$BEFORE_SHA" ]] || {
+              echo "::error::既存バックアップタグが別SHAを指しています。"
+              exit 1
+            }
+            status="existing_same_sha"
+          else
+            git tag -a "$BEFORE_TAG" "$BEFORE_SHA" -m "DPRO ヨガ LINE before YOGA-NEXT-9-R4"
+            git push origin "$BEFORE_TAG"
+            status="created"
+          fi
+
+          echo "BEFORE_TAG_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: "4. YML構文検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ruby -e 'require "yaml"; YAML.load_file(ARGV[0], aliases: true); puts "YAML syntax OK"' "$WORKFLOW_PATH"
+
+      - name: "5. system-check Cloudflare 1010再試行・注意判定を適用"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path=Path("system-check.html")
+          text=path.read_text(encoding="utf-8")
+
+          def replace_once(old,new,label):
+              global text
+              count=text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1, got {count}")
+              text=text.replace(old,new,1)
+
+          replace_once(
+              'const SYSTEM_CHECK_VERSION="YOGA-NEXT-9-SYSTEM-CHECK-20260724";',
+              'const SYSTEM_CHECK_VERSION="YOGA-NEXT-9-R4-SYSTEM-CHECK-20260724";',
+              "version",
+          )
+
+          replace_once(
+              'async function timedFetch(url,options={},timeoutMs=9000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs),started=performance.now();try{const response=await fetch(url,{cache:"no-store",...options,signal:controller.signal});const text=await response.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}return{response,data,text,ms:performance.now()-started}}finally{clearTimeout(timer)}}',
+              '''async function timedFetch(url,options={},timeoutMs=9000){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs),started=performance.now();try{const response=await fetch(url,{cache:"no-store",mode:"cors",credentials:"omit",redirect:"follow",...options,signal:controller.signal});const text=await response.text();let data={};try{data=text?JSON.parse(text):{}}catch{data={raw:text}}return{response,data,text,ms:performance.now()-started}}finally{clearTimeout(timer)}}
+          function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+          function isCloudflare1010(response,data,text){const body=`${text||""} ${data?.raw||""} ${data?.error||""} ${data?.message||""}`.toLowerCase();return response?.status===403&&(body.includes("1010")||body.includes("browser signature"))}
+          function cloudflareAttentionDetail(attempts){return `Cloudflare 1010（ブラウザ経路の一時拒否・${attempts}回再試行済み）。Worker障害とは判定せず、同時検査の正常APIとGitHub Actions実接続結果を併用`;}''',
+              "timed fetch and helper",
+          )
+
+          replace_once(
+              'async function checkJson(group,label,path,params,validator,options={}){try{const{response,data,ms}=await timedFetch(urlWithParams(path,params),options);const valid=response.ok&&data.ok!==false&&!data.error&&(!validator||validator(data,response));const status=valid?performanceStatus(ms):"NG";addResult(group,label,status,valid?`HTTP ${response.status}`:`HTTP ${response.status} / ${data.error||data.message||"応答内容不一致"}`,ms);return{ok:valid,data,response,ms}}catch(e){addResult(group,label,"NG",e.name==="AbortError"?"タイムアウト":e.message);return{ok:false,error:e}}}',
+              '''async function checkJson(group,label,path,params,validator,options={}){
+            let last=null;
+            for(let attempt=1;attempt<=3;attempt++){
+              try{
+                const retryParams={...params};
+                if(attempt>1)retryParams._dpro_retry=`${Date.now()}_${attempt}`;
+                last=await timedFetch(urlWithParams(path,retryParams),options);
+                const{response,data,text,ms}=last;
+                if(isCloudflare1010(response,data,text)){
+                  if(attempt<3){await sleep(attempt*700);continue}
+                  addResult(group,label,"注意",cloudflareAttentionDetail(attempt),ms);
+                  return{ok:false,attention:true,cloudflare1010:true,data,response,ms};
+                }
+                const valid=response.ok&&data.ok!==false&&!data.error&&(!validator||validator(data,response));
+                const status=valid?performanceStatus(ms):"NG";
+                addResult(group,label,status,valid?`HTTP ${response.status}`:`HTTP ${response.status} / ${data.error||data.message||data.raw||"応答内容不一致"}`,ms);
+                return{ok:valid,data,response,ms};
+              }catch(e){
+                if(attempt<3){await sleep(attempt*700);continue}
+                addResult(group,label,"NG",e.name==="AbortError"?"3回再試行後もタイムアウト":e.message);
+                return{ok:false,error:e};
+              }
+            }
+            return{ok:false,error:new Error("unexpected retry exit"),last};
+          }''',
+              "checkJson",
+          )
+
+          replace_once(
+              'async function checkAdminCodeRejection(){try{const invalid=`NEXT9_INVALID_${Date.now()}`,{response,data,ms}=await timedFetch(urlWithParams("/api/admin/summary",{shop_code:SHOP_CODE,admin_code:invalid}));const rejected=!response.ok||data.ok===false||Boolean(data.error);addResult("セキュリティ","不正な管理コードの拒否",rejected?"OK":"NG",`HTTP ${response.status}${data.error?` / ${data.error}`:""}`,ms)}catch(e){addResult("セキュリティ","不正な管理コードの拒否","注意",`通信エラー：${e.message}`)}}',
+              '''async function checkAdminCodeRejection(){
+            const invalid=`NEXT9_INVALID_${Date.now()}`;
+            for(let attempt=1;attempt<=3;attempt++){
+              try{
+                const{response,data,text,ms}=await timedFetch(urlWithParams("/api/admin/summary",{shop_code:SHOP_CODE,admin_code:invalid,_dpro_retry:attempt>1?`${Date.now()}_${attempt}`:""}));
+                if(isCloudflare1010(response,data,text)){
+                  if(attempt<3){await sleep(attempt*700);continue}
+                  addResult("セキュリティ","不正な管理コードの拒否","注意",`${cloudflareAttentionDetail(attempt)}。GitHub Actionsでは不正コードHTTP 403拒否PASS`,ms);
+                  return;
+                }
+                const rejected=!response.ok||data.ok===false||Boolean(data.error);
+                addResult("セキュリティ","不正な管理コードの拒否",rejected?"OK":"NG",`HTTP ${response.status}${data.error?` / ${data.error}`:""}`,ms);
+                return;
+              }catch(e){
+                if(attempt<3){await sleep(attempt*700);continue}
+                addResult("セキュリティ","不正な管理コードの拒否","注意",`3回再試行後も通信確認不能：${e.message}`);
+                return;
+              }
+            }
+          }''',
+              "admin rejection check",
+          )
+
+          path.write_text(text,encoding="utf-8")
+          print("system-check browser 1010 retry and attention classification applied")
+          PY
+
+      - name: "6. HTML・JavaScript・R4ロジック自動検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          import collections
+          import json
+          import subprocess
+          import tempfile
+
+          path=Path("system-check.html")
+          text=path.read_text(encoding="utf-8")
+
+          class Inspector(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.ids=[]
+                  self.scripts=[]
+                  self.inside=False
+                  self.parts=[]
+              def handle_starttag(self,tag,attrs):
+                  attrs=dict(attrs)
+                  if attrs.get("id"): self.ids.append(attrs["id"])
+                  if tag.lower()=="script" and not attrs.get("src"):
+                      self.inside=True
+                      self.parts=[]
+              def handle_data(self,data):
+                  if self.inside:self.parts.append(data)
+              def handle_endtag(self,tag):
+                  if tag.lower()=="script" and self.inside:
+                      self.scripts.append("\n".join(self.parts))
+                      self.inside=False
+                      self.parts=[]
+
+          parser=Inspector()
+          parser.feed(text)
+          parser.close()
+
+          duplicates=sorted(k for k,v in collections.Counter(parser.ids).items() if v>1)
+          if duplicates:
+              raise SystemExit(f"HTML ID重複: {duplicates}")
+
+          for script in parser.scripts:
+              if not script.strip():continue
+              with tempfile.NamedTemporaryFile("w",suffix=".js",encoding="utf-8",delete=False) as tmp:
+                  tmp.write(script)
+                  temp=tmp.name
+              try:
+                  run=subprocess.run(["node","--check",temp],text=True,capture_output=True)
+                  if run.returncode:
+                      raise SystemExit(f"JavaScript構文NG: {run.stderr}")
+              finally:
+                  Path(temp).unlink(missing_ok=True)
+
+          required=[
+              'YOGA-NEXT-9-R4-SYSTEM-CHECK-20260724',
+              'function isCloudflare1010(',
+              'function cloudflareAttentionDetail(',
+              'for(let attempt=1;attempt<=3;attempt++)',
+              'if(attempt<3){await sleep(attempt*700);continue}',
+              'addResult(group,label,"注意",cloudflareAttentionDetail(attempt),ms)',
+              'GitHub Actionsでは不正コードHTTP 403拒否PASS',
+              'credentials:"omit"',
+              'mode:"cors"',
+          ]
+          missing=[marker for marker in required if marker not in text]
+          if missing:
+              raise SystemExit(f"R4必須マーカー不足: {missing}")
+
+          if text.count('for(let attempt=1;attempt<=3;attempt++)') != 2:
+              raise SystemExit("3回再試行ループはAPI検査・不正コード検査の2件必要です。")
+
+          if path.stat().st_size > 110000:
+              raise SystemExit(f"system-check.html容量超過: {path.stat().st_size}")
+
+          unit=r'''
+          function isCloudflare1010(response,data,text){
+            const body=`${text||""} ${data?.raw||""} ${data?.error||""} ${data?.message||""}`.toLowerCase();
+            return response?.status===403&&(body.includes("1010")||body.includes("browser signature"));
+          }
+          if(!isCloudflare1010({status:403},{raw:"error code: 1010"},""))throw new Error("1010");
+          if(!isCloudflare1010({status:403},{},"Browser signature blocked"))throw new Error("signature");
+          if(isCloudflare1010({status:403},{error:"invalid admin code"},""))throw new Error("admin");
+          if(isCloudflare1010({status:500},{raw:"1010"},""))throw new Error("status");
+          console.log("R4_1010_UNIT_OK");
+          '''
+          with tempfile.NamedTemporaryFile("w",suffix=".js",encoding="utf-8",delete=False) as tmp:
+              tmp.write(unit)
+              temp=tmp.name
+          try:
+              run=subprocess.run(["node",temp],text=True,capture_output=True)
+              if run.returncode or "R4_1010_UNIT_OK" not in run.stdout:
+                  raise SystemExit(run.stdout+run.stderr)
+          finally:
+              Path(temp).unlink(missing_ok=True)
+
+          print(json.dumps({
+              "html_id_duplicate":"OK",
+              "javascript_syntax":"OK",
+              "cloudflare_1010_unit":"PASS",
+              "retry_count":3,
+              "classification":"ATTENTION",
+              "bytes":path.stat().st_size,
+          },ensure_ascii=False,indent=2))
+          PY
+
+      - name: "7. 静的検査結果・NEXT-9結果・完成台帳をR4へ更新"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          completed_at="$(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M:%S %z')"
+          system_blob="$(git hash-object system-check.html)"
+          system_bytes="$(wc -c < system-check.html | tr -d ' ')"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import datetime as dt
+          import json
+          import os
+
+          static_path=Path(os.environ["STATIC_REPORT_FILE"])
+          static=json.loads(static_path.read_text(encoding="utf-8"))
+          static["version"]="YOGA-NEXT-9-R4-STATIC-REPORT-20260724"
+          static["checked_at_jst"]=dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat()
+          static["browser_runtime_fix"]={
+              "cloudflare_1010_retry_count":3,
+              "cloudflare_1010_final_status":"注意",
+              "real_api_errors_remain_ng":True,
+              "network_errors_remain_ng_after_retry":True,
+              "invalid_admin_code_actions_evidence":"HTTP 403 PASS",
+              "worker_changed":False,
+              "supabase_changed":False,
+              "api_changed":False,
+          }
+          static.setdefault("checks",[]).extend([
+              {
+                  "group":"ブラウザ実行検査",
+                  "label":"Cloudflare 1010再試行",
+                  "status":"OK",
+                  "detail":"最大3回・段階待機・キャッシュ回避パラメータ",
+              },
+              {
+                  "group":"ブラウザ実行検査",
+                  "label":"Cloudflare 1010判定",
+                  "status":"OK",
+                  "detail":"Worker障害NGではなく環境上の注意として表示",
+              },
+          ])
+          static_path.write_text(json.dumps(static,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+
+          result_path=Path(os.environ["RESULT_FILE"])
+          result=json.loads(result_path.read_text(encoding="utf-8"))
+          result["applied_revision"]="R4"
+          result["r3_result"]="COMPLETE_THEN_BROWSER_RUNTIME_ISSUE_FOUND"
+          result["r3_post_publish_issue"]="browser_system_check_classified_cloudflare_1010_as_ng"
+          result["r4_fix"]={
+              "system_check_retry_count":3,
+              "cloudflare_1010_status":"注意",
+              "actual_api_failure_status":"NG",
+              "worker_changed":False,
+              "supabase_changed":False,
+              "api_changed":False,
+          }
+          result["checked_at_jst"]=dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).isoformat()
+          result_path.write_text(json.dumps(result,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          PY
+
+          python3 - <<PY
+          from pathlib import Path
+          import re
+
+          path=Path("$LEDGER_FILE")
+          text=path.read_text(encoding="utf-8")
+
+          text=text.replace('applied_revision: "R3"', 'applied_revision: "R4"', 1)
+          text=text.replace(
+              'r2_failure_reason: "cloudflare_1010_blocked_python_urllib_probe"\n',
+              'r2_failure_reason: "cloudflare_1010_blocked_python_urllib_probe"\n'
+              'r3_result: "COMPLETE_THEN_BROWSER_RUNTIME_ISSUE_FOUND"\n'
+              'r3_post_publish_issue: "browser_system_check_classified_cloudflare_1010_as_ng"\n',
+              1,
+          )
+          text=text.replace(
+              '  browser_runtime_live_check_fallback: true\n',
+              '  browser_runtime_live_check_fallback: true\n'
+              '  browser_runtime_cloudflare_1010_retry_count: 3\n'
+              '  browser_runtime_cloudflare_1010_status: "注意"\n'
+              '  browser_runtime_real_api_error_status: "NG"\n',
+              1,
+          )
+          text=text.replace(
+              '    version: "YOGA-NEXT-9-SYSTEM-CHECK-20260724"\n',
+              '    version: "YOGA-NEXT-9-R4-SYSTEM-CHECK-20260724"\n',
+              1,
+          )
+
+          old='''known_attention:
+            - "GitHub Actions送信元だけがCloudflare 1010で拒否された場合は注意とし、公開後のブラウザ版system-checkで実接続確認する"
+          '''
+          new='''known_attention:
+            - "Cloudflare 1010は最大3回再試行し、継続時はブラウザ経路上の注意として表示する"
+            - "実際のAPIエラー、応答不一致、3回後の一般通信エラーはNGを維持する"
+          '''
+          if old not in text:
+              raise SystemExit("known_attention更新対象なし")
+          text=text.replace(old,new,1)
+
+          text=text.replace(
+              'workflow_self_delete_after_success: true\n',
+              'r4_workflow_self_delete_after_success: true\n'
+              'workflow_self_delete_after_success: true\n',
+              1,
+          )
+
+          text=re.sub(r'completed_at_jst: "[^"]+"','completed_at_jst: "$completed_at"',text,count=1)
+          text=re.sub(r'    blob_sha: "[0-9a-f]+"','    blob_sha: "$system_blob"',text,count=1)
+          text=re.sub(r'    bytes: \d+','    bytes: $system_bytes',text,count=1)
+
+          path.write_text(text,encoding="utf-8")
+          PY
+
+      - name: "8. 最終変更範囲・完成状態検査"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          grep -q 'current_step: "YOGA-NEXT-9-COMPLETE"' "$LEDGER_FILE"
+          grep -q 'next_step: "YOGA-NEXT-10"' "$LEDGER_FILE"
+          grep -q 'applied_revision: "R4"' "$LEDGER_FILE"
+          grep -q 'browser_runtime_cloudflare_1010_retry_count: 3' "$LEDGER_FILE"
+          grep -q '"applied_revision": "R4"' "$RESULT_FILE"
+          grep -q '"cloudflare_1010_retry_count": 3' "$STATIC_REPORT_FILE"
+          grep -q 'YOGA-NEXT-9-R4-SYSTEM-CHECK-20260724' system-check.html
+
+          allowed='^(system-check\.html|dpro-next-ledger\.yml|dpro-next-yoga-next-9-static\.json|dpro-next-yoga-next-9-result\.json|\.github/workflows/STEP-YOGA-NEXT-9-R4\.yml)$'
+          unexpected="$(git diff --name-only "$BEFORE_SHA" | grep -Ev "$allowed" || true)"
+          [[ -z "$unexpected" ]] || {
+            echo "::error::想定外の変更ファイル: $unexpected"
+            exit 1
+          }
+
+          forbidden="$(git diff --name-only "$BEFORE_SHA" | grep -Ei '(^|/)worker\.js$|\.sql$|supabase|wrangler|owner\.html|owner-ipad\.html|member\.html|index\.html' || true)"
+          [[ -z "$forbidden" ]] || {
+            echo "::error::本体・Worker・Supabaseの想定外変更: $forbidden"
+            exit 1
+          }
+
+          {
+            echo "### YOGA-NEXT-9-R4 検査結果"
+            echo "- system-check JavaScript構文: OK"
+            echo "- HTML ID重複: OK"
+            echo "- Cloudflare 1010検出: PASS"
+            echo "- 1010最大3回再試行: OK"
+            echo "- 1010継続時: 注意"
+            echo "- 実APIエラー・一般通信失敗: NG維持"
+            echo "- Worker / Supabase / API変更: なし"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: "9. 成功後YML自身を削除"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f "$WORKFLOW_PATH"
+          test ! -f "$WORKFLOW_PATH"
+
+      - name: "10. 自動Commit・Push"
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add system-check.html "$LEDGER_FILE" "$STATIC_REPORT_FILE" "$RESULT_FILE"
+          git add -u "$WORKFLOW_PATH"
+
+          git diff --cached --quiet && {
+            echo "::error::Commit対象がありません。"
+            exit 1
+          }
+
+          git commit -m "fix(yoga-next): complete YOGA-NEXT-9 R4 browser 1010 handling [skip ci]"
+          git push origin HEAD:main
+
+          {
+            echo "### 完了"
+            echo "- current_step: YOGA-NEXT-9-COMPLETE"
+            echo "- applied_revision: R4"
+            echo "- next_step: YOGA-NEXT-10"
+            echo "- ブラウザ版system-check: Cloudflare 1010再試行・注意判定"
+            echo "- Worker / Supabase / API変更: なし"
+            echo "- R4 YML: 削除済み"
+          } >> "$GITHUB_STEP_SUMMARY"
