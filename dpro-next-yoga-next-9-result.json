@@ -1,0 +1,289 @@
+{
+  "ok": true,
+  "overall": "注意",
+  "step": "YOGA-NEXT-9",
+  "applied_revision": "R3",
+  "r1_result": "FAILED_BEFORE_COMMIT",
+  "r1_failure_reason": "phone_test_required_0081_outside_dpro_standard",
+  "r2_result": "FAILED_BEFORE_COMMIT",
+  "r2_failure_reason": "cloudflare_1010_blocked_python_urllib_probe",
+  "cloudflare_actions_probe_attention": false,
+  "checked_at_jst": "2026-07-24T17:19:00.372182+09:00",
+  "before_sha": "8a3adde3c417f5cefabcfc8ec8dc6ceae073d003",
+  "before_tag": "dpro-yoga-next-9-before-20260724",
+  "checks": [
+    {
+      "group": "静的検査",
+      "label": "index.html HTML ID重複",
+      "status": "OK",
+      "detail": "重複なし"
+    },
+    {
+      "group": "静的検査",
+      "label": "index.html JavaScript構文",
+      "status": "OK",
+      "detail": "inline 1件"
+    },
+    {
+      "group": "性能",
+      "label": "index.html ファイル容量",
+      "status": "OK",
+      "detail": "71,383 / 上限 120,000 bytes"
+    },
+    {
+      "group": "静的検査",
+      "label": "member.html HTML ID重複",
+      "status": "OK",
+      "detail": "重複なし"
+    },
+    {
+      "group": "静的検査",
+      "label": "member.html JavaScript構文",
+      "status": "OK",
+      "detail": "inline 1件"
+    },
+    {
+      "group": "性能",
+      "label": "member.html ファイル容量",
+      "status": "OK",
+      "detail": "55,494 / 上限 120,000 bytes"
+    },
+    {
+      "group": "静的検査",
+      "label": "owner.html HTML ID重複",
+      "status": "OK",
+      "detail": "重複なし"
+    },
+    {
+      "group": "静的検査",
+      "label": "owner.html JavaScript構文",
+      "status": "OK",
+      "detail": "inline 1件"
+    },
+    {
+      "group": "性能",
+      "label": "owner.html ファイル容量",
+      "status": "OK",
+      "detail": "130,375 / 上限 165,000 bytes"
+    },
+    {
+      "group": "静的検査",
+      "label": "owner-ipad.html HTML ID重複",
+      "status": "OK",
+      "detail": "重複なし"
+    },
+    {
+      "group": "静的検査",
+      "label": "owner-ipad.html JavaScript構文",
+      "status": "OK",
+      "detail": "inline 1件"
+    },
+    {
+      "group": "性能",
+      "label": "owner-ipad.html ファイル容量",
+      "status": "OK",
+      "detail": "72,514 / 上限 95,000 bytes"
+    },
+    {
+      "group": "静的検査",
+      "label": "system-check.html HTML ID重複",
+      "status": "OK",
+      "detail": "重複なし"
+    },
+    {
+      "group": "静的検査",
+      "label": "system-check.html JavaScript構文",
+      "status": "OK",
+      "detail": "inline 1件"
+    },
+    {
+      "group": "性能",
+      "label": "system-check.html ファイル容量",
+      "status": "OK",
+      "detail": "20,555 / 上限 100,000 bytes"
+    },
+    {
+      "group": "セキュリティ",
+      "label": "index.html 管理情報混入",
+      "status": "OK",
+      "detail": "管理API・管理コード・内部記録参照なし"
+    },
+    {
+      "group": "セキュリティ",
+      "label": "member.html 管理情報混入",
+      "status": "OK",
+      "detail": "管理API・管理コード・内部記録参照なし"
+    },
+    {
+      "group": "業務ロジック",
+      "label": "index.html 必須安全機能",
+      "status": "OK",
+      "detail": "normalizePhone, isPastDate, reservation_origin, validateSelectedSlot, activeReservations.length >= maxActive"
+    },
+    {
+      "group": "業務ロジック",
+      "label": "owner.html 必須安全機能",
+      "status": "OK",
+      "detail": "normalizePhone, findManualDuplicate, WORKFLOW_STEPS, followupAddDays, admin-code-clear-btn"
+    },
+    {
+      "group": "業務ロジック",
+      "label": "owner-ipad.html 必須安全機能",
+      "status": "OK",
+      "detail": "normalizePhone, WORKFLOW_STEPS, followupAddDays, admin-code-clear-btn"
+    },
+    {
+      "group": "業務ロジック",
+      "label": "member.html 必須安全機能",
+      "status": "OK",
+      "detail": "privacy.owner_memo_returned, privacy.internal_lesson_notes_returned, repeat_booking"
+    },
+    {
+      "group": "業務ロジック",
+      "label": "system-check.html 必須安全機能",
+      "status": "OK",
+      "detail": "runAllChecks, checkAdminCodeRejection, publicLeakPatterns, runDemoPrepare, copyResults"
+    },
+    {
+      "group": "業務ロジック",
+      "label": "電話番号正規化実装",
+      "status": "OK",
+      "detail": "owner.html実関数でハイフン・空白・全角・+81を検査"
+    },
+    {
+      "group": "セキュリティ",
+      "label": "自動・一括LINE送信",
+      "status": "OK",
+      "detail": "実装なし"
+    },
+    {
+      "group": "接続・API",
+      "label": "Worker",
+      "status": "OK",
+      "detail": "HTTP 200",
+      "ms": 77.46
+    },
+    {
+      "group": "接続・API",
+      "label": "公開店舗設定",
+      "status": "OK",
+      "detail": "HTTP 200",
+      "ms": 1069.58
+    },
+    {
+      "group": "接続・API",
+      "label": "公開メニュー",
+      "status": "OK",
+      "detail": "HTTP 200",
+      "ms": 294.61
+    },
+    {
+      "group": "接続・API",
+      "label": "会員安全契約",
+      "status": "OK",
+      "detail": "HTTP 200",
+      "ms": 280.56
+    },
+    {
+      "group": "接続・API",
+      "label": "管理設定",
+      "status": "OK",
+      "detail": "HTTP 200",
+      "ms": 341.99
+    },
+    {
+      "group": "接続・API",
+      "label": "管理サマリー",
+      "status": "OK",
+      "detail": "HTTP 200",
+      "ms": 2251.58
+    },
+    {
+      "group": "接続・API",
+      "label": "本日業務",
+      "status": "注意",
+      "detail": "HTTP 200",
+      "ms": 2857.07
+    },
+    {
+      "group": "接続・API",
+      "label": "顧客検索",
+      "status": "OK",
+      "detail": "HTTP 200",
+      "ms": 505.91
+    },
+    {
+      "group": "セキュリティ",
+      "label": "不正な管理コード拒否",
+      "status": "OK",
+      "detail": "HTTP 403",
+      "ms": 262.96
+    },
+    {
+      "group": "画面・性能",
+      "label": "index.html 公開応答",
+      "status": "OK",
+      "detail": "HTTP 200 / 71,383 bytes",
+      "ms": 66.16
+    },
+    {
+      "group": "画面・性能",
+      "label": "member.html 公開応答",
+      "status": "OK",
+      "detail": "HTTP 200 / 55,494 bytes",
+      "ms": 41.71
+    },
+    {
+      "group": "画面・性能",
+      "label": "owner.html 公開応答",
+      "status": "OK",
+      "detail": "HTTP 200 / 130,106 bytes",
+      "ms": 50.97
+    },
+    {
+      "group": "画面・性能",
+      "label": "owner-ipad.html 公開応答",
+      "status": "OK",
+      "detail": "HTTP 200 / 72,258 bytes",
+      "ms": 81.71
+    }
+  ],
+  "file_meta": {
+    "index.html": {
+      "bytes": 71383,
+      "blob_sha": "6c3b2e4abcce8dc78f0a658b56580a983f4935b4",
+      "ids": 50,
+      "inline_scripts": 1
+    },
+    "member.html": {
+      "bytes": 55494,
+      "blob_sha": "de427a20414ce8c8697cfbaafd004cc0bde48c3f",
+      "ids": 38,
+      "inline_scripts": 1
+    },
+    "owner.html": {
+      "bytes": 130375,
+      "blob_sha": "64ac5e476ecd8eb9fcb9be2934ae73b636b3501b",
+      "ids": 84,
+      "inline_scripts": 1
+    },
+    "owner-ipad.html": {
+      "bytes": 72514,
+      "blob_sha": "b8a52e7137ef4ffc6e1b4fb5824afbbe4a2eb7aa",
+      "ids": 53,
+      "inline_scripts": 1
+    },
+    "system-check.html": {
+      "bytes": 20555,
+      "blob_sha": "cd90eb5c1caff08aa7ffed783af4c4c29edac2dd",
+      "ids": 11,
+      "inline_scripts": 1
+    }
+  },
+  "worker_changed": false,
+  "supabase_changed": false,
+  "api_changed": false,
+  "system_check_created": true,
+  "demo_prepare_runtime_optional": true,
+  "automatic_line_send": false
+}

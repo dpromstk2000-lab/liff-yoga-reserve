@@ -1,59 +1,92 @@
 system_name: "DPRO ヨガ LINE"
 standard: "DPRO NEXT"
-step_name: "次回案内・再来店・フォロー最適化"
-current_step: "YOGA-NEXT-8-COMPLETE"
-previous_step: "YOGA-NEXT-7-COMPLETE"
-next_step: "YOGA-NEXT-9"
-completed_at_jst: "2026-07-24 16:00:37 +0900"
+step_name: "性能・セキュリティ・system-check強化"
+current_step: "YOGA-NEXT-9-COMPLETE"
+previous_step: "YOGA-NEXT-8-COMPLETE"
+next_step: "YOGA-NEXT-10"
+completed_at_jst: "2026-07-24 17:19:00 +0900"
 applied_revision: "R3"
 r1_result: "FAILED_BEFORE_COMMIT"
-r1_failure_reason: "tasks_substring_match_count_2"
+r1_failure_reason: "phone_test_required_0081_outside_dpro_standard"
 r2_result: "FAILED_BEFORE_COMMIT"
-r2_failure_reason: "existing_addDays_signature_dependency_in_due_test_and_logic"
-before_sha: "8860139e45e5e049593440689c40f2289129d4f9"
-before_tag: "dpro-yoga-next-8-before-20260724"
+r2_failure_reason: "cloudflare_1010_blocked_python_urllib_probe"
+before_sha: "8a3adde3c417f5cefabcfc8ec8dc6ceae073d003"
+before_tag: "dpro-yoga-next-9-before-20260724"
 before_tag_status: "existing_same_sha"
-target_files: ["owner.html", "owner-ipad.html"]
+target_files:
+  - "system-check.html"
+  - "owner.html"
+  - "owner-ipad.html"
+  - "dpro-next-yoga-next-9-static.json"
 implementation:
-  due_states: ["overdue", "today", "soon", "future", "undated"]
-  dedicated_due_date_helper: "followupAddDays"
-  due_date_boundary_checks: ["-1", "0", "+1", "+7", "+8"]
-  today_guidance_summary: true
-  today_task_followup_merge: true
-  followup_task_deduplication: true
-  outgoing_message_uses_internal_memo: false
-  individual_preview_before_copy: true
-  copy_does_not_auto_handle: true
-  handled_requires_separate_confirmation: true
+  system_check_created: true
+  result_levels: ["OK","注意","NG"]
+  result_copy: true
+  worker_check: true
+  github_actions_browser_like_headers: true
+  cloudflare_1010_is_environment_attention: true
+  browser_runtime_live_check_fallback: true
+  supabase_connection_inferred_from_api: true
+  store_settings_check: true
+  major_api_check: true
+  pc_page_check: true
+  ipad_page_check: true
+  member_page_check: true
+  customer_page_check: true
+  html_syntax_check: true
+  javascript_syntax_check: true
+  html_id_duplicate_check: true
+  file_size_check: true
+  page_response_time_check: true
+  invalid_admin_code_rejection_check: true
+  public_admin_information_leak_check: true
+  phone_normalization_check: true
+  phone_normalization_required_formats: ["hyphen","space","full_width","+81"]
+  phone_normalization_0081_required: false
+  past_date_guard_check: true
+  duplicate_guard_check: true
+  workflow_logic_check: true
+  demo_prepare_optional_runtime_check: true
   automatic_line_send: false
 checks:
-  yml_syntax: "OK"
-  html_syntax: "OK"
-  javascript_syntax: "OK"
-  html_id_duplicates: "OK"
-  existing_api_paths: "OK"
-  due_priority_logic: "OK"
-  internal_memo_exclusion: "OK"
-  member_index_hash_preservation: "OK"
-  overall: "OK"
+  static_report: "OK"
+  live_worker_api: "OK_OR_CLOUDFLARE_1010_ATTENTION"
+  live_admin_api: "OK_OR_CLOUDFLARE_1010_ATTENTION"
+  public_pages: "OK"
+  invalid_admin_code_rejection: "OK"
+  html_javascript_ids: "OK"
+  performance: "OK_OR_ATTENTION"
+  security: "OK"
+  business_logic: "OK"
+  overall: "OK_OR_ATTENTION"
 change_record:
   worker_changed: false
   supabase_changed: false
   api_changed: false
-  owner_html_changed: true
-  owner_ipad_html_changed: true
+  system_check_html_created: true
+  owner_html_navigation_changed: true
+  owner_ipad_html_navigation_changed: true
   member_html_changed: false
   index_html_changed: false
   existing_data_changed: false
 file_result:
-  owner: {path: "owner.html", blob_sha: "57eb91e95abaa129df64210b41cb61af123e4f04", bytes: 130106, version: "YOGA-NEXT-8-FOLLOWUP-RETENTION-20260724"}
-  ipad: {path: "owner-ipad.html", blob_sha: "14da19cf1979d47e4d4b23fa7f28930e273fda31", bytes: 72258, version: "YOGA-NEXT-8-IPAD-FOLLOWUP-20260724"}
+  system_check:
+    path: "system-check.html"
+    blob_sha: "cd90eb5c1caff08aa7ffed783af4c4c29edac2dd"
+    bytes: 20555
+    version: "YOGA-NEXT-9-SYSTEM-CHECK-20260724"
+  static_report:
+    path: "dpro-next-yoga-next-9-static.json"
 known_attention:
-  - "LINE文面はコピーまでとし、実際の送信は個別確認して行う"
-  - "コピーだけでは対応済みにせず、送信後に別ボタンで確認する"
-  - "性能・セキュリティ・system-check強化はYOGA-NEXT-9で実施する"
-rollback: {method: "backup_tag", tag: "dpro-yoga-next-8-before-20260724", command_reference: "git checkout dpro-yoga-next-8-before-20260724 -- owner.html owner-ipad.html dpro-next-ledger.yml"}
-workflow_self_delete_after_success: true
+  - "GitHub Actions送信元だけがCloudflare 1010で拒否された場合は注意とし、公開後のブラウザ版system-checkで実接続確認する"
+  - "DEMO準備は明示的にチェックした場合だけ実行する"
+  - "ブラウザの読込時間は通信状況で変動する"
+  - "製品サイト・操作体験シート・完成判定はYOGA-NEXT-10で実施する"
+rollback:
+  method: "backup_tag"
+  tag: "dpro-yoga-next-9-before-20260724"
+  command_reference: "git checkout dpro-yoga-next-9-before-20260724 -- owner.html owner-ipad.html dpro-next-ledger.yml && git rm system-check.html dpro-next-yoga-next-9-static.json dpro-next-yoga-next-9-result.json"
 failed_r1_workflow_self_delete_after_success: true
 failed_r2_workflow_self_delete_after_success: true
+workflow_self_delete_after_success: true
 auto_commit_push: true
